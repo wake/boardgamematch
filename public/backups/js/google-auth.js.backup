@@ -1,0 +1,329 @@
+/**
+ * Google OAuth 登入系統
+ * 整合 Google Sign-In 到現有的 GameMBTI 系統中
+ */
+
+// Google OAuth 配置
+const GOOGLE_CONFIG = {
+    // 測試 Client ID（開發用）
+    // 正式上線前需要替換為正式的 Client ID
+    clientId: 'YOUR_CLIENT_ID', // 請替換為實際的 Client ID
+};
+
+// Google 登入狀態管理
+const GoogleAuth = {
+    /**
+     * 初始化 Google 登入系統
+     */
+    init() {
+        console.log('[GoogleAuth] 初始化 Google 登入系統');
+        
+        // 檢查是否已登入
+        const currentUser = this.getCurrentUser();
+        if (currentUser) {
+            console.log('[GoogleAuth] 發現已登入使用者:', currentUser.username);
+            this.updateUIForLoggedIn(currentUser);
+        } else {
+            console.log('[GoogleAuth] 使用者未登入，顯示登入按鈕');
+            this.showGoogleSignIn();
+        }
+    },
+
+    /**
+     * 顯示 Google 登入按鈕
+     */
+    showGoogleSignIn() {
+        const container = document.getElementById('google-signin-container');
+        const loggedInContainer = document.getElementById('logged-in-container');
+        const guestLinks = document.getElementById('guest-links');
+        
+        if (container) container.style.display = 'block';
+        if (loggedInContainer) loggedInContainer.style.display = 'none';
+        if (guestLinks) guestLinks.style.display = 'flex';
+    },
+
+    /**
+     * 隱藏 Google 登入按鈕
+     */
+    hideGoogleSignIn() {
+        const container = document.getElementById('google-signin-container');
+        const guestLinks = document.getElementById('guest-links');
+        
+        if (container) container.style.display = 'none';
+        if (guestLinks) guestLinks.style.display = 'none';
+    },
+
+    /**
+     * 更新 UI 為已登入狀態
+     */
+    updateUIForLoggedIn(user) {
+        const loggedInContainer = document.getElementById('logged-in-container');
+        const userAvatar = document.getElementById('user-avatar');
+        const userName = document.getElementById('user-name');
+        const userMbti = document.getElementById('user-mbti');
+        
+        // 使用暱稱而非真實姓名
+        const displayName = user.nickname || user.username;
+        
+        if (loggedInContainer) {
+            loggedInContainer.style.display = 'flex';
+            loggedInContainer.style.flexDirection = 'column';
+            loggedInContainer.style.alignItems = 'center';
+        }
+        
+        if (userAvatar && user.picture) {
+            userAvatar.src = user.picture;
+        }
+        
+        if (userName) {
+            userName.textContent = `哈囉！${displayName}`;
+        }
+        
+        if (userMbti && user.mbti_type) {
+            userMbti.textContent = `${user.mbti_type} 性格`;
+        } else if (userMbti) {
+            userMbti.textContent = '尚未設定 MBTI 類型';
+        }
+        
+        this.hideGoogleSignIn();
+    },
+
+    /**
+     * 取得當前登入的使用者
+     */
+    getCurrentUser() {
+        // 使用 app.js 的函數
+        if (typeof GameMBTI !== 'undefined' && GameMBTI.getCurrentUser) {
+            return GameMBTI.getCurrentUser();
+        }
+        // fallback
+        const userStr = localStorage.getItem('currentUser');
+        if (!userStr) return null;
+        
+        try {
+            return JSON.parse(userStr);
+        } catch (e) {
+            console.error('[GoogleAuth] 解析使用者資料失敗:', e);
+            return null;
+        }
+    },
+
+    /**
+     * 儲存使用者資料到 localStorage
+     */
+    saveCurrentUser(user) {
+        // 使用 app.js 的函數
+        if (typeof GameMBTI !== 'undefined' && GameMBTI.setCurrentUser) {
+            GameMBTI.setCurrentUser(user);
+        } else {
+            localStorage.setItem('currentUser', JSON.stringify(user));
+        }
+    },
+
+    /**
+     * 登出
+     */
+    logout() {
+        console.log('[GoogleAuth] 使用者登出');
+        localStorage.removeItem('currentUser');
+        
+        // Google Sign-Out
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+            google.accounts.id.disableAutoSelect();
+        }
+        
+        // 重新載入頁面
+        window.location.reload();
+    },
+
+    /**
+     * 處理 Google 登入回調
+     */
+    async handleGoogleSignIn(response) {
+        console.log('[GoogleAuth] 收到 Google 登入回應');
+        
+        try {
+            // 解析 JWT token
+            const credential = response.credential;
+            const payload = this.parseJwt(credential);
+            
+            console.log('[GoogleAuth] Google 使用者資料:', {
+                sub: payload.sub,
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture
+            });
+            
+            // 建立或更新使用者資料
+            const user = await this.createOrUpdateUser(payload);
+            
+            // 檢查是否需要設定暱稱（首次登入）
+            if (typeof NicknameManager !== 'undefined') {
+                await NicknameManager.checkAndSetNickname(user);
+                // 重新取得更新後的使用者資料
+                const updatedUser = this.getCurrentUser();
+                if (updatedUser) {
+                    this.updateUIForLoggedIn(updatedUser);
+                    this.showSuccessMessage(updatedUser);
+                }
+            } else {
+                // 儲存到 localStorage
+                this.saveCurrentUser(user);
+                // 更新 UI
+                this.updateUIForLoggedIn(user);
+                this.showSuccessMessage(user);
+            }
+            
+        } catch (error) {
+            console.error('[GoogleAuth] Google 登入處理失敗:', error);
+            alert('登入失敗，請稍後再試。');
+        }
+    },
+
+    /**
+     * 顯示登入成功訊息
+     */
+    showSuccessMessage(user) {
+        const displayName = user.nickname || user.username;
+        const statusDiv = document.getElementById('login-status');
+        
+        if (statusDiv) {
+            statusDiv.innerHTML = `
+                <div style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 12px;
+                    text-align: center;
+                    margin: 20px 0;
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                    animation: slideDown 0.5s ease;
+                ">
+                    <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                    <div style="font-size: 18px; font-weight: 600;">登入成功！歡迎 ${displayName}</div>
+                    ${user.mbti_type ? `<div style="font-size: 14px; margin-top: 8px; opacity: 0.9;">您的 MBTI 類型：${user.mbti_type}</div>` : ''}
+                </div>
+            `;
+            
+            // 3 秒後淡出
+            setTimeout(() => {
+                if (statusDiv) {
+                    statusDiv.style.transition = 'opacity 0.5s';
+                    statusDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                        statusDiv.style.opacity = '1';
+                    }, 500);
+                }
+            }, 3000);
+        }
+    },
+
+    /**
+     * 解析 JWT token
+     */
+    parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            console.error('[GoogleAuth] JWT 解析失敗:', e);
+            throw new Error('無效的 Google 憑證');
+        }
+    },
+
+    /**
+     * 建立或更新使用者資料
+     */
+    async createOrUpdateUser(googlePayload) {
+        const googleId = googlePayload.sub;
+        const email = googlePayload.email;
+        const name = googlePayload.name;
+        const picture = googlePayload.picture;
+        
+        console.log('[GoogleAuth] 建立/更新使用者:', email);
+        
+        // 檢查使用者是否已存在（根據 google_id 或 email）
+        try {
+            const response = await fetch(`tables/users?limit=1000`);
+            const result = await response.json();
+            const users = result.data || [];
+            
+            // 尋找現有使用者
+            let existingUser = users.find(u => 
+                u.google_id === googleId || u.email === email
+            );
+            
+            if (existingUser) {
+                console.log('[GoogleAuth] 找到現有使用者，更新資料');
+                
+                // 更新使用者資料
+                const updateData = {
+                    ...existingUser,
+                    google_id: googleId,
+                    email: email,
+                    username: name,
+                    picture: picture,
+                    last_login: Date.now()
+                };
+                
+                const updateResponse = await fetch(`tables/users/${existingUser.id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(updateData)
+                });
+                
+                return await updateResponse.json();
+            } else {
+                console.log('[GoogleAuth] 建立新使用者');
+                
+                // 建立新使用者
+                const newUser = {
+                    google_id: googleId,
+                    email: email,
+                    username: name,
+                    picture: picture,
+                    mbti_type: '', // 需要使用者後續設定
+                    liked_games: [],
+                    disliked_games: [],
+                    wishlist: [],
+                    daily_question_count: 0,
+                    last_question_date: null,
+                    last_login: Date.now()
+                };
+                
+                const createResponse = await fetch(`tables/users`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(newUser)
+                });
+                
+                return await createResponse.json();
+            }
+        } catch (error) {
+            console.error('[GoogleAuth] 建立/更新使用者失敗:', error);
+            throw error;
+        }
+    }
+};
+
+// Google Sign-In callback（全域函數）
+function handleGoogleSignIn(response) {
+    GoogleAuth.handleGoogleSignIn(response);
+}
+
+// 頁面載入時初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        GoogleAuth.init();
+    });
+} else {
+    GoogleAuth.init();
+}
+
+// 匯出給其他模組使用
+window.GoogleAuth = GoogleAuth;

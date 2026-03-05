@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGG 封面批次抓取</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body { background: var(--bg-color, #f8f9fa); }
+
+        .tool-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .tool-header h1 { margin: 0 0 0.3rem; font-size: 1.4rem; }
+        .tool-header p  { margin: 0; opacity: 0.85; font-size: 0.9rem; }
+
+        .card {
+            background: var(--card-bg, #fff);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 0.6rem;
+            font-size: 0.95rem;
+            font-family: monospace;
+            resize: vertical;
+            background: var(--bg-color, #f8f9fa);
+            color: var(--text-color, #333);
+        }
+        textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+
+        .btn-start {
+            padding: 0.75rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-start:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+        .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-copy {
+            padding: 0.7rem 1.5rem;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-copy:hover { background: #219a52; }
+        .btn-clear {
+            padding: 0.7rem 1.2rem;
+            background: var(--bg-light, #f0f0f0);
+            color: var(--text-color, #333);
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        /* 進度區 */
+        #progress-bar-wrap {
+            background: var(--bg-light, #eee);
+            border-radius: 1rem;
+            height: 10px;
+            margin: 0.75rem 0 0.4rem;
+            overflow: hidden;
+        }
+        #progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 1rem;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        #progress-text {
+            font-size: 0.85rem;
+            color: var(--text-light, #888);
+        }
+
+        /* 即時 log */
+        #log-area {
+            max-height: 220px;
+            overflow-y: auto;
+            font-size: 0.82rem;
+            font-family: monospace;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            border-radius: 0.6rem;
+            padding: 0.75rem 1rem;
+            margin-top: 0.75rem;
+            line-height: 1.6;
+        }
+        .log-ok    { color: #a6e3a1; }
+        .log-err   { color: #f38ba8; }
+        .log-skip  { color: #fab387; }
+        .log-info  { color: #89b4fa; }
+
+        /* 結果輸出 */
+        #result-textarea {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            border: 1px solid #313244;
+            min-height: 180px;
+        }
+
+        /* 結果表格預覽 */
+        #preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        #preview-table th {
+            background: var(--bg-light, #f0f0f0);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color, #ddd);
+        }
+        #preview-table td {
+            padding: 0.45rem 0.75rem;
+            border-bottom: 1px solid var(--border-color, #eee);
+            vertical-align: middle;
+        }
+        #preview-table tr:hover { background: var(--bg-light, #f8f8f8); }
+        .thumb {
+            width: 40px; height: 40px;
+            object-fit: cover;
+            border-radius: 0.3rem;
+            border: 1px solid var(--border-color, #ddd);
+        }
+        .status-ok   { color: #27ae60; font-weight: 600; }
+        .status-err  { color: #e74c3c; font-weight: 600; }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 0.6rem;
+            background: var(--bg-light, #f0f0f0);
+        }
+        .stat-num { font-size: 1.6rem; font-weight: 700; }
+        .stat-lbl { font-size: 0.78rem; color: var(--text-light, #888); margin-top: 0.1rem; }
+
+        label { font-weight: 600; display: block; margin-bottom: 0.5rem; }
+
+        /* 並發設定 */
+        .settings-row {
+            display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .settings-row label { margin: 0; font-weight: normal; }
+        .settings-row select, .settings-row input[type=number] {
+            padding: 0.4rem 0.6rem;
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 0.4rem;
+            font-size: 0.9rem;
+            background: var(--card-bg, #fff);
+            color: var(--text-color, #333);
+        }
+    </style>
+</head>
+<body>
+<div class="container" style="max-width:900px; margin:0 auto; padding:1.5rem 1rem;">
+
+    <div class="tool-header">
+        <h1>🖼️ BGG 封面批次抓取工具</h1>
+        <p>貼上 BGG ID（一行一個），自動抓取封面圖片連結，按順序輸出可直接複製使用</p>
+    </div>
+
+    <!-- 輸入區 -->
+    <div class="card">
+        <label>📋 BGG ID 清單（一行一個，最多支援 10,000 筆）</label>
+        <textarea id="input-ids" rows="8" placeholder="174430&#10;167791&#10;161936&#10;224517&#10;..."></textarea>
+
+        <div class="settings-row" style="margin-top:1rem;">
+            <label style="font-weight:600;">⚙️ 設定：</label>
+            <label>並發數
+                <select id="concurrency">
+                    <option value="1">1（穩定，慢）</option>
+                    <option value="3" selected>3（建議）</option>
+                    <option value="5">5（快，偶爾失敗）</option>
+                </select>
+            </label>
+            <label>失敗時輸出
+                <select id="fallback-mode">
+                    <option value="empty">空白（保留位置）</option>
+                    <option value="placeholder" selected>FAILED（標記失敗）</option>
+                </select>
+            </label>
+            <label>重試次數
+                <input type="number" id="retry-count" value="2" min="0" max="5" style="width:60px;">
+            </label>
+        </div>
+
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+            <button class="btn-start" id="start-btn" onclick="startFetch()">🚀 開始抓取</button>
+            <button class="btn-clear" onclick="resetAll()">🗑️ 清除重置</button>
+            <span id="est-time" style="font-size:0.85rem;color:var(--text-light,#888);"></span>
+        </div>
+    </div>
+
+    <!-- 進度區（抓取中才顯示） -->
+    <div class="card" id="progress-card" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+            <strong>⏳ 抓取進度</strong>
+            <button onclick="stopFetch()" style="padding:0.3rem 0.8rem;background:#e74c3c;color:white;border:none;border-radius:0.4rem;cursor:pointer;font-size:0.85rem;">⏹ 停止</button>
+        </div>
+        <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+        <div id="progress-text">準備中...</div>
+        <div id="log-area"></div>
+    </div>
+
+    <!-- 結果區（有結果才顯示） -->
+    <div class="card" id="result-card" style="display:none;">
+        <div class="stat-grid">
+            <div class="stat-box"><div class="stat-num" id="stat-total" style="color:var(--primary-color,#667eea);">0</div><div class="stat-lbl">總筆數</div></div>
+            <div class="stat-box"><div class="stat-num" id="stat-ok" style="color:#27ae60;">0</div><div class="stat-lbl">成功</div></div>
+            <div class="stat-box"><div class="stat-num" id="stat-fail" style="color:#e74c3c;">0</div><div class="stat-lbl">失敗</div></div>
+        </div>
+
+        <label>📤 輸出結果（每行對應一個 BGG ID，順序與輸入相同）</label>
+        <textarea id="result-textarea" rows="10" readonly></textarea>
+
+        <div style="display:flex; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
+            <button class="btn-copy" onclick="copyResult()">📋 複製全部連結</button>
+            <button class="btn-copy" onclick="copyOnlySuccess()" style="background:#3498db;">✅ 只複製成功的</button>
+            <button class="btn-clear" onclick="downloadResult()">⬇️ 下載 .txt</button>
+        </div>
+    </div>
+
+    <!-- 預覽表格 -->
+    <div class="card" id="preview-card" style="display:none;">
+        <strong>🔍 預覽（前 20 筆）</strong>
+        <div style="overflow-x:auto; margin-top:0.75rem;">
+            <table id="preview-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th style="width:60px;">BGG ID</th>
+                        <th style="width:56px;">縮圖</th>
+                        <th>圖片連結</th>
+                        <th style="width:70px;">狀態</th>
+                    </tr>
+                </thead>
+                <tbody id="preview-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ── 全域狀態 ──
+    let results = [];       // { bggId, url, status } 按輸入順序
+    let isStopped = false;
+
+    // 估算時間
+    document.getElementById('input-ids').addEventListener('input', updateEstTime);
+    document.getElementById('concurrency').addEventListener('change', updateEstTime);
+
+    function updateEstTime() {
+        const ids = parseIds();
+        const conc = parseInt(document.getElementById('concurrency').value);
+        if (ids.length === 0) { document.getElementById('est-time').textContent = ''; return; }
+        const secPerItem = 2.5; // Jina 約 2~3 秒/筆
+        const totalSec = Math.ceil(ids.length / conc * secPerItem);
+        const mins = Math.floor(totalSec / 60);
+        const secs = totalSec % 60;
+        document.getElementById('est-time').textContent =
+            `約 ${ids.length} 筆，預估 ${mins > 0 ? mins + ' 分 ' : ''}${secs} 秒`;
+    }
+
+    function parseIds() {
+        return document.getElementById('input-ids').value
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => /^\d+$/.test(l));
+    }
+
+    // ── 從 BGG 頁面文字抓封面圖（與 admin-add-games.html 完全相同）──
+    function extractCoverFromText(text) {
+        const imgRegex = /https:\/\/cf\.geekdo-images\.com\/[^\s"']+\.(?:jpg|png|jpeg)/gi;
+        const candidates = [];
+        let m;
+        while ((m = imgRegex.exec(text)) !== null) candidates.push(m[0]);
+        if (candidates.length === 0) return null;
+        return candidates.find(u => u.includes('_original'))
+            || candidates.find(u => !u.match(/user|avatar|micro|square|thumb/))
+            || candidates[0];
+    }
+
+    // ── 抓單筆（含重試），與 admin-add-games.html 相同邏輯 ──
+    async function fetchOneBGG(bggId, maxRetry) {
+        const pageUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
+        const proxyUrl = `https://r.jina.ai/${pageUrl}`;
+        for (let attempt = 0; attempt <= maxRetry; attempt++) {
+            try {
+                const res = await fetch(proxyUrl, {
+                    headers: { 'X-No-Cache': 'true' },
+                    signal: AbortSignal.timeout(25000) // 與 admin-add-games.html 一致
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+                const url = extractCoverFromText(text);
+                if (url) return { ok: true, url };
+                // debug：回傳原始片段方便排查
+                const snippet = text.slice(0, 300).replace(/\n/g, ' ');
+                return { ok: false, reason: `頁面無封面圖｜前300字：${snippet}` };
+            } catch (e) {
+                if (attempt < maxRetry) {
+                    await sleep(1500 * (attempt + 1));
+                    continue;
+                }
+                return { ok: false, reason: e.message };
+            }
+        }
+    }
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    // ── 主流程 ──
+    async function startFetch() {
+        const ids = parseIds();
+        if (ids.length === 0) {
+            alert('請先輸入 BGG ID（一行一個數字）');
+            return;
+        }
+
+        // 初始化
+        results = ids.map(id => ({ bggId: id, url: null, status: 'pending' }));
+        isStopped = false;
+
+        const concurrency = parseInt(document.getElementById('concurrency').value);
+        const maxRetry    = parseInt(document.getElementById('retry-count').value) || 0;
+        const fallback    = document.getElementById('fallback-mode').value;
+        // 與 admin-add-games.html 一致：逐一請求間隔（ms）
+        const delayMs = concurrency === 1 ? 600 : concurrency === 3 ? 400 : 200;
+
+        // UI 切換
+        document.getElementById('start-btn').disabled = true;
+        document.getElementById('progress-card').style.display = 'block';
+        document.getElementById('result-card').style.display   = 'none';
+        document.getElementById('preview-card').style.display  = 'none';
+        document.getElementById('log-area').innerHTML = '';
+        updateStats(0, 0, ids.length);
+
+        let doneCount = 0;
+
+        // 逐批並發：每批之間加間隔，避免 Jina rate limit
+        for (let i = 0; i < ids.length; i += concurrency) {
+            if (isStopped) {
+                addLog('⏹ 已手動停止', 'log-info');
+                break;
+            }
+
+            const batch = results.slice(i, i + concurrency);
+
+            await Promise.all(batch.map(async (item) => {
+                const result = await fetchOneBGG(item.bggId, maxRetry);
+                if (result.ok) {
+                    item.url    = result.url;
+                    item.status = 'ok';
+                    addLog(`✅ [${item.bggId}] ${result.url.slice(0, 80)}`, 'log-ok');
+                } else {
+                    item.url    = fallback === 'empty' ? '' : 'FAILED';
+                    item.status = 'fail';
+                    // 顯示完整 reason（包含前300字 snippet）方便 debug
+                    addLog(`❌ [${item.bggId}] ${result.reason.slice(0, 120)}`, 'log-err');
+                }
+                doneCount++;
+                updateProgress(doneCount, ids.length);
+            }));
+
+            // 每批完成後等一下，避免 Jina 限速
+            if (i + concurrency < ids.length && !isStopped) {
+                await sleep(delayMs);
+            }
+        }
+
+        // 完成
+        document.getElementById('start-btn').disabled = false;
+        showResults();
+    }
+
+    function stopFetch() {
+        isStopped = true;
+    }
+
+    function resetAll() {
+        isStopped = true;
+        results = [];
+        document.getElementById('input-ids').value = '';
+        document.getElementById('progress-card').style.display = 'none';
+        document.getElementById('result-card').style.display   = 'none';
+        document.getElementById('preview-card').style.display  = 'none';
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('est-time').textContent = '';
+    }
+
+    // ── UI 輔助 ──
+    function updateProgress(done, total) {
+        const pct = Math.round(done / total * 100);
+        document.getElementById('progress-bar').style.width = pct + '%';
+        document.getElementById('progress-text').textContent =
+            `${done} / ${total} 筆（${pct}%）`;
+        const ok   = results.filter(r => r.status === 'ok').length;
+        const fail = results.filter(r => r.status === 'fail').length;
+        updateStats(ok, fail, total);
+    }
+
+    function updateStats(ok, fail, total) {
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-ok').textContent    = ok;
+        document.getElementById('stat-fail').textContent  = fail;
+    }
+
+    function addLog(msg, cls = '') {
+        const area = document.getElementById('log-area');
+        const line = document.createElement('div');
+        if (cls) line.className = cls;
+        line.textContent = msg;
+        area.appendChild(line);
+        area.scrollTop = area.scrollHeight;
+    }
+
+    function showResults() {
+        // 輸出文字
+        const lines = results.map(r => r.url || '');
+        document.getElementById('result-textarea').value = lines.join('\n');
+
+        const ok   = results.filter(r => r.status === 'ok').length;
+        const fail = results.filter(r => r.status === 'fail').length;
+        updateStats(ok, fail, results.length);
+
+        document.getElementById('result-card').style.display  = 'block';
+        document.getElementById('preview-card').style.display = 'block';
+
+        // 預覽前 20 筆
+        const tbody = document.getElementById('preview-tbody');
+        tbody.innerHTML = results.slice(0, 20).map((r, i) => `
+            <tr>
+                <td style="color:var(--text-light,#888);">${i + 1}</td>
+                <td><a href="https://boardgamegeek.com/boardgame/${r.bggId}" target="_blank" style="color:var(--primary-color,#667eea);">${r.bggId}</a></td>
+                <td>
+                    ${r.status === 'ok'
+                        ? `<img class="thumb" src="${r.url}" onerror="this.outerHTML='❌'">`
+                        : '<span style="color:#e74c3c;font-size:1.2rem;">✕</span>'}
+                </td>
+                <td style="font-family:monospace;font-size:0.8rem;word-break:break-all;max-width:400px;">
+                    ${r.status === 'ok'
+                        ? `<a href="${r.url}" target="_blank" style="color:var(--text-color,#333);">${r.url}</a>`
+                        : `<span style="color:#e74c3c;">${r.url || '（無結果）'}</span>`}
+                </td>
+                <td class="${r.status === 'ok' ? 'status-ok' : 'status-err'}">
+                    ${r.status === 'ok' ? '✅ 成功' : '❌ 失敗'}
+                </td>
+            </tr>
+        `).join('');
+
+        addLog(`\n🏁 完成！成功 ${ok} 筆，失敗 ${fail} 筆`, 'log-info');
+    }
+
+    // ── 複製 ──
+    async function copyResult() {
+        const text = document.getElementById('result-textarea').value;
+        try {
+            await navigator.clipboard.writeText(text);
+            showCopyToast('✅ 已複製全部連結！');
+        } catch(e) {
+            document.getElementById('result-textarea').select();
+            document.execCommand('copy');
+            showCopyToast('✅ 已複製！');
+        }
+    }
+
+    async function copyOnlySuccess() {
+        const text = results
+            .filter(r => r.status === 'ok')
+            .map(r => r.url)
+            .join('\n');
+        try {
+            await navigator.clipboard.writeText(text);
+            showCopyToast(`✅ 已複製 ${results.filter(r=>r.status==='ok').length} 筆成功連結！`);
+        } catch(e) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showCopyToast('✅ 已複製！');
+        }
+    }
+
+    function showCopyToast(msg) {
+        let toast = document.getElementById('copy-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'copy-toast';
+            toast.style.cssText = `
+                position:fixed; bottom:2rem; left:50%; transform:translateX(-50%);
+                background:#333; color:#fff; padding:0.6rem 1.4rem;
+                border-radius:2rem; font-size:0.95rem;
+                box-shadow:0 4px 12px rgba(0,0,0,0.3);
+                z-index:9999; transition:opacity 0.4s; pointer-events:none;
+            `;
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.opacity = '1';
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+    }
+
+    // ── 下載 ──
+    function downloadResult() {
+        const text = results.map(r => r.url || '').join('\n');
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `bgg_covers_${Date.now()}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>

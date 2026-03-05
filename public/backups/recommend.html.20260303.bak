@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桌遊探索 - MBTI × 桌遊配對</title>
+    <!-- vConsole：手機除錯用，URL 加 ?debug=1 才啟動 -->
+    <script>
+    (function(){
+        if(location.search.includes('debug=1')){
+            var s=document.createElement('script');
+            s.src='https://cdn.jsdelivr.net/npm/vconsole@3.15.1/dist/vconsole.min.js';
+            s.onload=function(){ new VConsole(); };
+            document.head.appendChild(s);
+        }
+    })();
+    </script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/gamification.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        /* ── Hero 橫幅（不依賴 styles.css，避免快取問題）── */
+        .page-hero-fix {
+            color: white;
+            padding: 2.5rem 2rem;
+            border-radius: 1.25rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .page-hero-fix h1 {
+            margin: 0 0 0.5rem;
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            background: none;
+            -webkit-text-fill-color: white;
+        }
+        .page-hero-fix p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 1rem;
+            color: white;
+        }
+        /* 主題清單卡片 */
+        .collection-card {
+            background: var(--card-bg);
+            border-radius: 0.6rem;
+            padding: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        .collection-card:hover {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.13);
+            transform: translateY(-2px);
+        }
+        
+        .collection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .collection-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        
+        .collection-badge {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.6rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .limited-badge {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+        
+        .publisher-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        /* 出版社卡片特殊樣式（與其他卡片統一，無額外顏色） */
+        .publisher-card {
+            background: var(--card-bg);
+        }
+        
+        /* 遊戲卡片容器 */
+        .game-cards-container {
+            position: relative;
+            min-height: 180px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* 遊戲卡片 */
+        .game-card {
+            background: #faf9f6;
+            border-radius: 1.25rem;
+            overflow: hidden;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: absolute;
+            cursor: default;
+            user-select: text;
+            border: 2px solid #e8e6e1;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+            will-change: transform, opacity;
+        }
+
+        /* 封面圖片區（有圖才顯示） */
+        .card-cover {
+            position: relative;
+            width: calc(100% - 1.5rem);
+            margin: 0.75rem auto 0;
+            height: 200px;
+            overflow: hidden;
+            border-radius: 0.9rem;
+        }
+
+        /* 模糊背景層（同一張圖放大模糊） */
+        .card-cover-bg {
+            position: absolute;
+            inset: -10px;
+            background-size: cover;
+            background-position: center;
+            filter: blur(14px) brightness(0.55);
+            transform: scale(1.08);
+        }
+
+        /* 封面主圖（contain 保持比例） */
+        .card-cover-img {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* 有封面時，卡片內容區加 padding */
+        .card-body {
+            padding: 1.25rem 1.5rem 1.5rem;
+        }
+
+        /* 無封面時，維持舊 padding */
+        .card-body-no-cover {
+            padding: 1.5rem;
+        }
+
+        /* 預載的下一張卡片（藏在後面） */
+        .game-card.next-card {
+            transform: scale(0.93) translateY(10px);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 當前卡片（在前面） */
+        .game-card.current-card {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        /* 飛出動畫 */
+        @keyframes swipeRight {
+            to { transform: translateX(130%) rotate(15deg); opacity: 0; }
+        }
+        @keyframes swipeLeft {
+            to { transform: translateX(-130%) rotate(-15deg); opacity: 0; }
+        }
+        @keyframes swipeUp {
+            to { transform: translateY(-130%) scale(0.8); opacity: 0; }
+        }
+        /* 下一張升上來 */
+        @keyframes nextCardIn {
+            from { transform: scale(0.93) translateY(10px); opacity: 0; }
+            to   { transform: scale(1) translateY(0);      opacity: 1; }
+        }
+
+        .game-card.swiped-right { animation: swipeRight 0.22s ease-in forwards; pointer-events: none; }
+        .game-card.swiped-left  { animation: swipeLeft  0.22s ease-in forwards; pointer-events: none; }
+        .game-card.swiped-up    { animation: swipeUp    0.22s ease-in forwards; pointer-events: none; }
+        .game-card.card-enter   { animation: nextCardIn 0.22s ease-out forwards; }
+        
+        .game-name {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            min-height: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+        }
+        /* 卡片內的中英分行大小覆寫 */
+        .game-name .gn-zh { display: block; font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+        .game-name .gn-en { display: block; font-size: 1rem; color: #888; font-weight: 400; }
+        
+        /* 評價按鈕 */
+        .rating-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.35rem;
+            margin-top: 0.85rem;
+            padding: 0 0.25rem;
+        }
+        
+        .recommendation-btn {
+            padding: 0.4rem 0.5rem;
+            font-size: 1.25rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--bg-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            width: 100%;
+            text-align: center;
+        }
+        
+        .recommendation-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+        }
+        
+        .recommendation-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        
+        .recommendation-btn .btn-label {
+            display: block;
+            font-size: 0.62rem;
+            font-weight: 600;
+            line-height: 1;
+            margin-top: 0.15rem;
+            opacity: 0.9;
+        }
+        
+        .recommendation-btn.btn-like {
+            background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+            color: white;
+        }
+        .recommendation-btn.btn-like:hover {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+        }
+        .recommendation-btn.btn-neutral {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            color: white;
+        }
+        .recommendation-btn.btn-neutral:hover {
+            background: linear-gradient(135deg, #7b8fa6 0%, #4e5e73 100%);
+        }
+        .recommendation-btn.btn-super-like {
+            background: linear-gradient(135deg, #f472b6 0%, #db2777 100%);
+            color: white;
+        }
+        .recommendation-btn.btn-super-like:hover {
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+        }
+        .recommendation-btn.btn-dislike {
+            background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+            color: white;
+        }
+        .recommendation-btn.btn-dislike:hover {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+        }
+        .recommendation-btn.btn-wishlist {
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+            color: white;
+        }
+        .recommendation-btn.btn-wishlist:hover {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        }
+        .recommendation-btn.btn-no-interest {
+            background: linear-gradient(135deg, #6b7280 0%, #374151 100%);
+            color: white;
+        }
+        .recommendation-btn.btn-no-interest:hover {
+            background: linear-gradient(135deg, #4b5563 0%, #1f2937 100%);
+        }
+        
+        /* 進度指示器 */
+        .progress-indicator {
+            text-align: center;
+            margin: 0.5rem 0;
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+        
+        /* 空狀態 */
+        .empty-state {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-light);
+        }
+        
+        .empty-state .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .empty-state p {
+            font-size: 0.85rem;
+            margin: 0;
+        }
+        
+        .card-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* 自訂通知框 */
+        .custom-notification {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { 
+                transform: scale(0.8) translateY(-20px);
+                opacity: 0;
+            }
+            to { 
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        
+        .notification-content {
+            position: relative;
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            z-index: 1;
+            animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), successPulse 1.5s ease-in-out infinite 0.4s;
+        }
+        
+        @keyframes successPulse {
+            0%, 100% { 
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 215, 0, 0.7);
+            }
+            50% { 
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 30px 15px rgba(255, 215, 0, 0);
+            }
+        }
+        
+        .notification-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 4px 12px rgba(255, 215, 0, 0.4));
+        }
+        
+        .notification-title {
+            font-size: 1.8rem;
+            margin: 0 0 1rem 0;
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+        
+        .notification-message {
+            color: var(--text-color);
+            margin: 0 0 2rem 0;
+            line-height: 1.8;
+            font-size: 1.05rem;
+        }
+        
+        /* 響應式網格佈局 */
+        @media (max-width: 600px) {
+            #permanent-collections-container,
+            #limited-collections-container,
+            #publisher-collections-container {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .game-card {
+                padding: 1.5rem;
+            }
+            
+            .game-name {
+                font-size: 1.5rem;
+            }
+            
+            .rating-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="recommend.html" class="active">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <!-- 彩色橫幅 -->
+        <div class="page-hero-fix" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #a855f7 100%);">
+            <h1>🎲 桌遊探索</h1>
+            <p>點選評分，找出你的桌遊靈魂伴侶</p>
+        </div>
+
+        <!-- 主題清單區 -->
+        <section id="game-collections-section" style="max-width: 1000px; margin: 0 auto;">
+
+            <!-- 限時活動 -->
+            <div id="limited-collections" style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.25rem; margin: 0 0 0.75rem 0; color: var(--text-color); font-weight: 700;">⏰ 限時活動</h3>
+                <div id="limited-collections-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    <div class="simple-hourglass" style="grid-column: 1/-1;">
+                        <span class="hourglass-icon-simple combined">⏳</span>
+                        <span class="hourglass-text-simple">載入活動中...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 出版社主打 -->
+            <div id="publisher-collections" style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.25rem; margin: 0 0 0.75rem 0; color: var(--text-color); font-weight: 700;">🏢 出版社主打</h3>
+                <div id="publisher-collections-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    <div class="simple-hourglass" style="grid-column: 1/-1;">
+                        <span class="hourglass-icon-simple combined">⏳</span>
+                        <span class="hourglass-text-simple">載入活動中...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 年度排行 -->
+            <div id="yearly-collections" style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.25rem; margin: 0 0 0.75rem 0; color: var(--text-color); font-weight: 700;">🏆 年度排行</h3>
+                <div id="yearly-collections-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    <div class="simple-hourglass" style="grid-column: 1/-1;">
+                        <span class="hourglass-icon-simple combined">⏳</span>
+                        <span class="hourglass-text-simple">載入中...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 常駐主題 -->
+            <div id="permanent-collections">
+                <h3 style="font-size: 1.25rem; margin: 0 0 0.75rem 0; color: var(--text-color); font-weight: 700;">⭐ 常駐主題</h3>
+                <div id="permanent-collections-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    <div class="simple-hourglass" style="grid-column: 1/-1;">
+                        <span class="hourglass-icon-simple combined">⏳</span>
+                        <span class="hourglass-text-simple">載入活動中...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 未登入提示 -->
+        <div id="not-logged-in" class="card" style="display: none; text-align: center; padding: 3rem;">
+            <h2 style="margin-bottom: 1rem;">🔒 請先登入</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem;">
+                分享你的桌遊喜好後，才能參與桌遊探索！
+            </p>
+            <a href="submit.html" class="btn btn-primary">前往分享喜好</a>
+        </div>
+    </div>
+
+    <!-- XP 動畫元素 -->
+    <div id="xp-animation-container"></div>
+
+    <!-- JavaScript -->
+    <script src="js/gamification.js"></script>
+    <script src="js/api-base.js?v=20260302-clear"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script>
+        // ── safePatch 備援定義 ──
+        if (typeof safePatch === 'undefined') {
+            window.safePatch = async function(url, patchData, headers = {}) {
+                const sys = ['gs_project_id','gs_table_name','gs_created_at','gs_updated_at',
+                             'created_at','updated_at','deleted','deleted_at','_rid','_id','__rid','__id'];
+                const g = await fetch(url, { headers });
+                const existing = g.ok ? await g.json() : {};
+                const cleaned = Object.fromEntries(Object.entries(existing).filter(([k]) => !sys.includes(k)));
+                const merged = { ...cleaned, ...patchData };
+                const serialized = {};
+                for (const [k, v] of Object.entries(merged)) {
+                    serialized[k] = (v !== null && v !== undefined && typeof v === 'object') ? JSON.stringify(v) : v;
+                }
+                const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(serialized) });
+                if (!r.ok) { const t = await r.text().catch(()=>''); throw new Error(`PUT 失敗 HTTP ${r.status}: ${t.slice(0,100)}`); }
+                return await r.json();
+            };
+        }
+        // 全域變數
+        let currentUser = null;
+
+        // 判斷是否為出版社類型清單（全域共用）
+        function isPublisherType(c) {
+            return c.type === 'publisher' ||
+                (c.category && (c.category.toLowerCase().includes('publisher') || c.category.includes('出版社')));
+        }
+        let gameCollections = [];
+        let currentCollectionGames = [];
+        let currentCollectionIndex = 0;
+        let currentGameIndex = 0;
+        let pendingRatings = [];
+        let isReRateMode = false; // 重評模式旗標
+        
+        // localStorage 備份鍵名
+        const BACKUP_KEY = 'mbti_game_ratings_backup';
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 🔧 優先檢查 Google 登入狀態
+                const googleUser = localStorage.getItem('googleUser');
+                
+                // 載入當前使用者（使用 GameMBTI 統一方法）
+                currentUser = GameMBTI.getCurrentUser();
+                
+                // ✅ 如果已登入 Google，即使未分享喜好也允許瀏覽
+                if (!currentUser && !googleUser) {
+                    console.log('未找到登入使用者');
+                    showNotLoggedIn();
+                    return;
+                }
+                
+                // 📝 如果只有 Google 登入但未分享喜好，創建臨時使用者物件
+                if (!currentUser && googleUser) {
+                    try {
+                        const user = JSON.parse(googleUser);
+                        currentUser = {
+                            google_id: user.sub,
+                            name: user.nickname || user.name,
+                            email: user.email,
+                            avatar: user.picture,
+                            liked_games: [],
+                            disliked_games: [],
+                            wishlist: [],
+                            mbti: null,  // 未設定 MBTI
+                            is_temporary: true  // 標記為臨時使用者
+                        };
+                        console.log('✅ 使用 Google 登入資訊創建臨時使用者:', currentUser);
+                    } catch (error) {
+                        console.error('解析 Google 使用者資料失敗:', error);
+                        showNotLoggedIn();
+                        return;
+                    }
+                }
+                
+                // 確保陣列欄位存在（先給預設值，讓後續操作不 crash）
+                if (!currentUser.liked_games) currentUser.liked_games = [];
+                if (!currentUser.disliked_games) currentUser.disliked_games = [];
+                if (!currentUser.wishlist) currentUser.wishlist = [];
+
+                // ── 從伺服器同步最新評分（跨裝置連通）──
+                // 優先用伺服器資料覆蓋 localStorage，再合併 localStorage 的未同步備份
+                if (currentUser.id) {
+                    try {
+                        const syncRes = await fetch(`tables/users/${currentUser.id}`);
+                        if (syncRes.ok) {
+                            const serverUser = await syncRes.json();
+                            // 以伺服器資料為主，更新所有評分欄位
+                            const ratingFields = [
+                                'liked_games','disliked_games','wishlist',
+                                'super_liked_games','neutral_games',
+                                'no_interest_games'
+                            ];
+                            ratingFields.forEach(f => {
+                                if (Array.isArray(serverUser[f])) {
+                                    currentUser[f] = serverUser[f];
+                                }
+                            });
+                            // 同步回 localStorage，讓下次開啟也是最新版
+                            try {
+                                const stored = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                                ratingFields.forEach(f => { stored[f] = currentUser[f] || []; });
+                                localStorage.setItem('currentUser', JSON.stringify(stored));
+                            } catch(e) {}
+                            console.log('✅ 已從伺服器同步最新評分資料');
+                        }
+                    } catch(e) {
+                        console.warn('⚠️ 伺服器同步失敗，使用本地資料:', e);
+                    }
+                }
+
+                // 嘗試從 localStorage 恢復上次未成功同步到伺服器的評價（網路中斷等情況）
+                await restoreFromLocalStorage();
+
+                console.log('當前使用者:', currentUser);
+                
+                // 載入主題清單
+                await loadGameCollections();
+                
+            } catch (error) {
+                console.error('初始化失敗:', error);
+                showNotLoggedIn();
+            }
+        });
+        
+        // 顯示漂亮的提示框
+        function showNotification(title, message, icon = '🎉', type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = 'custom-notification';
+            notification.innerHTML = `
+                <div class="notification-backdrop"></div>
+                <div class="notification-content">
+                    <div class="notification-icon">${icon}</div>
+                    <h3 class="notification-title">${title}</h3>
+                    <p class="notification-message">${message}</p>
+                    <button class="btn btn-primary" onclick="this.closest('.custom-notification').remove()">確定</button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // 點擊背景關閉
+            notification.querySelector('.notification-backdrop').addEventListener('click', () => {
+                notification.remove();
+            });
+        }
+        
+        // 顯示未登入狀態
+        function showNotLoggedIn() {
+            const collectionsSection = document.getElementById('game-collections-section');
+            const notLoggedIn = document.getElementById('not-logged-in');
+            
+            if (collectionsSection) collectionsSection.style.display = 'none';
+            if (notLoggedIn) notLoggedIn.style.display = 'block';
+        }
+        
+        // ── 只針對 collections 內的遊戲建立輕量對照表 ──
+        let _localGameMap = {}; // { normalizedName: { name_zh, name_en, name_ja, image_url } }
+
+        function _normName(n) { return n ? n.trim().toLowerCase() : ''; }
+
+        function localGetImageUrl(name) {
+            const e = _localGameMap[_normName(name)];
+            return (e && e.image_url && e.image_url.startsWith('http')) ? e.image_url : null;
+        }
+
+        function localFormatCard(name) {
+            const e = _localGameMap[_normName(name)];
+            if (!e) return `<span class="gn-zh" style="display:block">${name}</span>`;
+            const top = e.name_zh || e.name_ja || e.name_en || name;
+            const sub = e.name_zh ? (e.name_en || '') : (e.name_ja ? (e.name_en || '') : '');
+            if (top && sub) return `<span class="gn-zh" style="display:block">${top}</span><span class="gn-en" style="display:block">${sub}</span>`;
+            return `<span class="gn-zh" style="display:block">${top}</span>`;
+        }
+
+        async function loadLocalGameMap(gameNames) {
+            if (gameNames.length === 0) return;
+            // 用 search 一次查多筆（每批 20 個，並行）
+            const BATCH = 20;
+            const batches = [];
+            for (let i = 0; i < gameNames.length; i += BATCH) batches.push(gameNames.slice(i, i + BATCH));
+            await Promise.all(batches.map(async batch => {
+                for (const name of batch) {
+                    try {
+                        const r = await fetch(`tables/game_database?search=${encodeURIComponent(name)}&limit=5`);
+                        if (!r.ok) continue;
+                        const d = await r.json();
+                        // 精確符合才採用，避免模糊搜尋帶來錯誤對應
+                        const game = (d.data || []).find(g =>
+                            [g.name_zh, g.name_en, g.name_ja].some(n => n && _normName(n) === _normName(name))
+                        );
+                        if (game) {
+                            const entry = { name_zh: game.name_zh||'', name_en: game.name_en||'', name_ja: game.name_ja||'', image_url: game.image_url||'' };
+                            if (game.name_zh) _localGameMap[_normName(game.name_zh)] = entry;
+                            if (game.name_en) _localGameMap[_normName(game.name_en)] = entry;
+                            if (game.name_ja) _localGameMap[_normName(game.name_ja)] = entry;
+                            _localGameMap[_normName(name)] = entry;
+                        }
+                    } catch(e) {}
+                }
+            }));
+        }
+
+        // 載入主題清單
+        async function loadGameCollections() {
+            try {
+                const response = await fetch('tables/game_collections?limit=100&sort=sort_order');
+                const data = await response.json();
+                
+                gameCollections = data.data.filter(c => c.is_active);
+
+                // 只抓 collections 裡用到的遊戲名稱
+                const allGameNames = [...new Set(gameCollections.flatMap(c => c.games || []))];
+                await loadLocalGameMap(allGameNames);
+                
+                // DEBUG：印出所有集合的 type 和 category 值
+                console.log('📦 所有啟用集合:', gameCollections.map(c => ({ title: c.title, type: c.type, category: c.category })));
+                
+                // 出版社主打：type='publisher' 或 category 包含 'publisher'（大小寫不限）或中文「出版社」
+                const publisherCollections = gameCollections.filter(isPublisherType);
+                const yearlyCollections    = gameCollections.filter(c => !isPublisherType(c) && c.type === 'yearly');
+                const permanentCollections = gameCollections.filter(c => !isPublisherType(c) && c.type === 'permanent');
+                const limitedCollections   = gameCollections.filter(c => !isPublisherType(c) && c.type === 'limited');
+                
+                console.log('🏢 出版社集合:', publisherCollections.length, publisherCollections.map(c => c.title));
+                
+                renderCollections(publisherCollections, 'publisher-collections-container', 'publisher');
+                renderCollections(yearlyCollections,    'yearly-collections-container');
+                renderCollections(permanentCollections, 'permanent-collections-container');
+                renderCollections(limitedCollections,   'limited-collections-container');
+                
+            } catch (error) {
+                console.error('載入主題清單失敗:', error);
+            }
+        }
+        
+        // 渲染主題清單
+        function renderCollections(collections, containerId, sectionType = 'default') {
+            const container = document.getElementById(containerId);
+            
+            // 過濾掉沒有遊戲的清單
+            const validCollections = collections.filter(c => c.games && c.games.length > 0);
+            
+            if (validCollections.length === 0) {
+                // 空清單時隱藏整個父層區塊
+                const parentSection = container.closest('[id$="-collections"]') || container.parentElement;
+                if (parentSection) parentSection.style.display = 'none';
+                else container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = validCollections.map((collection, index) => {
+                const totalCount = collection.games.length;
+                const questionsPerSession = collection.questions_per_session || 0;
+                
+                // 計算可評價的遊戲數量
+                const allRatedGames = [
+                    ...(currentUser.super_liked_games || []),
+                    ...(currentUser.liked_games || []),
+                    ...(currentUser.neutral_games || []),
+                    ...(currentUser.disliked_games || []),
+                    ...(currentUser.no_interest_games || []),
+                    ...(currentUser.wishlist || [])
+                ];
+                const unratedGames = collection.games.filter(game => !allRatedGames.includes(game));
+                const ratedCount = totalCount - unratedGames.length;
+                
+                // 決定顯示的標題
+                let progressText = '';
+                let buttonText = '';
+                
+                if (questionsPerSession > 0) {
+                    // 有設定每次題數，可重複探索
+                    const questionsThisRound = Math.min(questionsPerSession, unratedGames.length);
+                    progressText = `${ratedCount} / ${totalCount} 款遊戲已評價`;
+                    
+                    if (unratedGames.length === 0) {
+                        buttonText = '✅ 已全部評價';
+                    } else if (unratedGames.length <= questionsPerSession) {
+                        buttonText = `開始評價 (剩餘 ${unratedGames.length} 款)`;
+                    } else {
+                        buttonText = `開始評價 (每次 ${questionsPerSession} 款)`;
+                    }
+                } else {
+                    // 沒有設定，一次全部
+                    progressText = `${ratedCount} / ${totalCount} 款遊戲已評價`;
+                    buttonText = unratedGames.length === 0 ? '✅ 已全部評價' : `開始評價 (${unratedGames.length} 款)`;
+                }
+                
+                // 出版社類型 badge
+                const isPublisher = sectionType === 'publisher';
+                const badgeHtml = isPublisher
+                    ? `<span class="collection-badge publisher-badge">出版社</span>`
+                    : `<span class="collection-badge ${collection.type === 'limited' ? 'limited-badge' : ''}">
+                        ${collection.type === 'permanent' ? '常駐' : '限時'}
+                       </span>`;
+                
+                return `
+                <div class="collection-card${isPublisher ? ' publisher-card' : ''}" id="collection-${collection.id}">
+                    <div class="collection-header">
+                        <div class="collection-title">
+                            <span>${collection.icon}</span>
+                            <span>${collection.title}</span>
+                        </div>
+                        ${badgeHtml}
+                    </div>
+                    <p style="color: var(--text-light); margin-bottom: 0.4rem; font-size: 0.85rem; line-height: 1.3;">${collection.description}</p>
+                    
+                    <!-- 遊戲卡片容器 -->
+                    <div class="game-cards-container" id="cards-container-${collection.id}">
+                        <div class="empty-state">
+                            <div class="icon">🎮</div>
+                            <p>點擊「開始評價」來探索遊戲</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 進度與按鈕 -->
+                    <div class="progress-indicator" id="progress-${collection.id}">
+                        ${progressText}
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 0.5rem; display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
+                        <button class="btn ${unratedGames.length === 0 ? 'btn-secondary' : 'btn-primary'}" onclick="startRating('${collection.id}')" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">
+                            ${buttonText}
+                        </button>
+                        ${unratedGames.length === 0 ? `
+                        <button class="btn btn-secondary" onclick="startRating('${collection.id}', true)" style="padding:0.4rem 0.9rem;font-size:0.85rem;background:rgba(245,158,11,0.12);color:#d97706;border:1px solid #fbbf24;">
+                            🔄 重新評價
+                        </button>
+                        <button class="btn btn-secondary" onclick="toggleRanking('${collection.id}')" id="ranking-btn-${collection.id}" style="padding:0.4rem 0.9rem;font-size:0.85rem;">
+                            📊 查看人氣排名
+                        </button>` : ''}
+                    </div>
+
+                    <!-- 人氣排名展開區 -->
+                    <div id="ranking-panel-${collection.id}" style="display:none; margin-top:1rem;">
+                        <div style="font-size:0.8rem;color:var(--text-light);text-align:center;padding:0.5rem;">載入中...</div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+        
+        // 開始評價遊戲（reRate=true 為重評模式，全部遊戲都出現，可覆蓋舊評分）
+        async function startRating(collectionId, reRate = false) {
+            const collection = gameCollections.find(c => c.id === collectionId);
+            if (!collection || !collection.games || collection.games.length === 0) {
+                showNotification('暫無遊戲', '此清單目前沒有遊戲可以評價', '📭', 'warning');
+                return;
+            }
+
+            const allRatedGames = [
+                ...(currentUser.super_liked_games || []),
+                ...(currentUser.liked_games || []),
+                ...(currentUser.neutral_games || []),
+                ...(currentUser.disliked_games || []),
+                ...(currentUser.no_interest_games || []),
+                ...(currentUser.wishlist || [])
+            ];
+
+            let gamesToRate;
+
+            if (reRate) {
+                // 重評模式：全部遊戲都出現（包含已評過的），讓玩家可以更新
+                gamesToRate = [...collection.games];
+                isReRateMode = true;
+                console.log(`🔄 重評模式：${gamesToRate.length} 款遊戲`);
+            } else {
+                // 一般模式：只出現未評過的
+                isReRateMode = false;
+                let unratedGames = collection.games.filter(game => !allRatedGames.includes(game));
+
+                if (unratedGames.length === 0) {
+                    showNotification('🎉 全部完成！', '這個清單的所有遊戲你都已經評價過了！<br><br>試試其他主題吧 😊', '✨');
+                    return;
+                }
+
+                // 檢查是否設定每次題數
+                const questionsPerSession = collection.questions_per_session || 0;
+                if (questionsPerSession > 0) {
+                    const questionsThisRound = Math.min(questionsPerSession, unratedGames.length);
+                    const shuffled = [...unratedGames];
+                    for (let i = shuffled.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                    }
+                    unratedGames = shuffled.slice(0, questionsThisRound);
+                    console.log(`📝 本次評價：從 ${collection.games.length} 款中隨機抽取 ${unratedGames.length} 款`);
+                }
+
+                gamesToRate = unratedGames;
+            }
+
+            currentCollectionGames = gamesToRate;
+            currentGameIndex = 0;
+
+            await showNextGame(collectionId);
+        }
+        
+        // ── 建立單張卡片 DOM（不插入，只回傳 element）──
+        function buildGameCard(collectionId, gameName, cardId, classes = []) {
+            const card = document.createElement('div');
+            card.className = ['game-card', ...classes].join(' ');
+            card.id = cardId;
+
+            const imageUrl = localGetImageUrl(gameName);
+
+            // 封面圖片區（有圖才顯示）
+            const coverHtml = imageUrl
+                ? `<div class="card-cover">
+                       <div class="card-cover-bg" style="background-image:url('${imageUrl}')"></div>
+                       <img class="card-cover-img" src="${imageUrl}" alt="${gameName}" loading="lazy" onerror="this.closest('.card-cover').style.display='none'">
+                   </div>`
+                : '';
+
+            // 重評模式：查詢此遊戲的舊評分
+            let oldRatingBadge = '';
+            let keepBtn = '';
+            if (isReRateMode) {
+                const oldRating = getOldRating(gameName);
+                if (oldRating) {
+                    const ratingLabel = {
+                        super_like: '🤩 超喜歡', like: '👍 喜歡', neutral: '😐 普普',
+                        dislike: '👎 不喜歡', wishlist: '⭐ 想玩', no_interest: '🚫 沒興趣'
+                    }[oldRating] || oldRating;
+                    oldRatingBadge = `<div style="text-align:center;margin-bottom:0.5rem;">
+                        <span style="display:inline-block;padding:0.2rem 0.65rem;background:rgba(102,126,234,0.12);border-radius:1rem;font-size:0.78rem;color:var(--primary-color);">
+                            上次：${ratingLabel}
+                        </span>
+                    </div>`;
+                    keepBtn = `<button class="recommendation-btn" onclick="keepRating('${collectionId}', '${gameName}')"
+                        style="background:rgba(102,126,234,0.1);color:var(--primary-color);border:1px dashed var(--primary-color);"
+                        title="維持原評">↩️<span class="btn-label">維持</span></button>`;
+                }
+            }
+
+            card.innerHTML = `
+                ${coverHtml}
+                <div class="${imageUrl ? 'card-body' : 'card-body-no-cover'}">
+                    ${oldRatingBadge}
+                    <div class="game-name">${localFormatCard(gameName)}</div>
+                    <div class="rating-buttons">
+                        <button class="recommendation-btn btn-super-like" onclick="rateGame('${collectionId}', '${gameName}', 'super_like')" title="超喜歡">🤩<span class="btn-label">超喜歡</span></button>
+                        <button class="recommendation-btn btn-like" onclick="rateGame('${collectionId}', '${gameName}', 'like')" title="喜歡">👍<span class="btn-label">喜歡</span></button>
+                        <button class="recommendation-btn btn-neutral" onclick="rateGame('${collectionId}', '${gameName}', 'neutral')" title="普普">😐<span class="btn-label">普普</span></button>
+                        <button class="recommendation-btn btn-dislike" onclick="rateGame('${collectionId}', '${gameName}', 'dislike')" title="不喜歡">👎<span class="btn-label">不喜歡</span></button>
+                        <button class="recommendation-btn btn-wishlist" onclick="rateGame('${collectionId}', '${gameName}', 'wishlist')" title="想玩">⭐<span class="btn-label">想玩</span></button>
+                        <button class="recommendation-btn btn-no-interest" onclick="rateGame('${collectionId}', '${gameName}', 'no_interest')" title="沒興趣">🚫<span class="btn-label">沒興趣</span></button>
+                        ${keepBtn}
+                    </div>
+                </div>`;
+            return card;
+        }
+
+        // 取得玩家對某遊戲的舊評分
+        function getOldRating(gameName) {
+            if ((currentUser.super_liked_games || []).includes(gameName)) return 'super_like';
+            if ((currentUser.liked_games || []).includes(gameName)) return 'like';
+            if ((currentUser.neutral_games || []).includes(gameName)) return 'neutral';
+            if ((currentUser.disliked_games || []).includes(gameName)) return 'dislike';
+            if ((currentUser.wishlist || []).includes(gameName)) return 'wishlist';
+            if ((currentUser.no_interest_games || []).includes(gameName)) return 'no_interest';
+            return null;
+        }
+
+        // 維持原評：直接跳過此張（不更新任何資料）
+        function keepRating(collectionId, gameName) {
+            const card = document.getElementById(`game-card-${collectionId}`);
+            if (!card) return;
+            card.style.pointerEvents = 'none';
+            const nextCard = document.getElementById(`game-card-next-${collectionId}`);
+            card.classList.remove('current-card');
+            card.classList.add('swiped-up');
+            if (nextCard) {
+                nextCard.classList.remove('next-card');
+                nextCard.classList.add('current-card', 'card-enter');
+            }
+            setTimeout(() => {
+                currentGameIndex++;
+                showNextGame(collectionId);
+            }, 220);
+        }
+
+        // 顯示下一款遊戲（含預載）
+        async function showNextGame(collectionId) {
+            const container = document.getElementById(`cards-container-${collectionId}`);
+            const progressEl = document.getElementById(`progress-${collectionId}`);
+            const collection = gameCollections.find(c => c.id === collectionId);
+            
+            // 計算當前已評價的遊戲數量
+            const allRatedGames = [
+                ...(currentUser.super_liked_games || []),
+                ...(currentUser.liked_games || []),
+                ...(currentUser.neutral_games || []),
+                ...(currentUser.disliked_games || []),
+                ...(currentUser.no_interest_games || []),
+                ...(currentUser.wishlist || [])
+            ];
+            const totalGamesInCollection = collection.games.length;
+            const ratedInThisCollection = collection.games.filter(game => allRatedGames.includes(game)).length;
+            
+            if (currentGameIndex >= currentCollectionGames.length) {
+                // 全部完成：重置重評模式，重新渲染該清單
+                const wasReRate = isReRateMode;
+                isReRateMode = false;
+                const permanentCollections = gameCollections.filter(c => c.type === 'permanent');
+                const limitedCollections   = gameCollections.filter(c => c.type === 'limited');
+                const publisherCollections = gameCollections.filter(c => isPublisherType(c));
+                renderCollections(permanentCollections, 'permanent-collections-container');
+                renderCollections(limitedCollections,   'limited-collections-container');
+                renderCollections(publisherCollections, 'publisher-collections-container', 'publisher');
+                if (wasReRate) {
+                    showNotification('✅ 重評完成！', '已更新你的評分，排名將反映最新喜好 🎯', '🔄');
+                } else {
+                    showNotification('🎉 全部完成！', '這個清單的所有遊戲你都已經評價過了！<br><br>試試其他主題吧 😊', '✨');
+                }
+                return;
+            }
+            
+            const gameName = currentCollectionGames[currentGameIndex];
+            const nextGameName = currentCollectionGames[currentGameIndex + 1] || null;
+
+            // 更新進度
+            const currentProgress = currentGameIndex + 1;
+            const totalThisRound = currentCollectionGames.length;
+            progressEl.textContent = `${currentProgress} / ${totalThisRound} 款（總共已評 ${ratedInThisCollection} / ${totalGamesInCollection}）`;
+
+            // ── 檢查是否已有預載的下一張成為當前 ──
+            const existingNext = document.getElementById(`game-card-next-${collectionId}`);
+            if (existingNext) {
+                // 預載卡片已存在 → 直接升上來，不重建
+                container.innerHTML = '';
+                existingNext.id = `game-card-${collectionId}`;
+                existingNext.className = 'game-card current-card card-enter';
+                container.appendChild(existingNext);
+            } else {
+                // 第一次，或無預載 → 建立當前卡片
+                container.innerHTML = '';
+                const currentCard = buildGameCard(collectionId, gameName, `game-card-${collectionId}`, ['current-card', 'card-enter']);
+                container.appendChild(currentCard);
+            }
+
+            // ── 預載下一張（藏在後面）──
+            if (nextGameName) {
+                const nextCard = buildGameCard(collectionId, nextGameName, `game-card-next-${collectionId}`, ['next-card']);
+                container.appendChild(nextCard);
+            }
+        }
+        
+        // 評價遊戲
+        async function rateGame(collectionId, gameName, rating) {
+            const card = document.getElementById(`game-card-${collectionId}`);
+
+            // 一般模式：已評價過直接跳過
+            if (!isReRateMode) {
+                const alreadySuperLiked = (currentUser.super_liked_games || []).includes(gameName);
+                const alreadyLiked = currentUser.liked_games.includes(gameName);
+                const alreadyNeutral = (currentUser.neutral_games || []).includes(gameName);
+                const alreadyDisliked = currentUser.disliked_games.includes(gameName);
+                const alreadyWishlist = currentUser.wishlist.includes(gameName);
+                const alreadyNoInterest = (currentUser.no_interest_games || []).includes(gameName);
+
+                if (alreadySuperLiked || alreadyLiked || alreadyNeutral || alreadyDisliked || alreadyWishlist || alreadyNoInterest) {
+                    console.log(`⚠️ 「${gameName}」已經評價過，跳過`);
+                    currentGameIndex++;
+                    showNextGame(collectionId);
+                    return;
+                }
+            }
+
+            // ── 立即鎖定按鈕（防止重複點擊）──
+            card.style.pointerEvents = 'none';
+
+            // 重評模式：先從舊分類移除
+            // ⚠️ 必須在移除舊評分之前記錄，供背景 IIFE 的 updateCollectionGameStat 使用
+            const capturedOldRating = isReRateMode ? getOldRating(gameName) : null;
+            if (isReRateMode) {
+                const oldRating = capturedOldRating;
+                if (oldRating === rating) {
+                    // 跟舊評分一樣 → 只確保 collection_game_stats 有這筆（補建，不累加分數）
+                    ensureCollectionGameStat(collectionId, gameName, rating);
+                    const nextCard = document.getElementById(`game-card-next-${collectionId}`);
+                    card.classList.remove('current-card');
+                    card.classList.add('swiped-up');
+                    if (nextCard) { nextCard.classList.remove('next-card'); nextCard.classList.add('current-card', 'card-enter'); }
+                    setTimeout(() => { currentGameIndex++; showNextGame(collectionId); }, 220);
+                    return;
+                }
+                if (oldRating) {
+                    // 從舊分類陣列移除
+                    const removeFrom = {
+                        super_like:  'super_liked_games',
+                        like:        'liked_games',
+                        neutral:     'neutral_games',
+                        dislike:     'disliked_games',
+                        wishlist:    'wishlist',
+                        no_interest: 'no_interest_games'
+                    }[oldRating];
+                    if (removeFrom && currentUser[removeFrom]) {
+                        currentUser[removeFrom] = currentUser[removeFrom].filter(g => g !== gameName);
+                    }
+                }
+            }
+
+            // ── 樂觀更新：立即更新本地資料 + localStorage，不等 API ──
+            saveToLocalStorage({ game: gameName, rating, timestamp: Date.now() });
+            if (rating === 'super_like') {
+                if (!currentUser.super_liked_games) currentUser.super_liked_games = [];
+                currentUser.super_liked_games.push(gameName);
+            } else if (rating === 'like') {
+                currentUser.liked_games.push(gameName);
+            } else if (rating === 'neutral') {
+                if (!currentUser.neutral_games) currentUser.neutral_games = [];
+                currentUser.neutral_games.push(gameName);
+            } else if (rating === 'dislike') {
+                currentUser.disliked_games.push(gameName);
+            } else if (rating === 'wishlist') {
+                currentUser.wishlist.push(gameName);
+            } else if (rating === 'no_interest') {
+                if (!currentUser.no_interest_games) currentUser.no_interest_games = [];
+                currentUser.no_interest_games.push(gameName);
+            }
+
+            // ── 立即觸發飛出動畫 + 預載卡片升上來（不等 API）──
+            const nextCard = document.getElementById(`game-card-next-${collectionId}`);
+
+            if (rating === 'like') {
+                card.classList.remove('current-card');
+                card.classList.add('swiped-right');
+            } else if (rating === 'dislike') {
+                card.classList.remove('current-card');
+                card.classList.add('swiped-left');
+            } else {
+                card.classList.remove('current-card');
+                card.classList.add('swiped-up');
+            }
+
+            // 預載卡片同步升上來
+            if (nextCard) {
+                nextCard.classList.remove('next-card');
+                nextCard.classList.add('current-card', 'card-enter');
+            }
+
+            // XP 浮動動畫：只在非重評模式才顯示
+            if (!isReRateMode && window.Gamification && window.Gamification.showFloatingXP) {
+                const rect = card.getBoundingClientRect();
+                window.Gamification.showFloatingXP(10, rect.left + rect.width / 2, rect.top + rect.height / 2);
+            }
+
+            // 動畫結束後切換下一張（220ms 配合動畫）
+            setTimeout(() => {
+                currentGameIndex++;
+                showNextGame(collectionId);
+            }, 220);
+
+            // ── 背景非同步：API 儲存 + XP（失敗不影響 UI）──
+            (async () => {
+                try {
+                    // 臨時使用者（無 id）跳過所有 DB 操作
+                    if (!currentUser || !currentUser.id) {
+                        console.warn('⚠️ 臨時使用者，評價已存 localStorage，待登入後同步');
+                        return;
+                    }
+                    // checkAndWriteGameVote：首次回傳 true，重評回傳 false（同時 PATCH game_votes）
+                    const isFirstRating = await checkAndWriteGameVote(gameName, rating, collectionId);
+                    await saveRatingToDatabase(gameName, rating);
+
+                    // ── 更新 collection_game_stats（人氣分數）──
+                    // 重評模式傳入 capturedOldRating（在移除舊分類前已記錄），防止讀不到舊值
+                    const oldRatingForStat = capturedOldRating;
+                    if (rating === 'super_like') {
+                        await updateCollectionGameStat(collectionId, gameName, { like: 2 }, oldRatingForStat);
+                    } else if (rating === 'like') {
+                        await updateCollectionGameStat(collectionId, gameName, { like: 1 }, oldRatingForStat);
+                    } else if (rating === 'wishlist') {
+                        await updateCollectionGameStat(collectionId, gameName, { wishlist: 1 }, oldRatingForStat);
+                    } else {
+                        // dislike / neutral / no_interest：不加分，有舊分則扣
+                        await updateCollectionGameStat(collectionId, gameName, {}, oldRatingForStat);
+                    }
+
+                    if (isFirstRating && !isReRateMode) {
+                        // 只有首次評價且非重評模式才給 XP
+                        const result = await GameMBTI.addXP(currentUser.id, 10, `評價遊戲：${gameName}`);
+                        console.log(`✅ 評價「${gameName}」獲得 +10 XP`, result);
+                    } else if (isReRateMode) {
+                        console.log(`🔄 重評「${gameName}」→ ${rating}，game_votes 已更新`);
+                    } else {
+                        console.log(`⚠️ 「${gameName}」曾評過，不重複給 XP`);
+                    }
+                } catch (error) {
+                    console.error('❌ 背景儲存失敗（資料已存 localStorage）:', error);
+                }
+            })();
+        }
+
+        // 確保 collection_game_stats 有這筆資料（只補建，不累加）
+        // 用於重評同樣評分的情況：防止歷史空白，但不刷分
+        async function ensureCollectionGameStat(collectionId, gameName, rating) {
+            try {
+                const r = await fetch(`tables/collection_game_stats?limit=500`);
+                if (!r.ok) return;
+                const d = await r.json();
+                const existing = (d.data || []).find(s =>
+                    s.collection_id === collectionId && s.game_name === gameName
+                );
+                if (existing) return; // 已存在，不動
+                // 不存在才建立（分數按評分初始化）
+                const like_count     = rating === 'super_like' ? 2 : rating === 'like' ? 1 : 0;
+                const wishlist_count = rating === 'wishlist' ? 1 : 0;
+                await fetch('tables/collection_game_stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ collection_id: collectionId, game_name: gameName, like_count, wishlist_count })
+                });
+            } catch(e) {}
+        }
+
+        // 更新清單內遊戲分數
+        // delta = { like: N } 或 { wishlist: N } 或 {}（只扣舊分）
+        // oldRating = 上次的評分（重評時傳入），用來扣掉舊分，防止累加
+        async function updateCollectionGameStat(collectionId, gameName, delta, oldRating = null) {
+            try {
+                const r = await fetch(`tables/collection_game_stats?limit=500`);
+                if (!r.ok) return;
+                const d = await r.json();
+                const existing = (d.data || []).find(s =>
+                    s.collection_id === collectionId && s.game_name === gameName
+                );
+
+                // 計算舊分要扣多少
+                const oldLikeDelta = { super_like: 2, like: 1, wishlist: 0, neutral: 0, dislike: 0, no_interest: 0 }[oldRating] ?? 0;
+                const oldWishDelta = (oldRating === 'wishlist') ? 1 : 0;
+
+                if (existing) {
+                    const patch = {};
+                    // 先扣舊分，再加新分（最小值 0，不能為負）
+                    const newLike = Math.max(0, (existing.like_count || 0) - oldLikeDelta + (delta.like || 0));
+                    const newWish = Math.max(0, (existing.wishlist_count || 0) - oldWishDelta + (delta.wishlist || 0));
+                    patch.like_count     = newLike;
+                    patch.wishlist_count = newWish;
+                    // collection_game_stats 更新
+                    await safePatch(`tables/collection_game_stats/${existing.id}`, patch);
+                } else {
+                    // 首次建立：直接用新分（舊分扣不到）
+                    await fetch('tables/collection_game_stats', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            collection_id: collectionId,
+                            game_name: gameName,
+                            like_count:     delta.like     || 0,
+                            wishlist_count: delta.wishlist || 0
+                        })
+                    });
+                }
+            } catch(e) {
+                console.warn('⚠️ updateCollectionGameStat 失敗:', e);
+            }
+        }
+
+        // 切換人氣排名展開/收合（排名來源：collection_game_stats，只比較此清單內的遊戲）
+        async function toggleRanking(collectionId) {
+            const panel = document.getElementById(`ranking-panel-${collectionId}`);
+            const btn   = document.getElementById(`ranking-btn-${collectionId}`);
+            if (!panel) return;
+
+            // 收合
+            if (panel.style.display !== 'none') {
+                panel.style.display = 'none';
+                btn.textContent = '📊 查看人氣排名';
+                return;
+            }
+
+            // 展開
+            panel.style.display = 'block';
+            btn.textContent = '📊 收起排名';
+            panel.innerHTML = '<div style="font-size:0.8rem;color:var(--text-light);text-align:center;padding:0.5rem;">載入中...</div>';
+
+            try {
+                // 取得此清單的遊戲列表
+                const collection = gameCollections.find(c => c.id === collectionId);
+                const collectionGames = new Set(collection?.games || []);
+                if (collectionGames.size === 0) {
+                    panel.innerHTML = '<div style="font-size:0.85rem;color:var(--text-light);text-align:center;padding:0.75rem;">此清單沒有遊戲 🎲</div>';
+                    return;
+                }
+
+                // 從 collection_game_stats 取此清單的資料
+                const r = await fetch(`tables/collection_game_stats?limit=500`);
+                const d = await r.json();
+                const stats = (d.data || []).filter(s => s.collection_id === collectionId && collectionGames.has(s.game_name));
+
+                // 整理人氣排名（like_count）
+                const likeRanking = stats
+                    .filter(s => (s.like_count || 0) > 0)
+                    .sort((a, b) => (b.like_count || 0) - (a.like_count || 0))
+                    .slice(0, 5)
+                    .map(s => ({ game_name: s.game_name, score: s.like_count }));
+
+                // 整理想玩排名（wishlist_count）
+                const wishRanking = stats
+                    .filter(s => (s.wishlist_count || 0) > 0)
+                    .sort((a, b) => (b.wishlist_count || 0) - (a.wishlist_count || 0))
+                    .slice(0, 5)
+                    .map(s => ({ game_name: s.game_name, score: s.wishlist_count }));
+
+                if (likeRanking.length === 0 && wishRanking.length === 0) {
+                    panel.innerHTML = '<div style="font-size:0.85rem;color:var(--text-light);text-align:center;padding:0.75rem;">還沒有人評價過這個清單的遊戲 🎲</div>';
+                    return;
+                }
+
+                const medalEmoji = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+
+                function renderRankRows(list) {
+                    return list.map((s, i) => `
+                        <div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0.25rem;${i < list.length - 1 ? 'border-bottom:1px solid var(--border-color);' : ''}">
+                            <span style="font-size:1.2rem;width:1.6rem;text-align:center;">${medalEmoji[i]}</span>
+                            <span style="flex:1;font-size:0.88rem;font-weight:600;">${s.game_name}</span>
+                            <span style="font-size:0.85rem;color:var(--primary-color);font-weight:700;">${s.score} 分</span>
+                        </div>`).join('');
+                }
+
+                panel.innerHTML = `
+                    <div style="border-top:1px solid var(--border-color);padding-top:0.75rem;">
+                        ${likeRanking.length > 0 ? `
+                        <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.4rem;">❤️ 人氣排名</div>
+                        <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.5rem;">超喜歡 +2 分・喜歡 +1 分（評過此清單的玩家）</div>
+                        ${renderRankRows(likeRanking)}` : ''}
+                        ${wishRanking.length > 0 ? `
+                        <div style="font-size:0.8rem;font-weight:700;margin:${likeRanking.length > 0 ? '0.85rem' : '0'} 0 0.4rem 0;">⭐ 想玩排名</div>
+                        <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.5rem;">想玩 +1 分（評過此清單的玩家）</div>
+                        ${renderRankRows(wishRanking)}` : ''}
+                    </div>`;
+            } catch(e) {
+                panel.innerHTML = '<div style="font-size:0.85rem;color:red;text-align:center;padding:0.5rem;">載入失敗</div>';
+            }
+        }
+        
+        // 查詢 game_votes 是否已有此玩家對此遊戲的評價紀錄
+        // 若無則寫入，回傳 true（首次）；若有則只更新 vote_type，回傳 false（重複）
+        async function checkAndWriteGameVote(gameName, rating, collectionId = '') {
+            // 重評模式：一定是舊評分，直接更新 vote_type，不給 XP，不查全表
+            if (isReRateMode) {
+                try {
+                    const r = await fetch(`tables/game_votes?search=${encodeURIComponent(gameName)}&limit=50`);
+                    if (r.ok) {
+                        const d = await r.json();
+                        const existing = (d.data || []).find(v =>
+                            v.user_id === currentUser.id && v.game_name === gameName
+                        );
+                        if (existing) {
+                            await safePatch(`tables/game_votes/${existing.id}`, { vote_type: rating });
+                        }
+                        // 即使找不到紀錄（舊資料缺漏），重評模式也不給 XP
+                    }
+                } catch(e) {}
+                return false; // 重評永遠不給 XP
+            }
+
+            // 一般模式：查詢是否首次評價
+            try {
+                const r = await fetch(`tables/game_votes?search=${encodeURIComponent(gameName)}&limit=50`);
+                if (!r.ok) return false; // 查詢失敗 → 保守不給 XP（寧可漏給，不亂給）
+                const d = await r.json();
+                const existing = (d.data || []).find(v =>
+                    v.user_id === currentUser.id && v.game_name === gameName
+                );
+
+                if (existing) {
+                    // 已有紀錄：只更新 vote_type，不給 XP
+                    await safePatch(`tables/game_votes/${existing.id}`, { vote_type: rating });
+                    return false; // 非首次
+                } else {
+                    // 首次評價：寫入新紀錄
+                    await fetch('tables/game_votes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id:       currentUser.id,
+                            game_name:     gameName,
+                            vote_type:     rating,
+                            mbti_type:     currentUser.mbti_type || '',
+                            collection_id: collectionId || ''
+                        })
+                    });
+                    return true; // 首次，給 XP
+                }
+            } catch(e) {
+                console.warn('game_votes 查詢失敗，不給 XP:', e);
+                return false; // 失敗保守不給 XP
+            }
+        }
+
+        // 即時儲存單筆評價到資料庫（使用 PATCH 只更新三個欄位）
+        async function saveRatingToDatabase(gameName, rating) {
+            // 臨時使用者（無 id）不能 PATCH 資料庫，直接跳過
+            if (!currentUser || !currentUser.id) {
+                console.warn('⚠️ 臨時使用者或無 id，跳過 DB 儲存，評價已備份至 localStorage');
+                return;
+            }
+            try {
+                const patchPayload = {
+                    super_liked_games: currentUser.super_liked_games || [],
+                    liked_games:       currentUser.liked_games       || [],
+                    neutral_games:     currentUser.neutral_games     || [],
+                    disliked_games:    currentUser.disliked_games    || [],
+                    no_interest_games: currentUser.no_interest_games || [],
+                    wishlist:          currentUser.wishlist          || []
+                };
+                console.log('📤 safePatch payload:', JSON.stringify(patchPayload).slice(0, 200));
+                const response = await safePatch(`tables/users/${currentUser.id}`, patchPayload);
+                
+                if (response && response.id) {
+                    console.log(`✅ 「${gameName}」評價已即時儲存`);
+                    try {
+                        const stored = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                        stored.super_liked_games = patchPayload.super_liked_games;
+                        stored.liked_games       = patchPayload.liked_games;
+                        stored.neutral_games     = patchPayload.neutral_games;
+                        stored.disliked_games    = patchPayload.disliked_games;
+                        stored.no_interest_games = patchPayload.no_interest_games;
+                        stored.wishlist          = patchPayload.wishlist;
+                        localStorage.setItem('currentUser', JSON.stringify(stored));
+                    } catch(e) {}
+                    removeFromLocalStorage(gameName);
+                } else {
+                    const errBody = await response.text().catch(() => '');
+                    console.error('❌ PATCH 失敗', response.status, errBody);
+                    throw new Error(`儲存失敗 (${response.status}): ${errBody}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ 即時儲存失敗:', error);
+                throw error;
+            }
+        }
+        
+        // 儲存到 localStorage
+        function saveToLocalStorage(rating) {
+            try {
+                const backup = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+                backup.push({
+                    userId: currentUser.id,
+                    ...rating
+                });
+                localStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
+                console.log(`💾 已備份到 localStorage:`, rating.game);
+            } catch (error) {
+                console.error('❌ localStorage 備份失敗:', error);
+            }
+        }
+        
+        // 從 localStorage 移除已儲存的評價
+        function removeFromLocalStorage(gameName) {
+            try {
+                const backup = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+                const filtered = backup.filter(r => r.game !== gameName || r.userId !== currentUser.id);
+                localStorage.setItem(BACKUP_KEY, JSON.stringify(filtered));
+            } catch (error) {
+                console.error('❌ 清除 localStorage 失敗:', error);
+            }
+        }
+        
+        // 恢復 localStorage 中的評價
+        async function restoreFromLocalStorage() {
+            try {
+                const backup = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+                const userBackup = backup.filter(r => r.userId === currentUser.id);
+                
+                if (userBackup.length === 0) return;
+                
+                console.log(`🔄 發現 ${userBackup.length} 筆未儲存的評價，正在恢復...`);
+                
+                // 將備份的評價加回 currentUser
+                userBackup.forEach(({ game, rating }) => {
+                    if (rating === 'like' && !currentUser.liked_games.includes(game)) {
+                        currentUser.liked_games.push(game);
+                    } else if (rating === 'dislike' && !currentUser.disliked_games.includes(game)) {
+                        currentUser.disliked_games.push(game);
+                    } else if (rating === 'wishlist' && !currentUser.wishlist.includes(game)) {
+                        currentUser.wishlist.push(game);
+                    }
+                });
+                
+                // 嘗試儲存到資料庫（只送需要的欄位，避免帶入系統欄位導致 500）
+                const restorePayload = {
+                    liked_games:    currentUser.liked_games    || [],
+                    disliked_games: currentUser.disliked_games || [],
+                    wishlist:       currentUser.wishlist       || []
+                };
+                try {
+                    await safePatch(`tables/users/${currentUser.id}`, restorePayload);
+                    console.log(`✅ 成功恢復 ${userBackup.length} 筆評價`);
+                    // 清除已恢復的備份
+                    const remaining = backup.filter(r => r.userId !== currentUser.id);
+                    localStorage.setItem(BACKUP_KEY, JSON.stringify(remaining));
+                } catch (error) {
+                    console.error('❌ 從 localStorage 恢復失敗:', error);
+                }
+            } catch (error) {
+                console.error('❌ restoreFromLocalStorage 失敗:', error);
+            }
+        }
+        
+        // 頁面卸載前確認備份
+        window.addEventListener('beforeunload', (e) => {
+            const backup = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+            const userBackup = backup.filter(r => r.userId === currentUser?.id);
+            
+            if (userBackup.length > 0) {
+                console.log(`⚠️ 頁面即將關閉，發現 ${userBackup.length} 筆待儲存評價（已備份至 localStorage）`);
+                // localStorage 會自動保存，下次開啟會自動恢復
+            }
+        });
+        
+        // 頁面可見性改變時也嘗試恢復（例如從其他分頁切回來）
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && currentUser) {
+                console.log('📱 頁面重新可見，檢查是否有待恢復的評價');
+                await restoreFromLocalStorage();
+            }
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>探索清單 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        .explore-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1.5rem;
+        }
+        .game-input-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .game-input-row input {
+            flex: 1;
+            padding: 0.65rem 0.9rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.65rem;
+            font-size: 1rem;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .game-input-row input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        /* 探索清單項目 */
+        .el-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-color);
+            border-radius: 0.65rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border-color);
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+        .el-item:hover {
+            box-shadow: var(--shadow-sm);
+            border-color: var(--primary-color);
+        }
+        .el-num {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            min-width: 1.5rem;
+            text-align: center;
+        }
+        .el-name {
+            flex: 1;
+            font-size: 0.95rem;
+            font-weight: 500;
+            word-break: break-word;
+        }
+        .el-note {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-style: italic;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .el-del-btn {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 0.25rem;
+            border-radius: 0.35rem;
+            transition: color 0.15s, background 0.15s;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .el-del-btn:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+        /* 空狀態 */
+        .el-empty {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-light);
+        }
+        .el-empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        /* 公開/私密 toggle */
+        .visibility-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            cursor: pointer;
+            user-select: none;
+        }
+        .visibility-toggle input[type="checkbox"] {
+            width: 1.1rem; height: 1.1rem; cursor: pointer;
+        }
+        /* 統計 badge */
+        .stat-badge {
+            display: inline-block;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        /* 搜尋建議下拉 */
+        .suggest-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border: 1.5px solid var(--primary-color);
+            border-top: none;
+            border-radius: 0 0 0.65rem 0.65rem;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: var(--shadow-md);
+        }
+        .suggest-item {
+            padding: 0.55rem 0.9rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.1s;
+        }
+        .suggest-item:hover, .suggest-item.active { background: var(--bg-color); }
+        .suggest-item .si-zh { font-weight: 600; }
+        .suggest-item .si-en { font-size: 0.8em; color: var(--text-light); margin-left: 0.3rem; }
+        /* 備註 inline edit */
+        .el-note-input {
+            border: none;
+            background: transparent;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-style: italic;
+            max-width: 140px;
+            font-family: inherit;
+            cursor: text;
+            border-bottom: 1px dashed var(--border-color);
+            padding: 0;
+        }
+        .el-note-input:focus { outline: none; border-bottom-color: var(--primary-color); }
+        .el-note-input::placeholder { color: var(--border-color); }
+        @media (max-width: 600px) {
+            .el-note { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width:720px;">
+
+        <!-- 載入中 -->
+        <div id="loading-state" style="text-align:center; padding:4rem 2rem;">
+            <div class="simple-hourglass large">
+                <span class="hourglass-icon-simple combined">⏳</span>
+                <span class="hourglass-text-simple">載入中...</span>
+            </div>
+        </div>
+
+        <!-- 未登入 -->
+        <div id="not-logged-in" style="display:none;">
+            <div style="text-align:center; padding:4rem 2rem;">
+                <div style="font-size:3rem; margin-bottom:1rem;">🔒</div>
+                <h2 style="margin-bottom:0.75rem;">需要登入才能使用探索清單</h2>
+                <p style="color:var(--text-light); margin-bottom:2rem;">請先登入，再來管理你的桌遊探索清單</p>
+                <a href="index.html" class="btn btn-primary">🔑 前往登入</a>
+            </div>
+        </div>
+
+        <!-- 主內容 -->
+        <div id="main-content" style="display:none;">
+
+            <!-- 標題列 -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+                <div>
+                    <h1 style="font-size:1.8rem; margin-bottom:0.3rem;">📋 我的探索清單</h1>
+                    <p style="color:var(--text-light); font-size:0.9rem;">想玩但還沒玩到的遊戲，隨手記下來！</p>
+                </div>
+                <span class="stat-badge" id="item-count">0 款</span>
+            </div>
+
+            <!-- 新增遊戲 -->
+            <div class="explore-card">
+                <h2 style="font-size:1.1rem; font-weight:700; margin-bottom:1rem;">➕ 加入遊戲</h2>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-start;">
+                    <div style="flex:1; min-width:200px; position:relative;">
+                        <input type="text" id="new-game-input" placeholder="輸入桌遊名稱（中文或英文皆可）"
+                            autocomplete="off"
+                            oninput="onGameInput()"
+                            onkeydown="onGameKeydown(event)">
+                        <div id="suggest-list" class="suggest-list" style="display:none;"></div>
+                    </div>
+                    <input type="text" id="new-game-note" placeholder="備註（選填）" maxlength="40"
+                        style="width:160px; padding:0.65rem 0.9rem; border:1.5px solid var(--border-color); border-radius:0.65rem; font-size:0.9rem; background:var(--bg-color); color:var(--text-color); font-family:inherit;"
+                        onkeydown="if(event.key==='Enter')addGame()">
+                    <button class="btn btn-primary" onclick="addGame()" style="white-space:nowrap;">
+                        ＋ 加入
+                    </button>
+                </div>
+                <p id="add-hint" style="display:none; font-size:0.82rem; margin-top:0.5rem; color:#ef4444;"></p>
+            </div>
+
+            <!-- 清單 -->
+            <div class="explore-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h2 style="font-size:1.1rem; font-weight:700; margin:0;">🗒️ 清單</h2>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="btn btn-secondary" onclick="sortAlpha()" style="font-size:0.82rem; padding:0.35rem 0.75rem;">🔤 名稱排序</button>
+                        <button class="btn btn-secondary" onclick="clearAll()" style="font-size:0.82rem; padding:0.35rem 0.75rem; color:#ef4444;">🗑️ 全清</button>
+                    </div>
+                </div>
+                <div id="explore-list-container">
+                    <div class="el-empty">
+                        <div class="el-empty-icon">📋</div>
+                        <div>清單是空的，快加入想玩的遊戲！</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 儲存按鈕 -->
+            <!-- 儲存 + 公開設定 -->
+            <div class="explore-card" style="margin-bottom:2rem;">
+                <!-- 公開/私密開關 -->
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem; padding-bottom:1.25rem; border-bottom:1px solid var(--border-color);">
+                    <div>
+                        <div style="font-weight:700; font-size:1rem; margin-bottom:0.25rem;">🌐 清單可見度</div>
+                        <div style="font-size:0.85rem; color:var(--text-light);">開啟後，其他玩家可在你的公開檔案看到這份清單</div>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:0.65rem; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="list-public-toggle" onchange="togglePublic()"
+                            style="width:1.2rem; height:1.2rem; cursor:pointer; accent-color:var(--primary-color);">
+                        <span id="public-label" style="font-size:1rem; font-weight:600;">🔒 私密</span>
+                    </label>
+                </div>
+                <!-- 儲存按鈕 -->
+                <div style="text-align:center;">
+                    <button id="save-btn" class="btn btn-primary" onclick="saveList()" style="font-size:1rem; padding:0.75rem 2.5rem;">
+                        💾 儲存清單
+                    </button>
+                    <div id="save-status" style="margin-top:0.75rem; font-size:0.9rem; color:var(--text-light);"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="js/api-base.js?v=20260302-clear"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script>
+        if (typeof safePatch === 'undefined') { window.safePatch = async function(url, d, h={}) { const sys=['gs_project_id','gs_table_name','gs_created_at','gs_updated_at','created_at','updated_at','deleted','deleted_at','_rid','_id','__rid','__id']; const g=await fetch(url,{headers:h}); const ex=g.ok?await g.json():{}; const cleaned=Object.fromEntries(Object.entries(ex).filter(([k])=>!sys.includes(k))); const merged={...cleaned,...d}; const s={}; for(const [k,v] of Object.entries(merged)){s[k]=(v!==null&&v!==undefined&&typeof v==='object')?JSON.stringify(v):v;} const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json',...h},body:JSON.stringify(s)}); if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('PUT '+r.status+': '+t.slice(0,100));} return r.json(); }; }
+    </script>
+    <script>
+    // ===== 探索清單 =====
+
+    let currentUser = null;
+    let exploreList  = []; // [{name, note}]
+    let allDbGames   = []; // 資料庫遊戲（用於建議）
+    let suggestActive = -1;
+    let isDirty = false;
+
+    // ── 載入 ──────────────────────────────────────────────
+    async function init() {
+        // 取得登入使用者 —— 與 profile.html 相同邏輯
+        // 1. 先從 currentUser（完整 object）取 id
+        let dbUserId = null;
+        try {
+            const localUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            if (localUser?.id) dbUserId = localUser.id;
+        } catch(e) {}
+
+        // 2. 若無 currentUser，從 googleUser 找 DB
+        if (!dbUserId) {
+            try {
+                const googleUserObj = JSON.parse(localStorage.getItem('googleUser') || 'null');
+                if (googleUserObj?.sub) {
+                    const allRes = await fetch(`tables/users?search=${encodeURIComponent(googleUserObj.sub)}&limit=100`);
+                    if (allRes.ok) {
+                        const allData = await allRes.json();
+                        const found = (allData.data || []).find(u => u.google_id === googleUserObj.sub);
+                        if (found) dbUserId = found.id;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        if (!dbUserId) {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('not-logged-in').style.display = 'block';
+            return;
+        }
+
+        try {
+            const res = await fetch(`tables/users/${dbUserId}`);
+            if (!res.ok) throw new Error();
+            currentUser = await res.json();
+        } catch {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('not-logged-in').style.display = 'block';
+            return;
+        }
+
+        // 讀取已存的清單
+        const raw = currentUser.explore_list || [];
+        exploreList = raw.map(item => {
+            if (typeof item === 'string') return { name: item, note: '' };
+            return { name: item.name || '', note: item.note || '' };
+        });
+
+        // 公開設定
+        document.getElementById('list-public-toggle').checked = !!currentUser.explore_list_public;
+        updatePublicLabel();
+
+        // 載入資料庫遊戲（用於搜尋建議，分批載入全部）
+        try {
+            const countRes = await fetch('tables/game_database?limit=1');
+            const countData = await countRes.json();
+            const total = countData.total || 0;
+            const batchSize = 100;
+            const pages = Math.ceil(total / batchSize) || 1;
+            let allData = [];
+            for (let p = 1; p <= pages; p++) {
+                const res = await fetch(`tables/game_database?page=${p}&limit=${batchSize}`);
+                if (res.ok) { const d = await res.json(); allData = allData.concat(d.data || []); }
+            }
+            allDbGames = allData;
+        } catch { /* ok */ }
+
+        renderList();
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+    }
+
+    // ── 渲染清單 ──────────────────────────────────────────
+    function renderList() {
+        const container = document.getElementById('explore-list-container');
+        document.getElementById('item-count').textContent = `${exploreList.length} 款`;
+
+        if (exploreList.length === 0) {
+            container.innerHTML = `
+                <div class="el-empty">
+                    <div class="el-empty-icon">📋</div>
+                    <div>清單是空的，快加入想玩的遊戲！</div>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = exploreList.map((item, i) => `
+            <div class="el-item" id="el-${i}">
+                <span class="el-num">${i + 1}</span>
+                <span class="el-name">${escHtml(item.name)}</span>
+                <input class="el-note-input" type="text" maxlength="40"
+                    value="${escHtml(item.note)}"
+                    placeholder="加個備註..."
+                    onchange="updateNote(${i}, this.value)"
+                    onclick="event.stopPropagation()">
+                <button class="el-del-btn" onclick="removeGame(${i})" title="從清單移除">✕</button>
+            </div>
+        `).join('');
+    }
+
+    // ── 加入遊戲 ──────────────────────────────────────────
+    function addGame() {
+        const input = document.getElementById('new-game-input');
+        const noteInput = document.getElementById('new-game-note');
+        const name = input.value.trim();
+        const note = noteInput.value.trim();
+        const hint = document.getElementById('add-hint');
+
+        if (!name) { showHint('請輸入遊戲名稱'); return; }
+
+        // 檢查重複
+        if (exploreList.some(item => item.name.toLowerCase() === name.toLowerCase())) {
+            showHint('這款遊戲已在清單中了！');
+            return;
+        }
+
+        exploreList.push({ name, note });
+        input.value = '';
+        noteInput.value = '';
+        hint.style.display = 'none';
+        hideSuggest();
+        markDirty();
+        renderList();
+        input.focus();
+    }
+
+    function removeGame(idx) {
+        exploreList.splice(idx, 1);
+        markDirty();
+        renderList();
+    }
+
+    function updateNote(idx, val) {
+        exploreList[idx].note = val.trim();
+        markDirty();
+    }
+
+    function clearAll() {
+        if (exploreList.length === 0) return;
+        if (!confirm(`確定要清空全部 ${exploreList.length} 款遊戲？`)) return;
+        exploreList = [];
+        markDirty();
+        renderList();
+    }
+
+    function sortAlpha() {
+        exploreList.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'));
+        markDirty();
+        renderList();
+    }
+
+    function showHint(msg) {
+        const hint = document.getElementById('add-hint');
+        hint.textContent = '⚠️ ' + msg;
+        hint.style.display = 'block';
+        setTimeout(() => hint.style.display = 'none', 3000);
+    }
+
+    // ── 公開設定 ──────────────────────────────────────────
+    function togglePublic() { updatePublicLabel(); markDirty(); }
+    function updatePublicLabel() {
+        const checked = document.getElementById('list-public-toggle').checked;
+        document.getElementById('public-label').textContent = checked ? '🔓 公開' : '🔒 私密';
+    }
+
+    // ── 儲存 ──────────────────────────────────────────────
+    async function saveList() {
+        if (!currentUser) return;
+        const btn = document.getElementById('save-btn');
+        const status = document.getElementById('save-status');
+        btn.disabled = true;
+        btn.textContent = '⏳ 儲存中...';
+
+        try {
+            const isPublic = document.getElementById('list-public-toggle').checked;
+            const payload = {
+                explore_list: exploreList.map(item => ({ name: item.name, note: item.note })),
+                explore_list_public: isPublic
+            };
+            const res = await safePatch(`tables/users/${currentUser.id}`, payload);
+            if (!res || !res.id) {
+                throw new Error('儲存失敗（伺服器無回應）');
+            }
+            isDirty = false;
+            status.textContent = `✅ 已儲存（${exploreList.length} 款遊戲）`;
+            status.style.color = '#22c55e';
+        } catch (e) {
+            status.textContent = '❌ 儲存失敗，請稍後再試';
+            status.style.color = '#ef4444';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '💾 儲存清單';
+        }
+    }
+
+    // ── 搜尋建議 ──────────────────────────────────────────
+    // 計算搜尋相關分數：開頭完全符合=3, 單字開頭符合=2, 任意位置包含=1
+    // 忽略英文常見冠詞開頭（the / a / an）再算一次，取最高分
+    function matchScore(name, q) {
+        if (!name) return 0;
+        const n = name.toLowerCase();
+
+        function scoreStr(s) {
+            if (s.startsWith(q)) return 3;
+            if (s.includes(' ' + q) || s.includes('(' + q)) return 2;
+            if (s.includes(q)) return 1;
+            return 0;
+        }
+
+        let best = scoreStr(n);
+
+        // 去掉開頭的冠詞再算一次（"the ", "a ", "an "）
+        const stripped = n.replace(/^(the|an|a) /, '');
+        if (stripped !== n) best = Math.max(best, scoreStr(stripped));
+
+        return best;
+    }
+
+    function onGameInput() {
+        const q = document.getElementById('new-game-input').value.trim().toLowerCase();
+        if (!q || q.length < 1) { hideSuggest(); return; }
+
+        // 同時搜尋 GameNames 和資料庫
+        const seen = new Set();
+        const candidates = []; // { zh, en, score }
+
+        // 從資料庫搜尋
+        allDbGames.forEach(g => {
+            const zh = g.name_zh || '';
+            const en = g.name_en || '';
+            const key = zh || en;
+            if (!key || seen.has(key)) return;
+            const score = Math.max(matchScore(zh, q), matchScore(en, q));
+            if (score > 0) {
+                candidates.push({ zh, en, score });
+                seen.add(key);
+            }
+        });
+
+        // 從 GameNames 快取搜尋（如果有）
+        if (typeof GameNames !== 'undefined' && GameNames.searchGames) {
+            const res = GameNames.searchGames(q);
+            res.forEach(r => {
+                const key = r.zh || r.en;
+                if (!key || seen.has(key)) return;
+                const score = Math.max(matchScore(r.zh, q), matchScore(r.en, q));
+                candidates.push({ zh: r.zh || '', en: r.en || '', score: score || 1 });
+                seen.add(key);
+            });
+        }
+
+        if (candidates.length === 0) { hideSuggest(); return; }
+
+        // 依分數排序（高→低），分數相同則按名稱長度排（短的優先）
+        candidates.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            const lenA = (a.zh || a.en).length;
+            const lenB = (b.zh || b.en).length;
+            return lenA - lenB;
+        });
+
+        const suggestions = candidates.slice(0, 8);
+        const list = document.getElementById('suggest-list');
+        suggestActive = -1;
+        list.innerHTML = suggestions.map((s, i) => `
+            <div class="suggest-item" data-idx="${i}" data-name="${escHtml(s.zh || s.en)}"
+                 onmousedown="selectSuggest('${escHtml(s.zh || s.en)}')"
+                 onmouseover="suggestActive=${i};highlightSuggest()">
+                <span class="si-zh">${escHtml(s.zh)}</span>
+                ${s.en ? `<span class="si-en">${escHtml(s.en)}</span>` : ''}
+            </div>
+        `).join('');
+        list.style.display = 'block';
+    }
+
+    function onGameKeydown(e) {
+        const list = document.getElementById('suggest-list');
+        const items = list.querySelectorAll('.suggest-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            suggestActive = Math.min(suggestActive + 1, items.length - 1);
+            highlightSuggest();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            suggestActive = Math.max(suggestActive - 1, -1);
+            highlightSuggest();
+        } else if (e.key === 'Enter') {
+            if (suggestActive >= 0 && items[suggestActive]) {
+                selectSuggest(items[suggestActive].dataset.name);
+            } else {
+                addGame();
+            }
+        } else if (e.key === 'Escape') {
+            hideSuggest();
+        }
+    }
+
+    function highlightSuggest() {
+        const items = document.querySelectorAll('.suggest-item');
+        items.forEach((el, i) => el.classList.toggle('active', i === suggestActive));
+    }
+
+    function selectSuggest(name) {
+        document.getElementById('new-game-input').value = name;
+        hideSuggest();
+        document.getElementById('new-game-note').focus();
+    }
+
+    function hideSuggest() {
+        document.getElementById('suggest-list').style.display = 'none';
+    }
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#new-game-input') && !e.target.closest('#suggest-list')) hideSuggest();
+    });
+
+    // ── 工具 ──────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function markDirty() {
+        isDirty = true;
+        document.getElementById('save-status').textContent = '（有未儲存的變更）';
+        document.getElementById('save-status').style.color = 'var(--text-light)';
+    }
+
+    window.addEventListener('beforeunload', e => {
+        if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    // ── 啟動 ──────────────────────────────────────────────
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    </script>
+</body>
+</html>

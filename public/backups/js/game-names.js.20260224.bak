@@ -1,0 +1,141 @@
+/**
+ * game-names.js
+ * 全局桌遊名稱對照工具
+ * 從 game_database 載入一次，提供多語言名稱格式化函數
+ *
+ * 名稱顯示優先級規則：
+ *   有中文 → 中文上（大）、英文下（小）  [中英 / 中日英]
+ *   無中文、有日文 → 日文上（大）、英文下（小）  [日英]
+ *   只有英文 → 英文單行
+ *   只有中文 → 中文單行
+ *   只有日文 → 日文單行
+ */
+
+window.GameNames = (() => {
+    // key: name_en.toLowerCase() 或 name_zh.toLowerCase() 或 name_ja.toLowerCase()
+    // value: { name_zh, name_ja, name_en, image_url, bgg_id }
+    let nameMap = {};
+    let loaded = false;
+    let loadPromise = null;
+
+    // ── 載入 game_database（只載入一次）──
+    async function load() {
+        if (loaded) return Promise.resolve();
+        if (loadPromise) return loadPromise;
+
+        loadPromise = fetch('tables/game_database?limit=1000')
+            .then(r => r.json())
+            .then(data => {
+                nameMap = {};
+                (data.data || []).forEach(game => {
+                    const entry = {
+                        name_zh:    game.name_zh    || '',
+                        name_ja:    game.name_ja    || '',
+                        name_en:    game.name_en    || '',
+                        image_url:  game.image_url  || '',
+                        bgg_id:     game.bgg_id     || ''
+                    };
+                    // 英文名索引
+                    if (game.name_en) nameMap[game.name_en.toLowerCase()] = entry;
+                    // 中文名索引
+                    if (game.name_zh) nameMap[game.name_zh.toLowerCase()] = entry;
+                    // 日文名索引
+                    if (game.name_ja) nameMap[game.name_ja.toLowerCase()] = entry;
+                });
+                loaded = true;
+                const count = (data.data || []).length;
+                console.log(`[GameNames] ✅ 載入 ${count} 款遊戲名稱對照`);
+            })
+            .catch(e => {
+                console.warn('[GameNames] ⚠️ 載入失敗，使用原始名稱', e);
+                loaded = true;
+            });
+
+        return loadPromise;
+    }
+
+    // ── 查詢遊戲資料 ──
+    function lookup(name) {
+        if (!name) return null;
+        return nameMap[name.toLowerCase()] || null;
+    }
+
+    /**
+     * 根據遊戲資料決定「上行」與「下行」名稱
+     * 回傳 { top, sub }
+     *   top: 主要顯示名稱（中 > 日 > 英）
+     *   sub: 次要顯示名稱（英，若 top 已是英則為空）
+     */
+    function resolveNames(info) {
+        if (!info) return { top: null, sub: null };
+        const zh = info.name_zh;
+        const ja = info.name_ja;
+        const en = info.name_en;
+
+        if (zh) return { top: zh, sub: en || '' };       // 中上英下（含中日英）
+        if (ja) return { top: ja, sub: en || '' };       // 日上英下
+        if (en) return { top: en, sub: '' };             // 只有英文
+        return { top: null, sub: null };
+    }
+
+    // ── formatCard：大卡片，分行顯示 ──
+    function formatCard(name) {
+        const info = lookup(name);
+        const { top, sub } = resolveNames(info);
+
+        if (top && sub) {
+            return `<span class="gn-zh" style="display:block">${top}</span>`
+                 + `<span class="gn-en" style="display:block">${sub}</span>`;
+        }
+        if (top) {
+            return `<span class="gn-zh" style="display:block">${top}</span>`;
+        }
+        // 找不到對照，原樣顯示
+        return `<span class="gn-zh" style="display:block">${name}</span>`;
+    }
+
+    // ── formatTag：小標籤，兩行顯示 ──
+    function formatTag(name) {
+        const info = lookup(name);
+        const { top, sub } = resolveNames(info);
+
+        if (top && sub) {
+            return `<span class="gn-tag-zh">${top}</span>`
+                 + `<span class="gn-tag-en">${sub}</span>`;
+        }
+        if (top) return `<span class="gn-tag-zh">${top}</span>`;
+        // 找不到對照，原樣顯示
+        return `<span class="gn-tag-zh">${name}</span>`;
+    }
+
+    // ── formatInline：排行榜，同行 ｜ 分隔 ──
+    function formatInline(name) {
+        const info = lookup(name);
+        const { top, sub } = resolveNames(info);
+
+        if (top && sub) {
+            return `<span class="gn-inline-zh">${top}</span>`
+                 + `<span class="gn-inline-sep">｜</span>`
+                 + `<span class="gn-inline-en">${sub}</span>`;
+        }
+        if (top) return `<span class="gn-inline-zh">${top}</span>`;
+        return `<span class="gn-inline-zh">${name}</span>`;
+    }
+
+    // ── displayName：純文字主名稱（優先中 > 日 > 英）──
+    function displayName(name) {
+        const info = lookup(name);
+        if (info) return info.name_zh || info.name_ja || info.name_en || name;
+        return name;
+    }
+
+    // ── getImageUrl：取得封面圖片 URL ──
+    function getImageUrl(name) {
+        const info = lookup(name);
+        return (info && info.image_url && info.image_url.startsWith('http'))
+            ? info.image_url
+            : null;
+    }
+
+    return { load, lookup, resolveNames, formatCard, formatTag, formatInline, displayName, getImageUrl };
+})();

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲清單 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/gamification.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        /* 遊戲標籤中英兩行強制覆蓋 */
+        .game-tag {
+            display: inline-flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 0 !important;
+            text-align: center !important;
+        }
+        .game-tag .gn-tag-zh {
+            display: block !important;
+            font-size: 0.88em !important;
+            font-weight: 600 !important;
+            line-height: 1.3 !important;
+            text-align: center !important;
+        }
+        .game-tag .gn-tag-en {
+            display: block !important;
+            font-size: 0.72em !important;
+            font-weight: 400 !important;
+            opacity: 0.82 !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+        }
+
+        /* Tab 切換列 */
+        .type-tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .type-tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            background: var(--card-bg);
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 70px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        .type-tab:hover { border-color: var(--primary-color); color: var(--text-color); }
+        .type-tab.active { color: white; }
+        .type-tab[data-type="super_liked"].active { border-color: #be185d; background: #be185d; }
+        .type-tab[data-type="liked"].active       { border-color: #166534; background: #166534; }
+        .type-tab[data-type="neutral"].active     { border-color: #475569; background: #475569; }
+        .type-tab[data-type="disliked"].active    { border-color: #991b1b; background: #991b1b; }
+        .type-tab[data-type="no_interest"].active { border-color: #64748b; background: #64748b; }
+        .type-tab[data-type="wishlist"].active    { border-color: #6d28d9; background: #6d28d9; }
+        .type-tab .tab-emoji { font-size: 1.3rem; margin-bottom: 0.1rem; }
+        .type-tab .tab-count { font-weight: 700; font-size: 1rem; }
+        .type-tab .tab-label { font-size: 0.72rem; opacity: 0.85; }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <!-- 載入中狀態 -->
+        <div id="loading-state" style="text-align: center; padding: 4rem 2rem;">
+            <div class="simple-hourglass large">
+                <span class="hourglass-icon-simple combined">⏳</span>
+                <span class="hourglass-text-simple">正在載入遊戲清單...</span>
+            </div>
+        </div>
+        
+        <!-- 未登入狀態 -->
+        <div id="not-logged-in" style="display: none;">
+            <div class="empty-state" style="padding: 4rem 2rem;">
+                <div class="empty-state-icon">🎲</div>
+                <h2 class="empty-state-text">你還沒有分享你的桌遊喜好</h2>
+                <p style="color: var(--text-light); margin-bottom: 2rem;">
+                    立即分享你喜歡的桌遊，探索與你相似的玩家群體！
+                </p>
+                <a href="submit.html" class="btn btn-primary" style="font-size: 1.1rem;">
+                    🎲 開始分享
+                </a>
+            </div>
+        </div>
+
+        <!-- 遊戲清單內容 -->
+        <div id="games-content" style="display: none;">
+            <!-- 頁面標題 -->
+            <div class="page-header">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1 class="page-title" id="list-title">遊戲清單</h1>
+                        <p class="page-subtitle" id="list-subtitle">載入中...</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="profile.html" class="btn btn-secondary" id="back-btn">
+                            ← 返回檔案
+                        </a>
+                        <a href="edit-games-drag.html" class="btn btn-primary" id="edit-btn">
+                            ✏️ 編輯清單
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分類 Tab 切換列 -->
+            <div class="type-tabs" id="type-tabs"></div>
+
+            <!-- 遊戲清單卡片 -->
+            <section>
+                <div style="background: var(--card-bg); padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-md);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 id="list-header" style="font-size: 1.5rem; margin: 0;">📋 遊戲清單</h2>
+                        <span id="list-count" style="color: var(--text-light);">共 0 款</span>
+                    </div>
+                    <!-- 遊戲列表 -->
+                    <div id="games-list"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer style="text-align: center; padding: 2rem; margin-top: 4rem; color: var(--text-light); border-top: 1px solid var(--border-color);">
+        <p>© 2025 MBTI × 桌遊配對</p>
+    </footer>
+
+    <script src="js/api-base.js?v=20260302-clear"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+
+    <script>
+        let currentUser = null;
+        let listType = 'liked';
+        let targetUserId = null;
+        let isViewingOther = false;
+
+        const TABS = [
+            { type: 'super_liked', emoji: '🤩', label: '超喜歡',   field: 'super_liked_games', tagStyle: 'background:#fce7f3;color:#be185d;' },
+            { type: 'liked',       emoji: '😍', label: '喜歡',     field: 'liked_games',        tagStyle: 'background:#dcfce7;color:#166534;' },
+            { type: 'neutral',     emoji: '😐', label: '普普',     field: 'neutral_games',      tagStyle: 'background:#f1f5f9;color:#475569;' },
+            { type: 'disliked',    emoji: '😕', label: '不喜歡',   field: 'disliked_games',     tagStyle: 'background:#fee2e2;color:#991b1b;' },
+            { type: 'no_interest', emoji: '🚫', label: '沒興趣',   field: 'no_interest_games',  tagStyle: 'background:#f1f5f9;color:#64748b;' },
+            { type: 'wishlist',    emoji: '📋', label: '待玩清單', field: 'wishlist',            tagStyle: 'background:#ede9fe;color:#6d28d9;' },
+        ];
+
+        window.addEventListener('DOMContentLoaded', async () => { await loadPage(); });
+
+        async function loadPage() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                listType = params.get('type') || 'liked';
+                targetUserId = params.get('user') || null;
+
+                await GameNames.load();
+                const loggedInUser = GameMBTI.getCurrentUser();
+
+                if (targetUserId) {
+                    isViewingOther = loggedInUser ? targetUserId !== loggedInUser.id : true;
+                    const freshData = await GameMBTI.getUserById(targetUserId);
+                    if (!freshData) { showNotLoggedIn(); return; }
+                    currentUser = freshData;
+                } else {
+                    isViewingOther = false;
+                    currentUser = loggedInUser;
+                    if (!currentUser) { showNotLoggedIn(); return; }
+                    const freshData = await GameMBTI.getUserById(currentUser.id);
+                    if (freshData) { currentUser = freshData; GameMBTI.setCurrentUser(freshData); }
+                }
+
+                // 返回按鈕
+                const backBtn = document.getElementById('back-btn');
+                if (backBtn) backBtn.href = isViewingOther ? `player.html?id=${targetUserId}` : 'profile.html';
+
+                // 編輯按鈕：看別人時隱藏
+                const editBtn = document.getElementById('edit-btn');
+                if (editBtn) editBtn.style.display = isViewingOther ? 'none' : '';
+
+                // 頁面副標題（玩家名稱）
+                const name = currentUser.nickname || currentUser.username || '玩家';
+                document.getElementById('list-subtitle').textContent = isViewingOther ? `${name} 的遊戲清單` : '我的遊戲清單';
+
+                showGamesContent();
+                renderTabs();
+                displayGamesList();
+
+            } catch (error) {
+                console.error('❌ 載入頁面錯誤:', error);
+                document.getElementById('loading-state').innerHTML = `
+                    <div style="text-align: center; padding: 4rem 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                        <h2 style="color: var(--text-color);">載入失敗</h2>
+                        <p style="color: var(--text-light); margin-bottom: 1rem;">${error.message}</p>
+                        <a href="profile.html" class="btn btn-secondary">← 返回</a>
+                    </div>`;
+            }
+        }
+
+        function showNotLoggedIn() {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('not-logged-in').style.display = 'block';
+            document.getElementById('games-content').style.display = 'none';
+        }
+
+        function showGamesContent() {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('not-logged-in').style.display = 'none';
+            document.getElementById('games-content').style.display = 'block';
+        }
+
+        // 渲染 Tab 列
+        function renderTabs() {
+            const container = document.getElementById('type-tabs');
+            container.innerHTML = TABS.map(tab => {
+                const games = currentUser[tab.field] || [];
+                const isActive = tab.type === listType;
+                return `<button class="type-tab ${isActive ? 'active' : ''}" data-type="${tab.type}" onclick="switchTab('${tab.type}')">
+                    <span class="tab-emoji">${tab.emoji}</span>
+                    <span class="tab-count">${games.length}</span>
+                    <span class="tab-label">${tab.label}</span>
+                </button>`;
+            }).join('');
+        }
+
+        // 切換 Tab
+        function switchTab(type) {
+            listType = type;
+            renderTabs();
+            displayGamesList();
+        }
+
+        function displayGamesList() {
+            const tab = TABS.find(t => t.type === listType) || TABS[1];
+            const games = currentUser[tab.field] || [];
+
+            document.getElementById('list-title').innerHTML = `${tab.emoji} ${tab.label}的桌遊`;
+            document.getElementById('list-header').innerHTML = `${tab.emoji} ${tab.label}的遊戲`;
+            document.getElementById('list-count').textContent = `共 ${games.length} 款`;
+
+            const container = document.getElementById('games-list');
+            if (games.length === 0) {
+                container.innerHTML = `<div class="empty-state"><p>尚未有任何遊戲</p></div>`;
+            } else {
+                container.innerHTML = '<div class="game-tags-container">'
+                    + games.map(game => `<div class="game-tag" style="${tab.tagStyle}">${GameNames.formatTag(game)}</div>`).join('')
+                    + '</div>';
+            }
+        }
+    </script>
+</body>
+</html>

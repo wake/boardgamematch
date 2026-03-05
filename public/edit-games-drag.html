@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>編輯我的桌遊 - MBTI × 桌遊配對</title>
+    <!-- vConsole：手機除錯用，URL 加 ?debug=1 才啟動 -->
+    <script>
+    (function(){
+        if(location.search.includes('debug=1')){
+            var s=document.createElement('script');
+            s.src='https://cdn.jsdelivr.net/npm/vconsole@3.15.1/dist/vconsole.min.js';
+            s.onload=function(){ new VConsole(); };
+            document.head.appendChild(s);
+        }
+    })();
+    </script>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* 拖放專用樣式 */
+        .drag-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .drop-zone {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            min-height: 400px;
+            border: 3px dashed transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: var(--primary-color);
+            background: rgba(59, 130, 246, 0.05);
+            transform: scale(1.02);
+        }
+        
+        .drop-zone-header {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .drop-zone-count {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            font-weight: normal;
+        }
+        
+        .game-tags-container-drag {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            min-height: 200px;
+            align-content: flex-start;
+            align-items: flex-start;
+        }
+        
+        .game-tag-draggable {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white !important;
+            padding: 0.3rem 0.7rem !important;
+            border-radius: 0.75rem !important;
+            font-size: 0.85rem !important;
+            cursor: move !important;
+            user-select: none;
+            display: inline-flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 0 !important;
+            transition: all 0.2s ease;
+            position: relative !important;
+            line-height: 1.2 !important;
+            white-space: normal !important;
+            word-break: keep-all !important;
+            text-align: center !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            vertical-align: middle !important;
+        }
+        .game-tag-draggable .gn-tag-zh {
+            display: block !important;
+            font-size: 0.88em !important;
+            font-weight: 600 !important;
+            line-height: 1.3 !important;
+            text-align: center !important;
+        }
+        .game-tag-draggable .gn-tag-en {
+            display: block !important;
+            font-size: 0.72em !important;
+            font-weight: 400 !important;
+            opacity: 0.82 !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+        }
+
+        
+        .game-tag-draggable.disliked {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+        .game-tag-draggable.super_liked {
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%) !important;
+        }
+        .game-tag-draggable.no_interest {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+        }
+        .game-tag-draggable.wishlist {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+        }
+        /* pin-panel 已移除，改用 tag 上直接顯示 pin 圖示 */
+        .pin-count-label {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin: 0.4rem 0 0.3rem 0.1rem;
+            min-height: 1.2em;
+        }
+        /* 置頂狀態的 tag：右上角顯示 📌 */
+        .game-tag-draggable {
+            position: relative !important;
+        }
+        .game-tag-draggable.pinned::after {
+            content: '📌';
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            font-size: 0.72em;
+            line-height: 1;
+            pointer-events: none;
+        }
+        /* pin 按鈕（桌機版，顯示在 tag 右上） */
+        .tag-pin-btn {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.85);
+            cursor: pointer;
+            font-size: 0.65em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+            transition: transform 0.15s;
+            z-index: 2;
+            color: #888;
+        }
+        .tag-pin-btn:hover { transform: scale(1.2); }
+        .game-tag-draggable.pinned .tag-pin-btn { color: #f59e0b; }
+        /* 手機版 pin 按鈕 */
+        .mobile-pin-btn {
+            font-size: 0.78rem;
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 0.15rem 0.45rem;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.15s;
+        }
+        .mobile-pin-btn.pinned { color: #f59e0b; border-color: #f59e0b; }
+        .pin-panel { display: none !important; } /* 舊樣式徹底隱藏 */
+        .game-tag-draggable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .game-tag-draggable.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .game-tag-draggable.disliked {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+        
+        .game-tag-draggable.wishlist {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+        }
+        
+        .add-game-section {
+            background: var(--bg-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .add-game-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            position: relative;
+            flex-wrap: wrap;
+        }
+
+        .add-game-input .ac-wrap {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+        }
+
+        .add-game-input input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .add-game-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 999;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .add-game-dropdown.open { display: block; }
+
+        .add-game-ac-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.88rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .add-game-ac-item:last-child { border-bottom: none; }
+        .add-game-ac-item:hover, .add-game-ac-item.highlighted { background: var(--bg-light); }
+        .add-game-ac-item img { width:28px; height:28px; object-fit:cover; border-radius:0.3rem; flex-shrink:0; }
+        .add-game-ac-item .ac-name { flex:1; min-width:0; }
+        .add-game-ac-item .ac-name-zh { font-weight:600; }
+        .add-game-ac-item .ac-name-en { font-size:0.78rem; color:var(--text-light); }
+        .add-game-ac-badge { font-size:0.72rem; padding:0.1rem 0.4rem; border-radius:999px; background:#dcfce7; color:#166534; flex-shrink:0; }
+        
+        .empty-state-drag {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .drag-hint {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .drag-hint-icon {
+            font-size: 2rem;
+        }
+
+        /* ── 手機版：移動按鈕 ── */
+        .move-btns {
+            display: none; /* 電腦版隱藏 */
+        }
+        .mobile-tag-row {
+            display: none; /* 電腦版隱藏 */
+        }
+
+        @media (max-width: 768px) {
+            /* 手機版停用拖曳提示，改顯示點按提示 */
+            .drag-hint .drag-hint-text::before {
+                content: '📱 點選右側按鈕可在六個分類之間移動遊戲（如需刪除請聯絡管理員）。';
+            }
+            .drag-hint .drag-hint-original { display: none; }
+
+            /* 手機版隱藏原本的標籤式顯示 */
+            .game-tag-draggable {
+                display: none !important;
+            }
+
+            /* 手機版：列表行樣式 */
+            .mobile-tag-row {
+                display: flex !important;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.6rem 0.5rem;
+                border-bottom: 1px solid var(--border-color);
+                gap: 0.5rem;
+            }
+            .mobile-tag-row:last-child { border-bottom: none; }
+            .mobile-tag-name {
+                flex: 1;
+                font-size: 0.9rem;
+                font-weight: 500;
+                color: var(--text-color);
+            }
+            .mobile-tag-actions {
+                display: flex;
+                gap: 0.3rem;
+                flex-shrink: 0;
+            }
+            .move-btn {
+                background: var(--bg-color) !important;
+                border: 1px solid var(--border-color) !important;
+                border-radius: 6px !important;
+                color: var(--text-color) !important;
+                font-size: 0.72rem !important;
+                padding: 4px 7px !important;
+                cursor: pointer !important;
+                line-height: 1.4;
+                white-space: nowrap;
+                min-height: 32px;
+            }
+            .move-btn:active { background: var(--primary-color) !important; color: white !important; }
+
+
+            /* 手機版遊戲標籤容器：改為列表佈局 */
+            .game-tags-container-drag {
+                flex-direction: column !important;
+                gap: 0 !important;
+                min-height: 60px !important;
+            }
+
+            /* 一欄顯示，佔滿寬度 */
+            .drag-container {
+                grid-template-columns: 1fr !important;
+            }
+            .drop-zone { min-height: 80px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">✏️ 編輯我的桌遊</h1>
+            <p class="page-subtitle">拖放遊戲來重新分類，或新增遊戲（如需刪除遊戲請聯絡管理員）</p>
+        </div>
+
+        <!-- 拖放提示 -->
+        <div class="drag-hint">
+            <div class="drag-hint-icon">👆</div>
+            <div class="drag-hint-text">
+                <strong>操作說明</strong><br>
+                <span class="drag-hint-original">按住遊戲標籤並拖動到其他區域，即可改變評價分類。遊戲可在六個分類之間自由移動（如需刪除遊戲請聯絡管理員）。</span>
+            </div>
+        </div>
+
+        <!-- 拖放容器 -->
+        <div class="drag-container">
+            <!-- 超喜歡的桌遊 -->
+            <div class="drop-zone" id="super_liked-zone" data-type="super_liked" style="border-color:#f9a8d4;">
+                <div class="drop-zone-header" style="background:#fce7f3;">
+                    <span>🤩 超喜歡的桌遊</span>
+                    <span class="drop-zone-count" id="super_liked-count">0 款</span>
+                </div>
+                <div class="game-tags-container-drag" id="super_liked-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-super_liked"></div>
+                <div class="add-game-section">
+                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
+                    <div class="add-game-input">
+                        <div class="ac-wrap">
+                            <input type="text" id="add-super_liked-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
+                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                                oninput="onGameAcInput(this, 'drop-super_liked')"
+                                onfocus="onGameAcInput(this, 'drop-super_liked')"
+                                onblur="closeGameAc('drop-super_liked')"
+                                onkeydown="onGameAcKey(event, 'drop-super_liked', 'super_liked')">
+                            <div class="add-game-dropdown" id="drop-super_liked"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="addGame('super_liked')" style="padding: 0.5rem 1rem;">新增</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 喜歡的桌遊 -->
+            <div class="drop-zone" id="liked-zone" data-type="liked">
+                <div class="drop-zone-header">
+                    <span>😍 喜歡的桌遊</span>
+                    <span class="drop-zone-count" id="liked-count">0 款</span>
+                </div>
+                <div class="game-tags-container-drag" id="liked-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-liked"></div>
+                <div class="add-game-section">
+                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
+                    <div class="add-game-input">
+                        <div class="ac-wrap">
+                            <input type="text" id="add-liked-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
+                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                                oninput="onGameAcInput(this, 'drop-liked')"
+                                onfocus="onGameAcInput(this, 'drop-liked')"
+                                onblur="closeGameAc('drop-liked')"
+                                onkeydown="onGameAcKey(event, 'drop-liked', 'liked')">
+                            <div class="add-game-dropdown" id="drop-liked"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="addGame('liked')" style="padding: 0.5rem 1rem;">新增</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 普通的桌遊 -->
+            <div class="drop-zone" id="neutral-zone" data-type="neutral">
+                <div class="drop-zone-header">
+                    <span>😐 普通的桌遊</span>
+                    <span class="drop-zone-count" id="neutral-count">0 款</span>
+                </div>
+                <div class="game-tags-container-drag" id="neutral-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-neutral"></div>
+                <div class="add-game-section">
+                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
+                    <div class="add-game-input">
+                        <div class="ac-wrap">
+                            <input type="text" id="add-neutral-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
+                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                                oninput="onGameAcInput(this, 'drop-neutral')"
+                                onfocus="onGameAcInput(this, 'drop-neutral')"
+                                onblur="closeGameAc('drop-neutral')"
+                                onkeydown="onGameAcKey(event, 'drop-neutral', 'neutral')">
+                            <div class="add-game-dropdown" id="drop-neutral"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="addGame('neutral')" style="padding: 0.5rem 1rem;">新增</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 不喜歡的桌遊 -->
+            <div class="drop-zone" id="disliked-zone" data-type="disliked" style="border-color:#fca5a5;">
+                <div class="drop-zone-header" style="background:#fee2e2;">
+                    <span>😕 不喜歡的桌遊</span>
+                    <span class="drop-zone-count" id="disliked-count">0 款</span>
+                </div>
+                <div class="game-tags-container-drag" id="disliked-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-disliked"></div>
+                <div class="add-game-section">
+                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
+                    <div class="add-game-input">
+                        <div class="ac-wrap">
+                            <input type="text" id="add-disliked-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
+                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                                oninput="onGameAcInput(this, 'drop-disliked')"
+                                onfocus="onGameAcInput(this, 'drop-disliked')"
+                                onblur="closeGameAc('drop-disliked')"
+                                onkeydown="onGameAcKey(event, 'drop-disliked', 'disliked')">
+                            <div class="add-game-dropdown" id="drop-disliked"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="addGame('disliked')" style="padding: 0.5rem 1rem;">新增</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 想玩清單 -->
+            <div class="drop-zone" id="wishlist-zone" data-type="wishlist" style="border-color:#c4b5fd;">
+                <div class="drop-zone-header" style="background:#ede9fe;">
+                    <span>⭐ 想玩的桌遊</span>
+                    <span class="drop-zone-count" id="wishlist-count">0 款</span>
+                </div>
+                <div class="game-tags-container-drag" id="wishlist-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-wishlist"></div>
+                <div class="add-game-section">
+                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
+                    <div class="add-game-input">
+                        <div class="ac-wrap">
+                            <input type="text" id="add-wishlist-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
+                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                                oninput="onGameAcInput(this, 'drop-wishlist')"
+                                onfocus="onGameAcInput(this, 'drop-wishlist')"
+                                onblur="closeGameAc('drop-wishlist')"
+                                onkeydown="onGameAcKey(event, 'drop-wishlist', 'wishlist')">
+                            <div class="add-game-dropdown" id="drop-wishlist"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="addGame('wishlist')" style="padding: 0.5rem 1rem;">新增</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 沒興趣清單 -->
+            <div class="drop-zone" id="no_interest-zone" data-type="no_interest">
+                <div class="drop-zone-header">
+                    <span>🚫 沒興趣的桌遊</span>
+                    <span class="drop-zone-count" id="no_interest-count">0 款</span>
+                </div>
+                <div class="game-tags-container-drag" id="no_interest-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-no_interest"></div>
+                <div class="add-game-section">
+                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
+                    <div class="add-game-input">
+                        <div class="ac-wrap">
+                            <input type="text" id="add-no_interest-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
+                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                                oninput="onGameAcInput(this, 'drop-no_interest')"
+                                onfocus="onGameAcInput(this, 'drop-no_interest')"
+                                onblur="closeGameAc('drop-no_interest')"
+                                onkeydown="onGameAcKey(event, 'drop-no_interest', 'no_interest')">
+                            <div class="add-game-dropdown" id="drop-no_interest"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="addGame('no_interest')" style="padding: 0.5rem 1rem;">新增</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作按鈕 -->
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+            <a href="profile.html" class="btn btn-secondary" style="padding: 0.75rem 2rem;">
+                ← 取消
+            </a>
+            <button type="button" class="btn btn-primary" onclick="saveChanges()" style="padding: 0.75rem 2rem;">
+                💾 儲存變更
+            </button>
+        </div>
+
+        <!-- 訊息容器 -->
+        <div id="message-container" style="margin-top: 2rem;"></div>
+    </div>
+
+    <script src="js/api-base.js?v=20260302-clear"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script>
+        if (typeof safePatch === 'undefined') { window.safePatch = async function(url, d, h={}) { const sys=['gs_project_id','gs_table_name','gs_created_at','gs_updated_at','created_at','updated_at','deleted','deleted_at','_rid','_id','__rid','__id']; const g=await fetch(url,{headers:h}); const ex=g.ok?await g.json():{}; const cleaned=Object.fromEntries(Object.entries(ex).filter(([k])=>!sys.includes(k))); const merged={...cleaned,...d}; const s={}; for(const [k,v] of Object.entries(merged)){s[k]=(v!==null&&v!==undefined&&typeof v==='object')?JSON.stringify(v):v;} const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json',...h},body:JSON.stringify(s)}); if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('PUT '+r.status+': '+t.slice(0,100));} return r.json(); }; }
+    </script>
+
+    <script>
+        let currentUser = null;
+        const ALL_TYPES = ['super_liked','liked','neutral','disliked','wishlist','no_interest'];
+        const MAX_PIN = 10;
+        let superLikedGames = [];
+        let likedGames = [];
+        let neutralGames = [];
+        let dislikedGames = [];
+        let wishlistGames = [];
+        let noInterestGames = [];
+        // 各分類的置頂遊戲（最多 10 款，用遊戲名稱陣列記錄）
+        const pinnedGames = { super_liked:[], liked:[], neutral:[], disliked:[], wishlist:[], no_interest:[] };
+        let draggedElement = null;
+        let draggedGame = null;
+        let sourceType = null;
+
+        // ── Autocomplete 專用遊戲清單（從 GameNames 取，不重複 fetch）──
+        let _acGames = [];
+        let _acLoaded = false;
+        let _acLoadPromise = null;
+
+        async function loadAcGames() {
+            if (_acLoaded && _acGames.length > 0) return;
+            if (_acLoadPromise) return _acLoadPromise;
+            _acLoadPromise = (async () => {
+                try {
+                    // 等 GameNames 完全載入（含 alias）
+                    await GameNames.load();
+                    // 從 nameMap 去重建立清單
+                    const nm = GameNames._nameMap || {};
+                    const seen = new Set();
+                    _acGames = [];
+                    Object.values(nm).forEach(g => {
+                        const key = g.name_zh || g.name_en || '';
+                        if (key && !seen.has(key)) {
+                            seen.add(key);
+                            _acGames.push(g);
+                        }
+                    });
+                    _acLoaded = true;
+                    console.log(`[AC] ✅ autocomplete 清單建立完成，共 ${_acGames.length} 款`);
+                } catch(e) {
+                    console.warn('[AC] ⚠️ 載入失敗', e);
+                    _acLoaded = true;
+                }
+            })();
+            return _acLoadPromise;
+        }
+
+        // 頁面載入：同時啟動遊戲清單載入（背景執行，不阻塞 UI）
+        window.addEventListener('DOMContentLoaded', async () => {
+            loadAcGames(); // 背景預載，不 await
+            await loadUserData();
+        });
+
+        // 載入使用者資料
+        async function loadUserData() {
+            try {
+                // 先載入遊戲名稱對照（autocomplete 需要用）
+                await GameNames.load();
+
+                // ✅ 改用 googleUser 判斷是否登入（不依賴 currentUser）
+                const googleUserStr = localStorage.getItem('googleUser');
+                if (!googleUserStr) {
+                    // 真的沒登入才跳走
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                // 先試 currentUser（已評分過的使用者）
+                currentUser = GameMBTI.getCurrentUser();
+
+                // 若 currentUser 不存在，從資料庫查 google_id 對應的使用者
+                if (!currentUser) {
+                    try {
+                        const googleUser = JSON.parse(googleUserStr);
+                        const allUsers = await GameMBTI.getAllUsers();
+                        const dbUser = allUsers.find(u => u.google_id === googleUser.sub);
+                        if (dbUser) {
+                            currentUser = dbUser;
+                            GameMBTI.setCurrentUser(dbUser);
+                        }
+                    } catch(e) {
+                        console.warn('無法從資料庫查詢使用者:', e);
+                    }
+                }
+
+                if (currentUser && currentUser.id) {
+                    // 從 API 重新載入最新資料
+                    const freshData = await GameMBTI.getUserById(currentUser.id);
+                    if (freshData) {
+                        currentUser = freshData;
+                        GameMBTI.setCurrentUser(freshData);
+                    }
+                }
+
+                // 初始化遊戲清單（currentUser 不存在時就顯示空清單）
+                superLikedGames = [...(currentUser?.super_liked_games || [])];
+                likedGames    = [...(currentUser?.liked_games  || [])];
+                neutralGames  = [...(currentUser?.neutral_games || [])];
+                dislikedGames = [...(currentUser?.disliked_games || [])];
+                wishlistGames = [...(currentUser?.wishlist     || [])];
+                noInterestGames = [...(currentUser?.no_interest_games || [])];
+
+                // 載入置頂設定
+                try {
+                    const raw = currentUser?.pinned_games;
+                    const saved = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+                    ALL_TYPES.forEach(t => {
+                        pinnedGames[t] = Array.isArray(saved[t]) ? [...saved[t]] : [];
+                    });
+                } catch(e) {
+                    ALL_TYPES.forEach(t => { pinnedGames[t] = []; });
+                }
+
+                renderAllGames();
+
+            } catch (error) {
+                console.error('❌ 載入使用者資料錯誤:', error);
+                alert('載入資料失敗，請重新整理頁面');
+            }
+        }
+
+        // 渲染所有遊戲
+        function renderAllGames() {
+            renderGames('super_liked', superLikedGames);
+            renderGames('liked', likedGames);
+            renderGames('neutral', neutralGames);
+            renderGames('disliked', dislikedGames);
+            renderGames('wishlist', wishlistGames);
+            renderGames('no_interest', noInterestGames);
+            ALL_TYPES.forEach(t => updatePinCountLabel(t));
+            updateCounts();
+        }
+
+        // 渲染遊戲列表
+        async function renderGames(type, games) {
+            const container = document.getElementById(`${type}-games`);
+            await GameNames.load();
+            
+            if (games.length === 0) {
+                container.innerHTML = '<div class="empty-state-drag">尚無遊戲</div>';
+                return;
+            }
+            
+            container.innerHTML = games.map(game => createGameTag(game, type)).join('');
+            
+            // 為每個標籤加入拖放事件
+            container.querySelectorAll('.game-tag-draggable').forEach(tag => {
+                tag.addEventListener('dragstart', handleDragStart);
+                tag.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        // 創建遊戲標籤
+        function createGameTag(gameName, type) {
+            const typeClass = type === 'liked' ? '' : type;
+            const safeGame = gameName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const isPinned = pinnedGames[type] && pinnedGames[type].includes(gameName);
+            const pinnedClass = isPinned ? 'pinned' : '';
+            const pinIcon = isPinned ? '📌' : '○';
+            const pinTitle = isPinned ? '取消在檔案頁顯示' : '釘選到檔案頁顯示（最多10款）';
+
+            // 手機版移動按鈕（列表行）
+            const otherTypes = ['super_liked','liked','neutral','disliked','wishlist','no_interest'].filter(t => t !== type);
+            const labels = { super_liked:'🤩超喜歡', liked:'😍喜歡', neutral:'😐普通', disliked:'😕不喜歡', wishlist:'⭐想玩', no_interest:'🚫沒興趣' };
+            const mobileMoveBtns = otherTypes.map(t =>
+                `<button class="move-btn" onclick="moveGame('${type}','${t}','${safeGame}');event.stopPropagation();">${labels[t]}</button>`
+            ).join('');
+
+            return `
+                <!-- 電腦版：拖曳標籤 -->
+                <div class="game-tag-draggable ${typeClass} ${pinnedClass}" draggable="true" data-game="${gameName}" data-type="${type}">
+                    ${GameNames.formatTag(gameName)}
+                    <button class="tag-pin-btn" title="${pinTitle}"
+                        onclick="togglePin('${type}','${safeGame}',this.closest('.game-tag-draggable'));event.stopPropagation();event.preventDefault();">
+                        ${pinIcon}
+                    </button>
+                </div>
+                <!-- 手機版：列表行 -->
+                <div class="mobile-tag-row" data-game="${gameName}" data-type="${type}">
+                    <span class="mobile-tag-name">${GameNames.formatTag(gameName)}</span>
+                    <div class="mobile-tag-actions">
+                        <button class="mobile-pin-btn ${isPinned ? 'pinned' : ''}"
+                            onclick="togglePin('${type}','${safeGame}',this);event.stopPropagation();"
+                            title="${pinTitle}">${pinIcon}</button>
+                        ${mobileMoveBtns}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 拖放開始
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            draggedGame = e.target.dataset.game;
+            sourceType = e.target.dataset.type;
+            
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.innerHTML);
+        }
+
+        // 拖放結束
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            
+            // 移除所有 drag-over 樣式
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('drag-over');
+            });
+        }
+
+        // 設定拖放區域事件
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('dragover', handleDragOver);
+            zone.addEventListener('drop', handleDrop);
+            zone.addEventListener('dragleave', handleDragLeave);
+        });
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            
+            e.dataTransfer.dropEffect = 'move';
+            
+            // 找到最近的 drop-zone
+            const dropZone = e.target.closest('.drop-zone');
+            if (dropZone) {
+                dropZone.classList.add('drag-over');
+            }
+            
+            return false;
+        }
+
+        function handleDragLeave(e) {
+            const dropZone = e.target.closest('.drop-zone');
+            if (dropZone && !dropZone.contains(e.relatedTarget)) {
+                dropZone.classList.remove('drag-over');
+            }
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            const dropZone = e.target.closest('.drop-zone');
+            if (!dropZone) return false;
+            
+            const targetType = dropZone.dataset.type;
+            
+            // 如果拖到同一個區域，不做任何事
+            if (targetType === sourceType) {
+                dropZone.classList.remove('drag-over');
+                return false;
+            }
+            
+            // 移動遊戲
+            moveGame(sourceType, targetType, draggedGame);
+            
+            dropZone.classList.remove('drag-over');
+            
+            return false;
+        }
+
+        // ── 置頂面板渲染與切換 ──
+        // renderPinPanel 已廢棄，由 createGameTag 直接嵌入 pin 按鈕取代
+        function renderPinPanel(type) {
+            updatePinCountLabel(type);
+        }
+
+        function togglePin(type, game, el) {
+            const idx = pinnedGames[type].indexOf(game);
+            if (idx === -1) {
+                if (pinnedGames[type].length >= MAX_PIN) {
+                    alert(`每個分類最多只能置頂 ${MAX_PIN} 款遊戲！`);
+                    return;
+                }
+                pinnedGames[type].push(game);
+            } else {
+                pinnedGames[type].splice(idx, 1);
+            }
+            // 重新渲染該分類（更新所有 tag 的 pin 狀態與計數）
+            renderGames(type, getList(type));
+            updatePinCountLabel(type);
+        }
+
+        function updatePinCountLabel(type) {
+            const label = document.getElementById(`pin-info-${type}`);
+            if (!label) return;
+            const cnt = pinnedGames[type].length;
+            label.textContent = cnt > 0 ? `📌 已釘選 ${cnt}/10 款（顯示於檔案頁）` : '';
+        }
+
+        // 移動遊戲
+        function getList(type) {
+            return { super_liked: superLikedGames, liked: likedGames, neutral: neutralGames, disliked: dislikedGames, wishlist: wishlistGames, no_interest: noInterestGames }[type];
+        }
+        function setList(type, arr) {
+            if (type==='super_liked') superLikedGames=arr;
+            else if (type==='liked') likedGames=arr;
+            else if (type==='neutral') neutralGames=arr;
+            else if (type==='disliked') dislikedGames=arr;
+            else if (type==='wishlist') wishlistGames=arr;
+            else if (type==='no_interest') noInterestGames=arr;
+        }
+        function moveGame(from, to, gameName) {
+            setList(from, getList(from).filter(g => g !== gameName));
+            const target = getList(to);
+            if (!target.includes(gameName)) target.push(gameName);
+            renderAllGames();
+        }
+
+        // ════════════════════════════════════════════
+        // ── 新增遊戲 Autocomplete ──
+        // ════════════════════════════════════════════
+
+        function onGameAcInput(inputEl, dropId) {
+            const query = inputEl.value.trim().toLowerCase();
+            const drop = document.getElementById(dropId);
+            if (!drop) return;
+
+            if (!query) {
+                drop.classList.remove('open');
+                return;
+            }
+
+            // 直接用獨立的 _acGames（已在背景預載）
+            loadAcGames().then(() => {
+                if (_acGames.length === 0) { drop.classList.remove('open'); return; }
+
+                // 計算每筆的相關性分數（考慮匹配比例，字數少的優先）
+                function matchScore(g) {
+                    const zh = (g.name_zh || '').toLowerCase();
+                    const en = (g.name_en || '').toLowerCase();
+                    const ja = (g.name_ja || '').toLowerCase();
+
+                    // 計算某個名稱的分數：基礎分 × 匹配比例（query長度/名稱長度）
+                    function nameScore(name) {
+                        if (!name) return 0;
+                        const ratio = query.length / name.length; // 比例：越接近1分數越高
+                        if (name === query) return 100;
+                        if (name.startsWith(query)) return 70 * (0.5 + ratio * 0.5);
+                        if (name.includes(query)) return 40 * (0.3 + ratio * 0.7);
+                        return 0;
+                    }
+
+                    // 取中英日最高分，中文額外加成
+                    const zhScore = nameScore(zh) * 1.2; // 中文加20%權重
+                    const enScore = nameScore(en);
+                    const jaScore = nameScore(ja);
+                    return Math.max(zhScore, enScore, jaScore);
+                }
+
+                const results = _acGames
+                    .map(g => ({ g, score: matchScore(g) }))
+                    .filter(x => x.score > 0)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 12)
+                    .map(x => x.g);
+
+                if (results.length === 0) { drop.classList.remove('open'); return; }
+
+                // 防止過時結果（使用者已改變輸入）
+                if (inputEl.value.trim().toLowerCase() !== query) return;
+
+                drop.innerHTML = results.map(g => {
+                    const displayName = g.name_zh || g.name_en;
+                    const subName = g.name_zh && g.name_en ? g.name_en : '';
+                    const safe = displayName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const imgHtml = g.image_url
+                        ? `<img src="${g.image_url}" onerror="this.style.display='none'">`
+                        : `<div style="width:28px;height:28px;background:var(--border-color);border-radius:0.3rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">🎲</div>`;
+                    return `<div class="add-game-ac-item"
+                        onmousedown="onGameAcSelect('${inputEl.id}', '${dropId}', '${safe}')">
+                        ${imgHtml}
+                        <div class="ac-name">
+                            <div class="ac-name-zh">${g.name_zh || g.name_en}</div>
+                            ${subName ? `<div class="ac-name-en">${subName}</div>` : ''}
+                        </div>
+                        <span class="add-game-ac-badge">資料庫</span>
+                    </div>`;
+                }).join('');
+                drop.classList.add('open');
+            });
+        }
+
+        function onGameAcSelect(inputId, dropId, value) {
+            const input = document.getElementById(inputId);
+            if (input) input.value = value;
+            const drop = document.getElementById(dropId);
+            if (drop) drop.classList.remove('open');
+        }
+
+        function closeGameAc(dropId) {
+            setTimeout(() => {
+                const drop = document.getElementById(dropId);
+                if (drop) drop.classList.remove('open');
+            }, 200);
+        }
+
+        function onGameAcKey(e, dropId, type) {
+            const drop = document.getElementById(dropId);
+            if (!drop) return;
+            const items = drop.querySelectorAll('.add-game-ac-item');
+            let idx = [...items].findIndex(el => el.classList.contains('highlighted'));
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (idx < items.length - 1) {
+                    if (idx >= 0) items[idx].classList.remove('highlighted');
+                    items[idx + 1].classList.add('highlighted');
+                    items[idx + 1].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (idx > 0) {
+                    items[idx].classList.remove('highlighted');
+                    items[idx - 1].classList.add('highlighted');
+                }
+            } else if (e.key === 'Enter') {
+                if (idx >= 0) {
+                    e.preventDefault();
+                    const val = items[idx].querySelector('.ac-name-zh')?.textContent || items[idx].querySelector('.ac-name')?.textContent;
+                    if (val) {
+                        const inputId = `add-${type}-input`;
+                        onGameAcSelect(inputId, dropId, val.trim());
+                    }
+                } else {
+                    addGame(type);
+                }
+            } else if (e.key === 'Escape') {
+                drop.classList.remove('open');
+            }
+        }
+
+        // 點其他地方關閉所有 dropdown
+        document.addEventListener('mousedown', function(e) {
+            if (!e.target.closest('.ac-wrap')) {
+                document.querySelectorAll('.add-game-dropdown.open').forEach(d => d.classList.remove('open'));
+            }
+        });
+
+        function addGame(type) {
+            const input = document.getElementById(`add-${type}-input`);
+            const gameName = input.value.trim();
+            
+            if (!gameName) {
+                alert('請輸入遊戲名稱！');
+                return;
+            }
+            
+            const allLists = [...superLikedGames,...likedGames,...neutralGames,...dislikedGames,...wishlistGames,...noInterestGames];
+            if (allLists.includes(gameName)) { alert('這款遊戲已經在清單中了！'); return; }
+            getList(type).push(gameName);
+            
+            input.value = '';
+            renderAllGames();
+        }
+
+        // 刪除遊戲：已評價的遊戲不可刪除，只能透過拖曳或按鈕改變評價類別
+
+        // 更新計數
+        function updateCounts() {
+            ['super_liked','liked','neutral','disliked','wishlist','no_interest'].forEach(type => {
+                const el = document.getElementById(`${type}-count`);
+                if (el) el.textContent = `${getList(type).length} 款`;
+            });
+        }
+
+        // Enter 鍵新增
+        ['super_liked','liked', 'neutral', 'disliked', 'wishlist', 'no_interest'].forEach(type => {
+            document.getElementById(`add-${type}-input`)?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addGame(type);
+                }
+            });
+        });
+
+        // 儲存變更
+        async function saveChanges() {
+            const messageContainer = document.getElementById('message-container');
+
+            // 若無使用者資料（尚未評分），引導去探索
+            if (!currentUser || !currentUser.id) {
+                messageContainer.innerHTML = '<div class="alert alert-error">請先前往「桌遊探索」評分至少 5 款桌遊，才能使用編輯功能！</div>';
+                setTimeout(() => { window.location.href = 'recommend.html'; }, 2000);
+                return;
+            }
+
+            try {
+                messageContainer.innerHTML = '<div class="alert alert-info">儲存中...</div>';
+
+                // ── 儲存前確保 GameNames（含 alias）已載入，再標準化 ──
+                await GameNames.load();
+
+                function normalizeName(name) {
+                    const info = GameNames.lookup(name);
+                    if (!info) return name; // 查不到就保留原名
+                    return info.name_zh || info.name_en || name;
+                }
+                const normalizedSuperLiked  = superLikedGames.map(normalizeName);
+                const normalizedLiked       = likedGames.map(normalizeName);
+                const normalizedNeutral     = neutralGames.map(normalizeName);
+                const normalizedDisliked    = dislikedGames.map(normalizeName);
+                const normalizedWishlist    = wishlistGames.map(normalizeName);
+                const normalizedNoInterest  = noInterestGames.map(normalizeName);
+
+                // 同步更新記憶體（讓 UI 與資料一致）
+                superLikedGames = normalizedSuperLiked;
+                likedGames      = normalizedLiked;
+                neutralGames    = normalizedNeutral;
+                dislikedGames   = normalizedDisliked;
+                wishlistGames   = normalizedWishlist;
+                noInterestGames = normalizedNoInterest;
+
+                // 只送需要更新的欄位（避免帶入 gs_project_id 等系統欄位導致 API 500）
+                const updatedUser = {
+                    super_liked_games: normalizedSuperLiked,
+                    liked_games:       normalizedLiked,
+                    neutral_games:     normalizedNeutral,
+                    disliked_games:    normalizedDisliked,
+                    wishlist:          normalizedWishlist,
+                    no_interest_games: normalizedNoInterest,
+                    pinned_games: JSON.stringify(pinnedGames)
+                };
+                
+                // 用 safePatch 只更新指定欄位（自動偵測網域，boardgamematch.com.tw 改用 GET+PUT）
+                const result = await safePatch(`tables/users/${currentUser.id}`, updatedUser);
+                
+                if (!result || !result.id) {
+                    throw new Error('儲存失敗（伺服器無回應）');
+                }
+                
+                // 更新本地儲存
+                GameMBTI.setCurrentUser(result);
+                
+                messageContainer.innerHTML = '<div class="alert alert-success">✅ 儲存成功！即將返回檔案頁面...</div>';
+                
+                setTimeout(() => {
+                    window.location.href = 'profile.html';
+                }, 1500);
+                
+            } catch (error) {
+                console.error('❌ 儲存錯誤:', error);
+                messageContainer.innerHTML = '<div class="alert alert-error">❌ 儲存失敗，請稍後再試</div>';
+            }
+        }
+    </script>
+</body>
+</html>

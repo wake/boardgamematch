@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清單管理 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        .admin-header {
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+        }
+        .admin-header h2 {
+            margin: 0 0 0.5rem;
+            color: white;
+            background: none;
+            -webkit-text-fill-color: white;
+        }
+        .admin-header p {
+            margin: 0;
+            opacity: 0.9;
+            color: white;
+        }
+        .admin-header .back-btn {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.35rem 1rem;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1.5px solid rgba(255,255,255,0.6);
+            border-radius: 2rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .admin-header .back-btn:hover { background: rgba(255,255,255,0.35); }
+
+        .collection-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border: 2px solid var(--border-color);
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .collection-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        .collection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .collection-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .collection-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-permanent {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .badge-limited {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .badge-publisher {
+            background: #fef9ec;
+            color: #b45309;
+        }
+
+        .badge-yearly {
+            background: #f0fdf4;
+            color: #15803d;
+        }
+
+        .badge-inactive {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .collection-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 480px) {
+            .collection-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+            .btn-group {
+                width: 100%;
+            }
+            .btn-sm {
+                flex: 1;
+                text-align: center;
+                padding: 0.5rem 0.4rem;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .games-input-container {
+            position: relative;
+        }
+
+        .game-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent-color);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            margin: 0.25rem;
+        }
+
+        .game-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .games-display {
+            min-height: 80px;
+            padding: 0.75rem;
+            background: var(--bg-color);
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 0.4rem;
+        }
+
+        /* ── 已加入的遊戲 tag：兩行版 ── */
+        .game-tag {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--accent-color, #c8845a);
+            color: white;
+            padding: 0.5rem 0.9rem 0.4rem;
+            border-radius: 1rem;
+            font-size: 0.9rem;
+            margin: 0;
+            min-width: 80px;
+            max-width: 200px;
+            text-align: center;
+        }
+
+        .game-tag .gt-primary {
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .game-tag .gt-secondary {
+            font-size: 0.78rem;
+            opacity: 0.85;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            margin-top: 0.05rem;
+        }
+
+        .game-tag .gt-remove {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.85);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0;
+            line-height: 1;
+            margin-top: 0.2rem;
+            transition: color 0.15s;
+        }
+        .game-tag .gt-remove:hover { color: white; }
+
+        /* ── 搜尋框 ── */
+        .game-search-box {
+            position: relative;
+            margin-bottom: 0.4rem;
+        }
+
+        .game-search-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.6rem;
+            background: var(--card-bg, #fff);
+            color: var(--text-color);
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .game-search-input:focus {
+            border-color: var(--primary-color, #667eea);
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+
+        /* ── 下拉選單 ── */
+        .game-search-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: var(--card-bg, #fff);
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.6rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            z-index: 200;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .game-search-dropdown.open { display: block; }
+
+        .game-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.65rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.15s;
+        }
+        .game-dropdown-item:last-child { border-bottom: none; }
+        .game-dropdown-item:hover:not(.already-added) { background: var(--bg-light); }
+        .game-dropdown-item.highlighted:not(.already-added) { background: var(--bg-light); }
+        .game-dropdown-item.already-added { opacity: 0.45; cursor: default; }
+
+        .gdi-zh {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-color);
+            flex: 1;
+        }
+        .gdi-en {
+            font-size: 0.82rem;
+            color: var(--text-light);
+        }
+        .gdi-badge {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            background: var(--bg-light);
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.75rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .already-added .gdi-badge {
+            color: #16a34a;
+            background: #dcfce7;
+        }
+
+        .game-search-hint {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin: 0.25rem 0 0;
+        }
+    </style>
+    <!-- Google Sign-In SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- 管理後台驗證 -->
+    <script src="js/admin-auth.js?v=20240222-fix"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script src="js/show-admin-link.js?v=20240222-fix"></script>
+    <script src="js/admin-navbar-cleanup.js"></script>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 頁面標題 -->
+        <div class="admin-header" style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%);">
+            <h2>📋 清單管理</h2>
+            <p>管理常駐主題和限時活動清單</p>
+            <a href="admin.html" class="back-btn">← 返回管理後台</a>
+        </div>
+
+        <!-- 操作按鈕 -->
+        <div style="margin-bottom: 2rem; display: flex; gap: 1rem;">
+            <button class="btn btn-primary" onclick="openAddModal()">
+                ➕ 新增清單
+            </button>
+            <button class="btn btn-secondary" onclick="loadCollections()">
+                🔄 重新載入
+            </button>
+        </div>
+
+        <!-- 限時活動 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">⏰ 限時活動</h2>
+            <div id="limited-list">
+                <div class="simple-hourglass">
+                    <span class="hourglass-icon-simple combined">⏳</span>
+                    <span class="hourglass-text-simple">載入中...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 出版社主打 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">🏢 出版社主打</h2>
+            <div id="publisher-list">
+                <div class="simple-hourglass">
+                    <span class="hourglass-icon-simple combined">⏳</span>
+                    <span class="hourglass-text-simple">載入中...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 年度排行 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">🏆 年度排行</h2>
+            <div id="yearly-list">
+                <div class="simple-hourglass">
+                    <span class="hourglass-icon-simple combined">⏳</span>
+                    <span class="hourglass-text-simple">載入中...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 常駐主題 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">⭐ 常駐主題</h2>
+            <div id="permanent-list">
+                <div class="simple-hourglass">
+                    <span class="hourglass-icon-simple combined">⏳</span>
+                    <span class="hourglass-text-simple">載入中...</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 新增/編輯 Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">新增清單</h2>
+            <form id="collectionForm" onsubmit="saveCollection(event)">
+                <input type="hidden" id="edit-id">
+                
+                <div class="form-group">
+                    <label class="form-label">清單標題 *</label>
+                    <input type="text" id="edit-title" class="form-input" required placeholder="例如：BGG Top 10">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">類型 *</label>
+                        <select id="edit-type" class="form-input" onchange="toggleDateFields()" required>
+                            <option value="permanent">⭐ 常駐主題</option>
+                            <option value="limited">⏰ 限時活動</option>
+                            <option value="publisher">🏢 出版社主打</option>
+                            <option value="yearly">🏆 年度排行</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">圖示 *</label>
+                        <input type="text" id="edit-icon" class="form-input" required placeholder="🎯">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">分類標籤</label>
+                        <select id="edit-category" class="form-input">
+                            <option value="">-- 選擇分類 --</option>
+                            <option value="BGG">BGG</option>
+                            <option value="exhibition">展覽</option>
+                            <option value="genre">類型</option>
+                            <option value="critic">評論家</option>
+                            <option value="publisher">出版社</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">排序順序</label>
+                        <input type="number" id="edit-sort" class="form-input" value="0">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">
+                            每次評價題數
+                            <span style="font-weight: normal; color: var(--text-light); font-size: 0.85rem;">（0 = 全部顯示）</span>
+                        </label>
+                        <input type="number" id="edit-questions" class="form-input" value="0" min="0" placeholder="例如：10">
+                        <small style="color: var(--text-light);">設定後，每次只顯示 N 題，玩家可重複探索</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">清單總遊戲數</label>
+                        <input type="text" id="total-games-count" class="form-input" disabled value="0" style="background: var(--bg-color);">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">描述說明</label>
+                    <textarea id="edit-description" class="form-input" rows="2" placeholder="簡短描述這個清單的內容"></textarea>
+                </div>
+
+                <!-- 日期欄位（僅限時活動顯示） -->
+                <div id="date-fields" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">開始時間</label>
+                            <input type="datetime-local" id="edit-start" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">結束時間</label>
+                            <input type="datetime-local" id="edit-end" class="form-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>遊戲列表 *</span>
+                        <span id="games-count-label" style="font-weight:normal; color:var(--text-light); font-size:0.85rem;">共 0 款</span>
+                    </label>
+
+                    <!-- 已加入的遊戲 tag -->
+                    <div class="games-display" id="games-display">
+                        <p style="color:var(--text-light); margin:0; font-size:0.85rem;">尚未加入遊戲</p>
+                    </div>
+
+                    <!-- 搜尋選擇器 -->
+                    <div class="game-search-box">
+                        <input
+                            type="text"
+                            id="game-search-input"
+                            class="game-search-input"
+                            placeholder="🔍 輸入中文或英文名稱搜尋遊戲…"
+                            autocomplete="off"
+                        />
+                        <div id="game-search-dropdown" class="game-search-dropdown"></div>
+                    </div>
+                    <p class="game-search-hint">從資料庫搜尋並點選加入；找不到的遊戲請先到「遊戲管理」新增</p>
+
+                    <!-- 隱藏的 textarea，存遊戲名稱，供儲存用 -->
+                    <textarea id="edit-games" style="display:none;"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-check">
+                        <input type="checkbox" id="edit-active" checked>
+                        <span>啟用此清單</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let collections = [];
+        let editingId = null;
+
+        // 頁面載入
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCollections();
+            ensureDbGamesLoaded(); // 頁面載入時就預先在背景載入遊戲資料庫
+        });
+
+        // 載入所有清單
+        async function loadCollections() {
+            try {
+                const response = await fetch('tables/game_collections?limit=100&sort=sort_order');
+                const result = await response.json();
+                collections = result.data || [];
+                
+                renderCollections();
+            } catch (error) {
+                console.error('載入清單失敗:', error);
+                alert('載入失敗：' + error.message);
+            }
+        }
+
+        // 渲染清單
+        function renderCollections() {
+            const permanentList  = document.getElementById('permanent-list');
+            const limitedList    = document.getElementById('limited-list');
+            const publisherList  = document.getElementById('publisher-list');
+            const yearlyList     = document.getElementById('yearly-list');
+
+            const isPublisher = c => c.type === 'publisher' || (c.category && (c.category.toLowerCase().includes('publisher') || c.category.includes('出版社')));
+            const permanent  = collections.filter(c => !isPublisher(c) && c.type === 'permanent');
+            const limited    = collections.filter(c => !isPublisher(c) && c.type === 'limited');
+            const publisher  = collections.filter(isPublisher);
+            const yearly     = collections.filter(c => !isPublisher(c) && c.type === 'yearly');
+
+            limitedList.innerHTML = limited.length > 0
+                ? limited.map(c => renderCollectionCard(c)).join('')
+                : '<p style="color: var(--text-light);">尚無限時活動</p>';
+
+            publisherList.innerHTML = publisher.length > 0
+                ? publisher.map(c => renderCollectionCard(c)).join('')
+                : '<p style="color: var(--text-light);">尚無出版社主打</p>';
+
+            yearlyList.innerHTML = yearly.length > 0
+                ? yearly.map(c => renderCollectionCard(c)).join('')
+                : '<p style="color: var(--text-light);">尚無年度排行</p>';
+
+            permanentList.innerHTML = permanent.length > 0 
+                ? permanent.map(c => renderCollectionCard(c)).join('')
+                : '<p style="color: var(--text-light);">尚無常駐主題</p>';
+        }
+
+        // 渲染單個清單卡片
+        function renderCollectionCard(collection) {
+            const gamesCount = Array.isArray(collection.games) ? collection.games.length : 0;
+            const questionsPerSession = collection.questions_per_session || 0;
+            const isActive = collection.is_active !== false;
+            const statusBadge = isActive 
+                ? `<span class="collection-badge badge-${collection.type}">✓ 啟用中</span>`
+                : `<span class="collection-badge badge-inactive">✕ 已停用</span>`;
+
+            let dateInfo = '';
+            if (collection.type === 'limited') {
+                const start = collection.start_date ? new Date(collection.start_date).toLocaleDateString('zh-TW') : '未設定';
+                const end = collection.end_date ? new Date(collection.end_date).toLocaleDateString('zh-TW') : '未設定';
+                dateInfo = `<span>📅 ${start} ~ ${end}</span>`;
+            }
+
+            // 題數顯示
+            let questionsInfo = '';
+            if (questionsPerSession > 0) {
+                questionsInfo = `<span>📝 每次 ${questionsPerSession} 題 / 總共 ${gamesCount} 題</span>`;
+            } else {
+                questionsInfo = `<span>🎮 ${gamesCount} 款遊戲（一次全部）</span>`;
+            }
+
+            return `
+                <div class="collection-card">
+                    <div class="collection-header">
+                        <div class="collection-title">
+                            <span style="font-size: 1.5rem;">${collection.icon || '📋'}</span>
+                            <span>${collection.title}</span>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-secondary" onclick="editCollection('${collection.id}')">✏️ 編輯</button>
+                            <button class="btn btn-sm btn-secondary" onclick="toggleActive('${collection.id}', ${!isActive})">
+                                ${isActive ? '🔕 停用' : '🔔 啟用'}
+                            </button>
+                            <button class="btn btn-sm" style="background: #ef4444; color: white;" onclick="deleteCollection('${collection.id}')">🗑️ 刪除</button>
+                        </div>
+                    </div>
+                    <p style="color: var(--text-light); margin: 0.5rem 0;">${collection.description || '無描述'}</p>
+                    <div class="collection-meta">
+                        ${statusBadge}
+                        ${questionsInfo}
+                        ${collection.category ? `<span>🏷️ ${collection.category}</span>` : ''}
+                        ${dateInfo}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 開啟新增 Modal
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('modal-title').textContent = '新增清單';
+            document.getElementById('collectionForm').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('edit-active').checked = true;
+            document.getElementById('edit-games').value = '';
+            document.getElementById('game-search-input').value = '';
+            refreshGamesDisplay();
+            toggleDateFields();
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        // 開啟編輯 Modal
+        function editCollection(id) {
+            const collection = collections.find(c => c.id === id);
+            if (!collection) return;
+
+            editingId = id;
+            document.getElementById('modal-title').textContent = '編輯清單';
+            document.getElementById('edit-id').value = collection.id;
+            document.getElementById('edit-title').value = collection.title;
+            document.getElementById('edit-type').value = collection.type;
+            document.getElementById('edit-icon').value = collection.icon || '';
+            document.getElementById('edit-category').value = collection.category || '';
+            document.getElementById('edit-sort').value = collection.sort_order || 0;
+            document.getElementById('edit-questions').value = collection.questions_per_session || 0;
+            document.getElementById('edit-description').value = collection.description || '';
+            document.getElementById('edit-active').checked = collection.is_active !== false;
+
+            // 遊戲列表
+            const games = Array.isArray(collection.games) ? collection.games : [];
+            document.getElementById('edit-games').value = games.join('\n');
+            ensureDbGamesLoaded().then(() => refreshGamesDisplay());
+
+            // 日期
+            if (collection.start_date) {
+                document.getElementById('edit-start').value = new Date(collection.start_date).toISOString().slice(0, 16);
+            }
+            if (collection.end_date) {
+                document.getElementById('edit-end').value = new Date(collection.end_date).toISOString().slice(0, 16);
+            }
+
+            toggleDateFields();
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        // 關閉 Modal
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+
+        // 切換日期欄位顯示
+        function toggleDateFields() {
+            const type = document.getElementById('edit-type').value;
+            document.getElementById('date-fields').style.display = type === 'limited' ? 'block' : 'none';
+        }
+
+        // ── 遊戲搜尋選擇器 ────────────────────────────────────────────
+        let allDbGames = [];
+        let dbGamesLoaded = false;
+        let dbGamesLoading = false;
+
+        async function ensureDbGamesLoaded() {
+            if (dbGamesLoaded) return;
+            if (dbGamesLoading) {
+                // 等待已在進行中的載入完成
+                while (dbGamesLoading) await new Promise(r => setTimeout(r, 100));
+                return;
+            }
+            dbGamesLoading = true;
+            // 更新搜尋框 placeholder 提示載入中
+            const inp = document.getElementById('game-search-input');
+            if (inp) inp.placeholder = '⏳ 遊戲資料庫載入中，請稍候…';
+            try {
+                const countRes = await fetch('tables/game_database?limit=1');
+                const countData = await countRes.json();
+                const total = countData.total || 0;
+                const batchSize = 100;
+                const pages = Math.ceil(total / batchSize) || 1;
+                let allData = [];
+                for (let p = 1; p <= pages; p++) {
+                    const r = await fetch(`tables/game_database?page=${p}&limit=${batchSize}`);
+                    const d = await r.json();
+                    allData = allData.concat(d.data || []);
+                }
+                allDbGames = allData.map(g => ({
+                    name_zh:   g.name_zh   || '',
+                    name_en:   g.name_en   || '',
+                    name_ja:   g.name_ja   || '',
+                    bgg_id:    g.bgg_id    || '',
+                    image_url: g.image_url || ''
+                }));
+                dbGamesLoaded = true;
+                if (inp) inp.placeholder = '🔍 輸入中文或英文名稱搜尋遊戲…';
+            } catch(e) {
+                console.error('載入遊戲資料庫失敗', e);
+                if (inp) inp.placeholder = '❌ 載入失敗，請重新整理頁面';
+            } finally {
+                dbGamesLoading = false;
+            }
+        }
+
+        function getCurrentGames() {
+            const ta = document.getElementById('edit-games');
+            return ta.value.split('\n').map(g => g.trim()).filter(Boolean);
+        }
+
+        function refreshGamesDisplay() {
+            const games = getCurrentGames();
+            const display = document.getElementById('games-display');
+            const countLabel = document.getElementById('games-count-label');
+            const countDisplay = document.getElementById('total-games-count');
+
+            if (countLabel) countLabel.textContent = '共 ' + games.length + ' 款';
+            if (countDisplay) countDisplay.value = games.length + ' 款遊戲';
+
+            if (games.length === 0) {
+                display.innerHTML = '<p style="color:var(--text-light); margin:0; font-size:0.85rem;">尚未加入遊戲</p>';
+                return;
+            }
+            display.innerHTML = games.map(name => {
+                const info = allDbGames.find(g =>
+                    g.name_zh === name || g.name_en === name || g.name_ja === name
+                );
+                // 決定主行（top）與副行（sub）
+                let top = name, sub = '';
+                if (info) {
+                    if (info.name_zh) {
+                        top = info.name_zh;
+                        sub = (info.name_en && info.name_en !== top) ? info.name_en : '';
+                    } else if (info.name_ja) {
+                        top = info.name_ja;
+                        sub = (info.name_en && info.name_en !== top) ? info.name_en : '';
+                    } else if (info.name_en) {
+                        top = info.name_en;
+                        sub = '';
+                    }
+                }
+                const escaped = name.replace(/'/g, "\\'");
+                return `<span class="game-tag" title="${name}">
+                    <span class="gt-primary">${top}</span>
+                    ${sub ? `<span class="gt-secondary">${sub}</span>` : ''}
+                    <button type="button" class="gt-remove" onclick="removeGame('${escaped}')" title="移除">&times;</button>
+                </span>`;
+            }).join('');
+        }
+
+        function addGame(name) {
+            const ta = document.getElementById('edit-games');
+            const games = getCurrentGames();
+            if (games.includes(name)) return;
+            games.push(name);
+            ta.value = games.join('\n');
+            refreshGamesDisplay();
+        }
+
+        function removeGame(gameName) {
+            const ta = document.getElementById('edit-games');
+            const games = getCurrentGames().filter(g => g !== gameName);
+            ta.value = games.join('\n');
+            refreshGamesDisplay();
+        }
+
+        // 舊相容
+        function updateGamesDisplay() { refreshGamesDisplay(); }
+
+        // ── 搜尋下拉 ──────────────────────────────────────────────────
+        let searchHighlightIdx = -1;
+
+        function buildDropdown(keyword) {
+            const dd = document.getElementById('game-search-dropdown');
+            if (!keyword.trim()) { dd.classList.remove('open'); return; }
+
+            const kw = keyword.trim().toLowerCase();
+            const current = getCurrentGames();
+
+            // 相關性分數排序（同 edit-games-drag.html）
+            function matchScore(g) {
+                const zh = (g.name_zh || '').toLowerCase();
+                const en = (g.name_en || '').toLowerCase();
+                const ja = (g.name_ja || '').toLowerCase();
+                function nameScore(name) {
+                    if (!name) return 0;
+                    const ratio = kw.length / name.length;
+                    if (name === kw) return 100;
+                    if (name.startsWith(kw)) return 70 * (0.5 + ratio * 0.5);
+                    if (name.includes(kw)) return 40 * (0.3 + ratio * 0.7);
+                    return 0;
+                }
+                return Math.max(nameScore(zh) * 1.2, nameScore(en), nameScore(ja));
+            }
+
+            const matched = allDbGames
+                .map(g => ({ g, score: matchScore(g) }))
+                .filter(x => x.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 12)
+                .map(x => x.g);
+
+            if (matched.length === 0) {
+                dd.innerHTML = '<div style="padding:0.75rem 1rem; color:var(--text-light); font-size:0.875rem;">找不到符合的遊戲，請到「遊戲管理」新增</div>';
+                dd.classList.add('open');
+                return;
+            }
+
+            dd.innerHTML = matched.map((g, i) => {
+                const primary = g.name_zh || g.name_en || g.name_ja;
+                const secondary = primary === g.name_en ? '' : (g.name_en ? g.name_en : (g.name_ja || ''));
+                const added = current.includes(primary) || (g.name_en && current.includes(g.name_en));
+                const bggTxt = g.bgg_id ? 'BGG #' + g.bgg_id : '';
+                const safeName = primary.replace(/'/g, "\\'");
+                return `<div class="game-dropdown-item${added ? ' already-added' : ''}" data-name="${primary}" data-idx="${i}"
+                    onclick="${added ? '' : `selectGameFromDropdown('${safeName}')`}">
+                    <span class="gdi-zh">${primary}</span>
+                    ${secondary ? `<span class="gdi-en">${secondary}</span>` : ''}
+                    <span class="gdi-badge">${added ? '✓ 已加入' : bggTxt}</span>
+                </div>`;
+            }).join('');
+
+            searchHighlightIdx = -1;
+            dd.classList.add('open');
+        }
+
+        function selectGameFromDropdown(name) {
+            addGame(name);
+            document.getElementById('game-search-input').value = '';
+            document.getElementById('game-search-dropdown').classList.remove('open');
+        }
+
+        function handleSearchKey(e) {
+            const dd = document.getElementById('game-search-dropdown');
+            const items = dd.querySelectorAll('.game-dropdown-item:not(.already-added)');
+            if (!dd.classList.contains('open') || items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                searchHighlightIdx = Math.min(searchHighlightIdx + 1, items.length - 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                searchHighlightIdx = Math.max(searchHighlightIdx - 1, 0);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (searchHighlightIdx >= 0) items[searchHighlightIdx].click();
+                return;
+            } else if (e.key === 'Escape') {
+                dd.classList.remove('open'); return;
+            } else { return; }
+
+            items.forEach((el, i) => el.classList.toggle('highlighted', i === searchHighlightIdx));
+            if (items[searchHighlightIdx]) items[searchHighlightIdx].scrollIntoView({ block: 'nearest' });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('game-search-input');
+            if (!input) return;
+
+            input.addEventListener('focus', async () => {
+                await ensureDbGamesLoaded();
+                if (input.value.trim()) buildDropdown(input.value);
+            });
+
+            input.addEventListener('input', async (e) => {
+                await ensureDbGamesLoaded();
+                buildDropdown(e.target.value);
+            });
+
+            input.addEventListener('keydown', handleSearchKey);
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.game-search-box')) {
+                    document.getElementById('game-search-dropdown').classList.remove('open');
+                }
+            });
+        });
+
+        // 儲存清單
+        async function saveCollection(event) {
+            event.preventDefault();
+
+            const id = editingId; // 新增時不指定 ID，讓 API 自動產生 UUID
+            const title = document.getElementById('edit-title').value.trim();
+            const type = document.getElementById('edit-type').value;
+            const icon = document.getElementById('edit-icon').value.trim();
+            const category = document.getElementById('edit-category').value.trim();
+            const sortOrder = parseInt(document.getElementById('edit-sort').value) || 0;
+            const questionsPerSession = parseInt(document.getElementById('edit-questions').value) || 0;
+            const description = document.getElementById('edit-description').value.trim();
+            const isActive = document.getElementById('edit-active').checked;
+            
+            // 遊戲列表
+            const gamesText = document.getElementById('edit-games').value;
+            const games = gamesText.split('\n').map(g => g.trim()).filter(g => g);
+
+            if (games.length === 0) {
+                alert('請至少加入一款遊戲！');
+                return;
+            }
+
+            // ── 建立 games_cache：{ name, image_url } 陣列 ──
+            // 從已載入的 allDbGames 中比對，找到就記下 image_url
+            const BGG_PLACEHOLDER = 'pic1657689';
+            const gamesCache = games.map(name => {
+                const found = allDbGames.find(g =>
+                    g.name_zh === name || g.name_en === name || g.name_ja === name
+                );
+                let img = (found && found.image_url && found.image_url.startsWith('http') && !found.image_url.includes(BGG_PLACEHOLDER))
+                    ? found.image_url : '';
+                return { name, image_url: img };
+            });
+            const cacheHit = gamesCache.filter(c => c.image_url).length;
+            console.log(`📦 games_cache 建立完成：${games.length} 款遊戲，${cacheHit} 款有封面圖`);
+
+            const data = {
+                title,
+                type,
+                icon,
+                category,
+                games,
+                games_cache: JSON.stringify(gamesCache), // 封面快取，字串形式存入 DB
+                description,
+                sort_order: sortOrder,
+                questions_per_session: questionsPerSession,
+                is_active: isActive
+            };
+            if (editingId) data.id = editingId; // 更新時才帶 id
+
+            // 如果是限時活動，加入日期
+            if (type === 'limited') {
+                const startDate = document.getElementById('edit-start').value;
+                const endDate = document.getElementById('edit-end').value;
+                
+                if (startDate) data.start_date = new Date(startDate).toISOString();
+                if (endDate) data.end_date = new Date(endDate).toISOString();
+            }
+
+            try {
+                let response;
+                if (editingId) {
+                    // 更新
+                    response = await fetch(`tables/game_collections/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    // 新增
+                    response = await fetch('tables/game_collections', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                if (!response.ok) throw new Error('儲存失敗');
+
+                const isNew = !editingId;
+                alert(editingId ? '✅ 更新成功！' : '✅ 新增成功！');
+                closeModal();
+                loadCollections();
+
+                // 初始化 collection_game_stats（新增清單，或更新清單的遊戲列表有變化時）
+                await syncCollectionGameStats(id, games);
+
+            } catch (error) {
+                console.error('儲存失敗:', error);
+                alert('儲存失敗：' + error.message);
+            }
+        }
+
+        // 同步 collection_game_stats：確保清單內每款遊戲都有初始紀錄
+        async function syncCollectionGameStats(collectionId, games) {
+            try {
+                // 取得已存在的紀錄
+                const r = await fetch(`tables/collection_game_stats?limit=5000`);
+                if (!r.ok) return;
+                const d = await r.json();
+                const existing = (d.data || []).filter(s => s.collection_id === collectionId);
+                const existingNames = new Set(existing.map(s => s.game_name));
+
+                // 找出尚未建立紀錄的遊戲
+                const missing = games.filter(g => !existingNames.has(g));
+                if (missing.length === 0) {
+                    console.log(`✅ collection_game_stats 已是最新，無需新增`);
+                    return;
+                }
+
+                // 逐一新增（背景非同步，不擋 UI）
+                console.log(`📊 初始化 ${missing.length} 筆 collection_game_stats...`);
+                await Promise.all(missing.map(gameName =>
+                    fetch('tables/collection_game_stats', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            id: `cgs_${collectionId.slice(-6)}_${gameName.slice(0,6).replace(/\s/g,'')}_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+                            collection_id: collectionId,
+                            game_name: gameName,
+                            like_count: 0,
+                            wishlist_count: 0
+                        })
+                    }).catch(e => console.warn(`⚠️ 初始化 ${gameName} 失敗:`, e))
+                ));
+                console.log(`✅ collection_game_stats 初始化完成`);
+            } catch(e) {
+                console.warn('⚠️ syncCollectionGameStats 失敗:', e);
+            }
+        }
+
+        // 切換啟用狀態
+        async function toggleActive(id, isActive) {
+            if (!confirm(`確定要${isActive ? '啟用' : '停用'}此清單嗎？`)) return;
+
+            try {
+                const response = await fetch(`tables/game_collections/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: isActive })
+                });
+
+                if (!response.ok) throw new Error('更新失敗');
+
+                alert(`✅ 已${isActive ? '啟用' : '停用'}！`);
+                loadCollections();
+            } catch (error) {
+                console.error('更新失敗:', error);
+                alert('更新失敗：' + error.message);
+            }
+        }
+
+        // 刪除清單
+        async function deleteCollection(id) {
+            const collection = collections.find(c => c.id === id);
+            if (!collection) return;
+
+            if (!confirm(`確定要刪除「${collection.title}」嗎？\n\n此操作無法復原！`)) return;
+
+            try {
+                const response = await fetch(`tables/game_collections/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('刪除失敗');
+
+                alert('✅ 刪除成功！');
+                loadCollections();
+            } catch (error) {
+                console.error('刪除失敗:', error);
+                alert('刪除失敗：' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

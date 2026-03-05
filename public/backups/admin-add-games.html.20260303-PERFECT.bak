@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新增遊戲 - BGG 批次匯入</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="js/admin-auth.js?v=20240222-fix"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ── 步驟區塊 ── */
+        .step-card {
+            background: var(--card-bg);
+            border-radius: 1.25rem;
+            padding: 1.75rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1.5rem;
+            border: 1.5px solid var(--border-color);
+        }
+        .step-card h2 {
+            font-size: 1.05rem; font-weight: 700;
+            color: var(--text-color);
+            margin: 0 0 1.25rem;
+            display: flex; align-items: center; gap: 0.6rem;
+        }
+        .step-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 1.75rem; height: 1.75rem;
+            background: var(--primary-color);
+            color: white; border-radius: 50%;
+            font-size: 0.8rem; font-weight: 700;
+        }
+
+        /* ── 輸入區 ── */
+        textarea#bgg-ids {
+            width: 100%; height: 120px;
+            padding: 0.75rem 1rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.75rem;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+        textarea#bgg-ids:focus { border-color: var(--primary-color); outline: none; }
+
+        .input-hint {
+            font-size: 0.8rem; color: var(--text-light);
+            margin-top: 0.5rem; line-height: 1.5;
+        }
+        .input-hint a { color: var(--primary-color); text-decoration: none; }
+        .input-hint a:hover { text-decoration: underline; }
+
+        /* ── 按鈕 ── */
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.7rem 1.6rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 0.75rem;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 3px 12px rgba(102,126,234,0.35);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(102,126,234,0.45); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-success {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.7rem 1.6rem;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white; border: none; border-radius: 0.75rem;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 3px 12px rgba(16,185,129,0.35);
+        }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.45); }
+        .btn-success:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-danger {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            background: transparent;
+            color: #ef4444; border: 1.5px solid #ef4444; border-radius: 0.6rem;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-danger:hover { background: #ef4444; color: white; }
+        .btn-secondary {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            background: transparent;
+            color: var(--text-light); border: 1.5px solid var(--border-color); border-radius: 0.6rem;
+            font-size: 0.8rem; font-weight: 500; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-secondary:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+        /* ── 進度 ── */
+        .progress-bar-wrap {
+            background: var(--border-color);
+            border-radius: 999px; height: 8px; margin: 0.75rem 0;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 999px;
+            transition: width 0.3s;
+        }
+        .progress-text { font-size: 0.82rem; color: var(--text-light); }
+
+        /* ── 預覽表格 ── */
+        .preview-table-wrap {
+            overflow-x: auto;
+            border-radius: 0.75rem;
+            border: 1.5px solid var(--border-color);
+        }
+        table.preview-table {
+            width: 100%; border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        table.preview-table th {
+            background: var(--bg-color);
+            padding: 0.65rem 0.9rem;
+            text-align: left; font-weight: 600;
+            color: var(--text-light);
+            border-bottom: 1.5px solid var(--border-color);
+            white-space: nowrap;
+        }
+        table.preview-table td {
+            padding: 0.75rem 0.9rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        table.preview-table tr:last-child td { border-bottom: none; }
+        table.preview-table tr:hover td { background: var(--bg-color); }
+        table.preview-table tr.row-error td { background: #fef2f2; }
+        table.preview-table tr.row-exists td { background: #fefce8; }
+        table.preview-table tr.row-ok td { background: #f0fdf4; }
+
+        .game-cover-thumb {
+            width: 48px; height: 48px;
+            border-radius: 0.4rem; object-fit: cover;
+            border: 1px solid var(--border-color);
+        }
+        .cover-placeholder {
+            width: 48px; height: 48px;
+            border-radius: 0.4rem;
+            background: var(--border-color);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        /* 可編輯欄位 */
+        .edit-input {
+            width: 100%; padding: 0.3rem 0.5rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.4rem;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: inherit; font-size: 0.83rem;
+            transition: border-color 0.2s;
+        }
+        .edit-input:focus { border-color: var(--primary-color); outline: none; }
+        .edit-input.name-input { min-width: 100px; }
+        .edit-input.num-input { max-width: 64px; }
+
+        /* 狀態標籤 */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            padding: 0.22rem 0.6rem;
+            border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-ok     { background: #dcfce7; color: #166534; }
+        .badge-exists { background: #fef9c3; color: #713f12; }
+        .badge-error  { background: #fee2e2; color: #991b1b; }
+        .badge-skip   { background: #f1f5f9; color: #64748b; }
+
+        /* ── 結果摘要 ── */
+        .result-summary {
+            display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;
+        }
+        .result-stat {
+            flex: 1; min-width: 100px;
+            background: var(--bg-color);
+            border-radius: 0.75rem;
+            padding: 0.85rem 1rem;
+            border: 1.5px solid var(--border-color);
+            text-align: center;
+        }
+        .result-stat .num { font-size: 1.6rem; font-weight: 800; color: var(--primary-color); }
+        .result-stat .label { font-size: 0.78rem; color: var(--text-light); margin-top: 0.15rem; }
+
+        /* ── 匯入結果 log ── */
+        #import-log {
+            background: #0f172a; color: #94a3b8;
+            border-radius: 0.75rem; padding: 1rem 1.25rem;
+            font-family: monospace; font-size: 0.82rem;
+            line-height: 1.7; max-height: 280px; overflow-y: auto;
+        }
+        #import-log .log-ok    { color: #34d399; }
+        #import-log .log-skip  { color: #fbbf24; }
+        #import-log .log-err   { color: #f87171; }
+        #import-log .log-info  { color: #60a5fa; }
+
+        /* ── BGG ID 欄位 ── */
+        .bgg-id-cell {
+            display: flex; flex-direction: column; gap: 0.3rem;
+            align-items: flex-start;
+        }
+        .bgg-id-num {
+            font-family: monospace; font-size: 0.88rem; font-weight: 700;
+            color: var(--primary-color);
+            background: rgba(102,126,234,0.1);
+            padding: 0.15rem 0.45rem; border-radius: 0.35rem;
+            white-space: nowrap;
+        }
+        .bgg-id-actions {
+            display: flex; gap: 0.25rem;
+        }
+        .bgg-id-btn {
+            padding: 0.18rem 0.38rem;
+            font-size: 0.72rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.3rem;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: all 0.15s;
+            line-height: 1.4;
+        }
+        .bgg-id-btn:hover { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .bgg-id-btn.copied { background: #10b981; color: white; border-color: #10b981; }
+
+        /* ── 搜尋輔助 ── */
+        .bgg-search-row {
+            display: flex; gap: 0.75rem; align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .bgg-search-row input {
+            flex: 1; padding: 0.6rem 0.9rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.65rem;
+            background: var(--bg-color); color: var(--text-color);
+            font-family: inherit; font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+        .bgg-search-row input:focus { border-color: var(--primary-color); outline: none; }
+
+        .search-results {
+            background: var(--card-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.75rem;
+            max-height: 280px; overflow-y: auto;
+        }
+        .search-result-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.65rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer; transition: background 0.15s;
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-item:hover { background: var(--bg-color); }
+        .search-result-item img {
+            width: 40px; height: 40px;
+            border-radius: 0.3rem; object-fit: cover;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .search-result-item .info { flex: 1; min-width: 0; }
+        .search-result-item .sname { font-size: 0.88rem; font-weight: 600; color: var(--text-color); }
+        .search-result-item .smeta { font-size: 0.77rem; color: var(--text-light); margin-top: 0.1rem; }
+        .search-result-item .sid   { font-size: 0.75rem; color: var(--text-light); font-family: monospace; }
+        .search-result-item .sadd  {
+            padding: 0.25rem 0.7rem; font-size: 0.78rem; font-weight: 600;
+            background: var(--primary-color); color: white;
+            border: none; border-radius: 0.4rem; cursor: pointer; flex-shrink: 0;
+        }
+        .search-result-item .sadd:hover { opacity: 0.85; }
+
+        /* ── 空白提示 ── */
+        .empty-hint {
+            text-align: center; padding: 2.5rem;
+            color: var(--text-light); font-size: 0.9rem;
+        }
+        .empty-hint .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+
+        @media (max-width: 700px) {
+            .result-summary { gap: 0.5rem; }
+            .result-stat .num { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text">
+                    <span>MBTI ×</span>
+                    <span>桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="admin.html">後台管理</a></li>
+                <li><a href="admin-add-games.html" class="active">新增遊戲</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">🎲 BGG 批次匯入遊戲</h1>
+            <p class="page-subtitle">匯入 BGG 收藏 CSV，或輸入 ID 自動抓取資料，快速擴充遊戲資料庫</p>
+        </div>
+
+        <!-- ── STEP 0: BGG 搜尋輔助 ── -->
+        <div class="step-card">
+            <h2><span class="step-badge">🔍</span> 搜尋 BGG 遊戲（找 ID 用）</h2>
+            <div class="bgg-search-row">
+                <input type="text" id="bgg-search-input" placeholder="輸入遊戲名稱搜尋，例如：Wingspan、璀璨寶石" />
+                <button class="btn-primary" onclick="searchBGG()">搜尋</button>
+            </div>
+            <div id="bgg-search-results" style="display:none;"></div>
+        </div>
+
+        <!-- ── 方法 A: CSV 匯入 ── -->
+        <div class="step-card">
+            <h2><span class="step-badge">A</span> 從 BGG 收藏 CSV 匯入（推薦）</h2>
+            <div class="input-hint" style="margin-bottom:1rem;">
+                📥 至 <a href="https://boardgamegeek.com/collection/user/你的帳號" target="_blank">BGG 我的收藏</a> → 右上角「Export」→ 下載 CSV，再拖曳到這裡。<br>
+                CSV 已包含所有欄位（英文名、BGG ID、玩家數、時間、複雜度等），<strong>無需再呼叫 API</strong>，速度最快！
+            </div>
+            <div id="csv-drop-zone" style="
+                border: 2px dashed var(--border-color); border-radius: 0.85rem;
+                padding: 2rem; text-align: center; cursor: pointer;
+                transition: all 0.2s; background: var(--bg-color);
+                color: var(--text-light); font-size: 0.9rem;
+            "
+            ondragover="event.preventDefault();this.style.borderColor='var(--primary-color)';this.style.background='rgba(102,126,234,0.05)';"
+            ondragleave="this.style.borderColor='var(--border-color)';this.style.background='var(--bg-color)';"
+            ondrop="handleCsvDrop(event)"
+            onclick="document.getElementById('csv-file-input').click()">
+                <div style="font-size:2.5rem; margin-bottom:0.5rem;">📄</div>
+                <div>拖曳 BGG 收藏 CSV 到此處，或<strong style="color:var(--primary-color);">點擊選擇檔案</strong></div>
+                <div style="font-size:0.78rem; margin-top:0.4rem;">支援 BGG 官方匯出格式（collection.csv）</div>
+            </div>
+            <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCsvFile(this.files[0])">
+            <div id="csv-status" style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-light);"></div>
+            <!-- 篩選選項 -->
+            <div id="csv-options" style="display:none; margin-top:1rem; display:flex; gap:1.25rem; flex-wrap:wrap; align-items:center;">
+                <label style="font-size:0.85rem; color:var(--text-light); display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                    <input type="checkbox" id="csv-only-owned" checked style="accent-color:var(--primary-color);"> 只匯入「我擁有」的遊戲（own=1）
+                </label>
+                <label style="font-size:0.85rem; color:var(--text-light); display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                    <input type="checkbox" id="csv-skip-expansion" checked style="accent-color:var(--primary-color);"> 跳過擴充包（itemtype=expansion）
+                </label>
+                <button class="btn-primary" id="csv-import-btn" onclick="processCsvData()">
+                    <span>📊</span> 解析 CSV 資料
+                </button>
+            </div>
+        </div>
+
+        <!-- ── 方法 B: 輸入 BGG ID ── -->
+        <div class="step-card">
+            <h2><span class="step-badge">B</span> 手動輸入 BGG ID（逐一抓取）</h2>
+            <textarea id="bgg-ids" placeholder="每行一個 BGG ID，例如：&#10;174430&#10;224517&#10;266192&#10;162886"></textarea>
+            <div class="input-hint">
+                💡 如何找到 BGG ID？前往
+                <a href="https://boardgamegeek.com" target="_blank">boardgamegeek.com</a>
+                搜尋遊戲，開啟遊戲頁面後網址為
+                <code>boardgamegeek.com/boardgame/<strong>174430</strong>/gloomhaven</code>，
+                粗體數字就是 ID。也可以用上方搜尋工具直接找。
+            </div>
+            <div style="display:flex; gap:0.75rem; margin-top:1rem; flex-wrap:wrap; align-items:center;">
+                <button class="btn-primary" id="fetch-btn" onclick="fetchGames()">
+                    <span>📡</span> 抓取遊戲資料（Jina）
+                </button>
+                <button class="btn-secondary" onclick="clearAll()">清除</button>
+                <span id="fetch-status" style="font-size:0.85rem; color:var(--text-light);"></span>
+            </div>
+            <div id="fetch-progress" style="display:none; margin-top:0.75rem;">
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+                </div>
+                <div class="progress-text" id="progress-text">準備中...</div>
+            </div>
+        </div>
+
+        <!-- ── STEP 2: 預覽 & 編輯 ── -->
+        <div class="step-card" id="preview-section" style="display:none;">
+            <h2><span class="step-badge">2</span> 預覽 & 編輯資料</h2>
+            <div class="result-summary" id="preview-summary"></div>
+            <div style="display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
+                <label style="font-size:0.85rem; color:var(--text-light); display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                    <input type="checkbox" id="skip-existing" checked style="accent-color:var(--primary-color);">
+                    跳過已存在的遊戲
+                </label>
+                <label style="font-size:0.85rem; color:var(--text-light); display:flex; align-items:center; gap:0.4rem; cursor:pointer; margin-left:0.5rem;">
+                    <input type="checkbox" id="select-all" checked style="accent-color:var(--primary-color);" onchange="toggleAllSelect(this.checked)">
+                    全選
+                </label>
+            </div>
+            <div class="preview-table-wrap">
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th style="width:36px;"></th>
+                            <th style="width:60px;">封面</th>
+                            <th style="width:110px;">BGG ID</th>
+                            <th>中文名</th>
+                            <th>英文名</th>
+                            <th>日文名</th>
+                            <th style="width:56px;">年份</th>
+                            <th style="width:80px;">玩家數</th>
+                            <th style="width:70px;">時間(分)</th>
+                            <th style="width:70px;">複雜度</th>
+                            <th style="width:80px;">狀態</th>
+                            <th style="width:60px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── STEP 3: 匯入 ── -->
+        <div class="step-card" id="import-section" style="display:none;">
+            <h2><span class="step-badge">3</span> 寫入資料庫</h2>
+            <div style="display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
+                <button class="btn-success" id="import-btn" onclick="importGames()">
+                    <span>💾</span> 開始匯入所選遊戲
+                </button>
+                <span id="import-status" style="font-size:0.85rem; color:var(--text-light);"></span>
+            </div>
+            <div id="import-progress" style="display:none; margin-bottom:0.75rem;">
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar-fill" id="import-progress-fill" style="width:0%"></div>
+                </div>
+                <div class="progress-text" id="import-progress-text">準備中...</div>
+            </div>
+            <div id="import-log" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+    // ── 全域狀態 ──
+    let fetchedGames = [];   // [{bggId, status, data, selected, rowId}, ...]
+    let existingBggIds = new Set();  // 資料庫中已有的 bgg_id
+
+    // ── Jina proxy：讀取 BGG 頁面（Markdown 純文字，無 CORS 問題）──
+    async function fetchBGGPage(bggId) {
+        const pageUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
+        const proxyUrl = `https://r.jina.ai/${pageUrl}`;
+        const resp = await fetch(proxyUrl, {
+            headers: { 'X-No-Cache': 'true' },
+            signal: AbortSignal.timeout(25000)
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.text();
+    }
+
+    // ── BGG XML API：直接取得結構化資料（年份、名稱、玩家數、時間、複雜度、描述）──
+    // 透過 allorigins CORS proxy 繞過瀏覽器同源限制
+    async function fetchBGGXmlApi(bggId) {
+        const apiUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+        // 使用 allorigins proxy（回傳 JSON，contents 裡是原始 XML）
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
+        const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
+        if (!resp.ok) throw new Error(`allorigins HTTP ${resp.status}`);
+        const json = await resp.json();
+        const xmlText = json.contents;
+        if (!xmlText) throw new Error('allorigins 回傳空內容');
+        const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
+        const item = xml.querySelector('item');
+        if (!item) throw new Error('XML 中找不到 item 元素');
+        return item;
+    }
+
+    // ── Jina proxy：搜尋 BGG（用 allorigins 讀 BGG XML search API）──
+    async function fetchBGGSearchXML(url) {
+        const proxyUrl = `https://r.jina.ai/${url}`;
+        const resp = await fetch(proxyUrl, {
+            headers: { 'X-No-Cache': 'true' },
+            signal: AbortSignal.timeout(15000)
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const text = await resp.text();
+        // Jina 回的是 Markdown，但 XML 也可能直接包在裡面，嘗試提取
+        // 先嘗試直接解析（有時 Jina 會回純 XML）
+        try {
+            const xml = new DOMParser().parseFromString(text, 'text/xml');
+            if (xml.querySelector('items,item')) return xml;
+        } catch(e) {}
+        // 若是 Markdown 包裝，提取 <items> 區塊
+        const xmlMatch = text.match(/<\?xml[\s\S]*?<\/items>/i) || text.match(/<items[\s\S]*?<\/items>/i);
+        if (xmlMatch) return new DOMParser().parseFromString(xmlMatch[0], 'text/xml');
+        throw new Error('無法解析搜尋結果');
+    }
+
+    // ── 搜尋 BGG（透過 Jina 讀 BGG XML Search API）──
+    async function searchBGG() {
+        const q = document.getElementById('bgg-search-input').value.trim();
+        if (!q) return;
+        const resultsEl = document.getElementById('bgg-search-results');
+        resultsEl.style.display = 'block';
+        resultsEl.innerHTML = '<div style="padding:1.2rem;text-align:center;color:var(--text-light);font-size:0.88rem;">🔍 搜尋中...</div>';
+
+        try {
+            const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(q)}&type=boardgame`;
+            const xml = await fetchBGGSearchXML(searchUrl);
+            const items = xml.querySelectorAll('item');
+            if (!items.length) {
+                resultsEl.innerHTML = '<div style="padding:1.2rem;text-align:center;color:var(--text-light);">沒有找到結果，請換個關鍵字試試</div>';
+                return;
+            }
+            const list = Array.from(items).slice(0, 20).map(item => ({
+                id: item.getAttribute('id'),
+                name: item.querySelector('name')?.getAttribute('value') || '未知',
+                year: item.querySelector('yearpublished')?.getAttribute('value') || ''
+            }));
+            resultsEl.innerHTML = list.map(g => `
+                <div class="search-result-item">
+                    <div class="info">
+                        <div class="sname">${escHtml(g.name)}</div>
+                        <div class="smeta">${g.year ? `${g.year} 年` : ''} &nbsp;
+                            <span class="sid">BGG ID: ${g.id}</span>
+                        </div>
+                    </div>
+                    <button class="sadd" onclick="addIdFromSearch('${g.id}', this)">+ 加入</button>
+                </div>`).join('');
+        } catch(e) {
+            resultsEl.innerHTML = `<div style="padding:1.2rem;text-align:center;color:#ef4444;font-size:0.85rem;">⚠️ 搜尋失敗：${e.message}</div>`;
+        }
+    }
+
+    // 把搜尋到的 ID 加進 textarea
+    function addIdFromSearch(id, btn) {
+        const ta = document.getElementById('bgg-ids');
+        const current = ta.value.trim();
+        const ids = current ? current.split('\n').map(s => s.trim()).filter(Boolean) : [];
+        if (!ids.includes(id)) {
+            ta.value = (current ? current + '\n' : '') + id;
+            btn.textContent = '✓ 已加入';
+            btn.disabled = true;
+            btn.style.background = '#10b981';
+        }
+    }
+
+    // Enter 鍵也可搜尋
+    document.getElementById('bgg-search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') searchBGG();
+    });
+
+    // ── 抓取遊戲資料 ──
+    async function fetchGames() {
+        const raw = document.getElementById('bgg-ids').value.trim();
+        if (!raw) {
+            alert('請輸入至少一個 BGG ID');
+            return;
+        }
+        const ids = [...new Set(raw.split('\n').map(s => s.trim()).filter(s => /^\d+$/.test(s)))];
+        if (!ids.length) {
+            alert('沒有找到有效的 BGG ID（應為純數字）');
+            return;
+        }
+
+        // 先查資料庫中已有哪些 bgg_id
+        await loadExistingBggIds();
+
+        // UI 狀態
+        const btn = document.getElementById('fetch-btn');
+        btn.disabled = true;
+        document.getElementById('fetch-progress').style.display = 'block';
+        document.getElementById('preview-section').style.display = 'none';
+        document.getElementById('import-section').style.display = 'none';
+        fetchedGames = [];
+
+        // 逐一用 Jina 抓每個 BGG 頁面
+        for (let i = 0; i < ids.length; i++) {
+            setProgress('fetch', i + 1, ids.length, `抓取中 ${i + 1} / ${ids.length}：ID ${ids[i]}`);
+            await processOneByJina(ids[i]);
+            if (i < ids.length - 1) await sleep(600); // 避免請求太快
+        }
+
+        btn.disabled = false;
+        document.getElementById('fetch-progress').style.display = 'none';
+        document.getElementById('fetch-status').textContent = `✅ 完成，共 ${fetchedGames.length} 筆`;
+        renderPreview();
+    }
+
+    // ── 用三管道抓單一 BGG 遊戲資料 ──
+    // 管道 A：Jina credits 頁   → 英文名、中文名、日文名、年份（最準確，與 B 並行）
+    // 管道 B：Jina 主頁         → 封面圖 URL（唯一解，不動）
+    // 管道 C：BGG XML API       → 補充玩家數、時間、複雜度、描述（credits 缺失時補底）
+    async function processOneByJina(bggId) {
+        try {
+            // ════════════════════════════════════════════════
+            // 管道 A + B 並行：credits 頁（名稱/年份）+ Jina 主頁（封面圖）
+            // ════════════════════════════════════════════════
+
+            // 先用 bggId 組一個暫時 slug，credits 頁 BGG 對非標準 slug 通常也能重導向
+            const tempSlug = bggId;
+            const creditsUrl   = `https://boardgamegeek.com/boardgame/${bggId}/${tempSlug}/credits`;
+            const creditsProxy = `https://r.jina.ai/${creditsUrl}`;
+
+            const [creditsResult, jinaResult] = await Promise.allSettled([
+                fetch(creditsProxy, { headers: { 'X-No-Cache': 'true' }, signal: AbortSignal.timeout(20000) }).then(r => r.ok ? r.text() : Promise.reject(new Error(`HTTP ${r.status}`))),
+                fetchBGGPage(bggId)
+            ]);
+
+            // ── 管道 A 結果：從 credits 頁解析英文名、中文名、日文名、年份 ──
+            let creditsData = null;
+            if (creditsResult.status === 'fulfilled') {
+                const cText = creditsResult.value;
+                let nameEn = '', nameZh = '', nameJa = '', year = null;
+
+                // Primary Name → 英文名
+                const primaryMatch = cText.match(/Primary\s+Name[:\s\n]+([^\n]+)/i);
+                if (primaryMatch) {
+                    nameEn = primaryMatch[1].replace(/\*+/g, '').replace(/\[.*?\]/g, '').trim();
+                }
+
+                // Alternate Names → 中文 & 日文
+                const altSection = cText.match(/Alternate\s+Names?[\s\S]*?\n([\s\S]+?)(?=\n#{1,3}\s|\n\*\*[A-Z]|\nYear|\nPublisher|\nDesigner|$)/i);
+                if (altSection) {
+                    const altLines = altSection[1]
+                        .split('\n')
+                        .map(l => l.replace(/\*+/g, '').replace(/\[.*?\]/g, '').replace(/^[-•\s]+/, '').trim())
+                        .filter(l => l.length >= 2);
+                    nameZh = altLines.find(l => /[\u4e00-\u9fff]/.test(l) && !/[\u3040-\u309f\u30a0-\u30ff]/.test(l)) || '';
+                    nameJa = altLines.find(l => /[\u3040-\u309f\u30a0-\u30ff]/.test(l)) || '';
+                }
+
+                // Year Released
+                const yearMatch = cText.match(/Year\s+(?:Released|Published)[:\s\n]+(\d{4})/i);
+                if (yearMatch) year = parseInt(yearMatch[1]);
+
+                creditsData = { name_en: nameEn, name_zh: nameZh, name_ja: nameJa, year };
+                console.log(`[BGG ${bggId}] credits 資料:`, creditsData);
+            } else {
+                console.warn(`[BGG ${bggId}] credits 頁失敗:`, creditsResult.reason?.message);
+            }
+
+            // ── 管道 B 結果：從 Jina Markdown 提取封面圖（唯一解，不動）──
+            let imageUrl = '';
+            if (jinaResult.status === 'fulfilled') {
+                const text = jinaResult.value;
+                console.log(`[BGG ${bggId}] Jina 前 300 字:`, text.slice(0, 300));
+                imageUrl = extractImageFromMarkdown(text);
+            } else {
+                console.warn(`[BGG ${bggId}] Jina 失敗:`, jinaResult.reason?.message);
+            }
+
+            // ── 若兩個都失敗，則回報錯誤 ──
+            if (!creditsData && !imageUrl) {
+                throw new Error('credits 頁與 Jina 均失敗');
+            }
+
+            // ── 組出初始 game 物件（credits 優先，封面用 Jina）──
+            let game = {
+                name_en:      creditsData?.name_en || '',
+                name_zh:      creditsData?.name_zh || '',
+                name_ja:      creditsData?.name_ja || '',
+                year:         creditsData?.year    || null,
+                min_players:  null,
+                max_players:  null,
+                playing_time: null,
+                complexity:   null,
+                description:  '',
+                image_url:    imageUrl,
+                bgg_id:       bggId,
+                source:       'BGG',
+            };
+
+            // ════════════════════════════════════════════════
+            // 管道 C：BGG XML API → 補充玩家數、時間、複雜度、描述
+            // 也補 credits 可能缺失的英文名 / 年份
+            // ════════════════════════════════════════════════
+            try {
+                const xmlItem = await fetchBGGXmlApi(bggId);
+
+                // 英文名：credits 沒抓到才用 XML
+                if (!game.name_en) {
+                    game.name_en = xmlItem.querySelector('name[type="primary"]')?.getAttribute('value') || '';
+                }
+                // 中日文：credits 沒抓到才用 XML
+                if (!game.name_zh) {
+                    const allNames = [...xmlItem.querySelectorAll('name')].map(n => n.getAttribute('value') || '');
+                    game.name_zh = allNames.find(n => /[\u4e00-\u9fff]/.test(n)) || '';
+                }
+                if (!game.name_ja) {
+                    const allNames = [...xmlItem.querySelectorAll('name')].map(n => n.getAttribute('value') || '');
+                    game.name_ja = allNames.find(n => /[\u3040-\u30ff]/.test(n)) || '';
+                }
+                // 年份：credits 沒抓到才用 XML
+                if (!game.year) {
+                    const yearVal = xmlItem.querySelector('yearpublished')?.getAttribute('value');
+                    if (yearVal && yearVal !== '0') game.year = parseInt(yearVal);
+                }
+                // 玩家數、時間、複雜度、描述（只有 XML 有）
+                const minP      = xmlItem.querySelector('minplayers')?.getAttribute('value');
+                const maxP      = xmlItem.querySelector('maxplayers')?.getAttribute('value');
+                const playTime  = xmlItem.querySelector('maxplaytime')?.getAttribute('value')
+                               || xmlItem.querySelector('playingtime')?.getAttribute('value');
+                const weightVal = xmlItem.querySelector('averageweight')?.getAttribute('value');
+                const rawDesc   = xmlItem.querySelector('description')?.textContent || '';
+                if (minP)      game.min_players  = parseInt(minP);
+                if (maxP)      game.max_players  = parseInt(maxP);
+                if (playTime)  game.playing_time = parseInt(playTime);
+                if (weightVal) game.complexity   = Math.round(parseFloat(weightVal) * 100) / 100;
+                if (rawDesc)   game.description  = rawDesc
+                    .replace(/&#10;/g, '\n').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+                    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#9;/g, ' ')
+                    .replace(/\n\s*\n/g, '\n').trim().slice(0, 500);
+
+                console.log(`[BGG ${bggId}] XML 補充完成`);
+            } catch(xmlErr) {
+                console.warn(`[BGG ${bggId}] XML API 失敗（不影響 credits + Jina 的資料）:`, xmlErr.message);
+                // XML 失敗時，若連英文名都沒有，退回 Jina Markdown 解析補底
+                if (!game.name_en && jinaResult.status === 'fulfilled') {
+                    const parsed = parseBGGMarkdown(jinaResult.value, bggId);
+                    if (parsed.name_en)      game.name_en      = parsed.name_en;
+                    if (!game.year && parsed.year)             game.year         = parsed.year;
+                    if (!game.min_players && parsed.min_players) game.min_players = parsed.min_players;
+                    if (!game.max_players && parsed.max_players) game.max_players = parsed.max_players;
+                    if (!game.playing_time && parsed.playing_time) game.playing_time = parsed.playing_time;
+                    if (!game.complexity && parsed.complexity) game.complexity   = parsed.complexity;
+                }
+            }
+
+            fetchedGames.push({
+                bggId,
+                status: existingBggIds.has(bggId) ? 'exists' : 'ok',
+                data: game,
+                selected: !existingBggIds.has(bggId),
+                rowId: `row-${bggId}`
+            });
+        } catch(e) {
+            console.error(`[BGG ${bggId}] 抓取失敗:`, e);
+            fetchedGames.push({
+                bggId,
+                status: 'error',
+                error: e.message,
+                data: null,
+                selected: false,
+                rowId: `row-${bggId}`
+            });
+        }
+    }
+
+    // ── 從 Jina Markdown 提取封面圖 URL（獨立出來，只做圖片）──
+    function extractImageFromMarkdown(text) {
+        const imgRegex = /https:\/\/cf\.geekdo-images\.com\/[^\s"']+\.(?:jpg|png|jpeg)/gi;
+        const candidates = [];
+        let m;
+        while ((m = imgRegex.exec(text)) !== null) candidates.push(m[0]);
+        return candidates.find(u => u.includes('_original'))
+            || candidates.find(u => !u.match(/user|avatar|micro|square|thumb/))
+            || candidates[0] || '';
+    }
+
+    // ── 解析 Jina 回傳的 BGG 頁面 Markdown ──
+    function parseBGGMarkdown(text, bggId) {
+        const lines = text.split('\n');
+
+        // ── 英文名 ──
+        // 最高優先：Title: 元數據行（Jina 新格式，最可靠）
+        // 次優先：最後一個 ### 標題（BGG 頁面最底部通常是 ### Gloomhaven）
+        // 備援：URL Source slug
+        let nameEn = '';
+
+        const titleMetaMatch = text.match(/^Title:\s*(.+)/m);
+        if (titleMetaMatch) {
+            // "Title: Gloomhaven" 或 "Title: Gloomhaven | BoardGameGeek"
+            nameEn = titleMetaMatch[1]
+                .replace(/\s*\|\s*BoardGameGeek.*$/i, '')
+                .replace(/\s*\|\s*Board Game.*$/i, '')
+                .replace(/\s*\([\d]{4}\)\s*$/, '')  // 去掉尾端年份括號
+                .trim();
+        }
+
+        // 若 Title: 沒有或結果不好，從 ### 標題找遊戲名
+        // BGG 頁面的最後一個 ### 通常就是遊戲名（e.g. ### Gloomhaven）
+        if (!nameEn) {
+            const h3Lines = lines.filter(l => /^###\s+\S/.test(l));
+            // 取最後一個，且不是導覽/分類文字
+            const skipWords = /^(Game Credits|More of this|News|Description|Classification|Awards|Official|Additional|Community|Forums|Ratings|Videos|Images|Files|Links)/i;
+            for (let i = h3Lines.length - 1; i >= 0; i--) {
+                const raw = h3Lines[i].replace(/^###\s+/, '').replace(/\[([^\]]+)\].*/, '$1').trim();
+                if (!skipWords.test(raw) && !/^https?:\/\//.test(raw) && raw.length >= 2) {
+                    nameEn = raw;
+                    break;
+                }
+            }
+        }
+
+        // 最後備援：URL Source slug
+        if (!nameEn) {
+            const urlMetaMatch = text.match(/^URL(?:\s+Source)?:\s*.+\/boardgame\/\d+\/([^/\n\s]+)/m);
+            if (urlMetaMatch) {
+                nameEn = urlMetaMatch[1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            }
+        }
+
+        // ── 年份：使用獨立的多策略函式 ──
+        const year = extractBGGYear(text);
+
+        // ── 中文名：連續中文字 2 字以上 ──
+        const zhMatch = text.match(/[\u4e00-\u9fff]{2,}[\u4e00-\u9fff\s\u3000\-·×：:！!？?「」【】《》。，]*/);
+        const nameZh = zhMatch ? zhMatch[0].trim().slice(0, 40) : '';
+
+        // ── 日文名：假名開頭 ──
+        const jaMatch = text.match(/[\u3040-\u30ff][\u3040-\u30ff\u30fc\u4e00-\u9fff\s]{2,30}/);
+        const nameJa = jaMatch ? jaMatch[0].trim() : '';
+
+        // ── 玩家數 ──
+        const prMatch = text.match(/(\d+)\s*(?:[–\-~]|to)\s*(\d+)\s*[Pp]layers?/)
+                      || text.match(/[Pp]layers?[:\s]+(\d+)\s*(?:[–\-~]|to)\s*(\d+)/);
+        const psMatch = !prMatch && text.match(/(\d+)\s*[Pp]layers?/);
+        const minPlayers = prMatch ? parseInt(prMatch[1]) : psMatch ? parseInt(psMatch[1]) : null;
+        const maxPlayers = prMatch ? parseInt(prMatch[2]) : psMatch ? parseInt(psMatch[1]) : null;
+
+        // ── 遊戲時間（取最大值）──
+        const trMatch = text.match(/(\d+)\s*[–\-~]\s*(\d+)\s*[Mm]in/);
+        const tsMatch = !trMatch && text.match(/(\d+)\s*[Mm]in(?:utes?)?/);
+        const playingTime = trMatch ? parseInt(trMatch[2]) : tsMatch ? parseInt(tsMatch[1]) : null;
+
+        // ── 複雜度 ──
+        const wm1 = text.match(/(?:[Ww]eight|[Cc]omplexity)[:\s]+([0-9]+\.[0-9]+)\s*\/\s*5/);
+        const wm2 = text.match(/([1-4]\.[0-9]{1,2})\s*\/\s*5/);
+        const rawW = wm1 ? wm1[1] : wm2 ? wm2[1] : null;
+        const complexity = rawW ? Math.round(parseFloat(rawW) * 100) / 100 : null;
+
+        // ── 封面圖：對齊 admin-games.html 成功的邏輯（不排除括號，避免 URL 截斷）──
+        const imgRegex = /https:\/\/cf\.geekdo-images\.com\/[^\s"']+\.(?:jpg|png|jpeg)/gi;
+        const candidates = []; let m;
+        while ((m = imgRegex.exec(text)) !== null) candidates.push(m[0]);
+        const imageUrl = candidates.find(u => u.includes('_original'))
+            || candidates.find(u => !u.includes('user') && !u.includes('avatar')
+                                 && !u.includes('micro') && !u.includes('square')
+                                 && !u.includes('thumb'))
+            || candidates[0] || '';
+
+        // ── 簡介 ──
+        // BGG 頁面的 ### Description 下面只有 "Edit" 按鈕，
+        // 真正描述在更後面的長段落（通常 > 100 字）
+        let description = '';
+
+        // 輔助函式：清理一行文字並判斷是否為有效描述行
+        const isValidDescLine = (raw) => {
+            const l = raw
+                .replace(/!\[.*?\]\(.*?\)/g, '')        // 移除圖片
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // 移除連結，保留文字
+                .replace(/[*_`\[\]]/g, '')               // 移除 Markdown 符號
+                .trim();
+            if (l.length < 60) return '';               // 太短
+            if (/^https?:\/\//.test(l)) return '';      // 純 URL
+            if (/^[#\-\*\|>]/.test(l)) return '';       // 標題/清單/表格
+            if (/^[=\-_~]{5,}/.test(l)) return '';      // ====== 或 ------ 裝飾線
+            if (/^[=\-_~\s]+$/.test(l)) return '';      // 整行都是裝飾符號
+            if (/^\W{10,}$/.test(l)) return '';         // 整行都是非字母符號
+            return l;
+        };
+
+        // 策略 1：找 ### Description 後的第一個有效段落
+        const descSectionMatch = text.match(/###\s*[Dd]escription[^\n]*\n+([\s\S]+?)(?=\n###\s|\n---|\n\*\*\*|$)/);
+        if (descSectionMatch) {
+            for (const ln of descSectionMatch[1].split('\n')) {
+                const valid = isValidDescLine(ln);
+                if (valid) { description = valid.slice(0, 500); break; }
+            }
+        }
+
+        // 策略 2：全文找第一個 >= 100 字的有效段落
+        if (!description) {
+            for (const line of lines) {
+                const valid = isValidDescLine(line);
+                if (valid && valid.length >= 100) { description = valid.slice(0, 500); break; }
+            }
+        }
+
+        return {
+            name_en: nameEn, name_zh: nameZh, name_ja: nameJa, year,
+            min_players: minPlayers, max_players: maxPlayers,
+            playing_time: playingTime, complexity, image_url: imageUrl,
+            description, bgg_id: bggId, source: 'BGG'
+        };
+    }
+
+    // ════════════════════════════════════════════
+    // ── BGG 年份提取（獨立函式，多策略備援）──
+    // ════════════════════════════════════════════
+    function extractBGGYear(text) {
+        // 先移除 Jina 元數據行（含當前日期），避免干擾
+        const clean = text
+            .replace(/^Published Time:.*$/gm, '')
+            .replace(/^Date:.*$/gm, '')
+            .replace(/^Last-Modified:.*$/gm, '');
+
+        const lines = clean.split('\n');
+        const YEAR_RE = /\b((?:197|198|199|200|201|202)\d)\b/;
+
+        // ── 策略 0：直接從 Title: 行 或 標題行（#/##/###）抓括號年份 ──
+        // Jina 格式：「Title: 9Upper 夏霸王 (2021)」或「# GameName (2021)」
+        // 這是最直接、最可靠的來源
+        for (const line of lines.slice(0, 30)) {  // 只看前 30 行（元數據區）
+            const isTitleLine = /^Title:\s/i.test(line) || /^#{1,3}\s/.test(line);
+            if (isTitleLine) {
+                const m = line.match(/\(((?:197|198|199|200|201|202)\d)\)\s*$/);
+                if (m) return parseInt(m[1]);
+            }
+        }
+        // 備援：Title: 行不一定在前 30 行，全文搜一次
+        const titleLineMatch = clean.match(/^Title:.*\(((?:197|198|199|200|201|202)\d)\)\s*$/m);
+        if (titleLineMatch) return parseInt(titleLineMatch[1]);
+
+        // ── 策略 A：找「Year Published」後面緊接或換行內的年份 ──
+        // 支援格式："Year Published\n\n2017" / "Year Published: 2017" / "**Year Published**\n2017"
+        const ypIdx = clean.search(/[Yy]ear\s+[Pp]ublished/);
+        if (ypIdx !== -1) {
+            // 往後掃最多 500 字元（跨行）
+            const window500 = clean.slice(ypIdx, ypIdx + 500);
+            const m = window500.match(YEAR_RE);
+            if (m) return parseInt(m[1]);
+        }
+
+        // 策略 B：逐行找「Year」關鍵字，往後 5 行內找「純年份行」（只有4位數）
+        for (let i = 0; i < lines.length; i++) {
+            if (/[Yy]ear/.test(lines[i])) {
+                for (let j = i + 1; j <= i + 5 && j < lines.length; j++) {
+                    const trimmed = lines[j].trim();
+                    if (/^((?:197|198|199|200|201|202)\d)$/.test(trimmed)) {
+                        return parseInt(trimmed);
+                    }
+                }
+            }
+        }
+
+        // 策略 C：表格格式 "| 2017 |"
+        const tableMatch = clean.match(/\|\s*((?:197|198|199|200|201|202)\d)\s*\|/);
+        if (tableMatch) return parseInt(tableMatch[1]);
+
+        // 策略 D：標題含年份 "### GameTitle (2017)" 或 "## Title (2017)"
+        const titleYearMatch = clean.match(/^#{1,3}\s+[^\n(]+\((\d{4})\)/m);
+        if (titleYearMatch) return parseInt(titleYearMatch[1]);
+
+        // 策略 E：「(2017)」獨立出現在前 2000 字（排除 URL 裡的年份）
+        const first2000 = clean.slice(0, 2000);
+        // 找所有括號年份，排除前面緊接著是 http 的
+        const parenMatches = [...first2000.matchAll(/\((\d{4})\)/g)];
+        for (const pm of parenMatches) {
+            const yr = parseInt(pm[1]);
+            if (yr >= 1970 && yr <= 2025) {
+                // 確認前面不是 URL
+                const before = first2000.slice(Math.max(0, pm.index - 50), pm.index);
+                if (!/https?:\/\/\S*$/.test(before)) return yr;
+            }
+        }
+
+        // 策略 F：全文掃，收集所有合理年份，優先 <= 2025
+        const allYears = [...clean.matchAll(/\b((?:197|198|199|200|201|202)\d)\b/g)]
+            .map(m2 => parseInt(m2[1]));
+        const pastYears = allYears.filter(y => y <= 2025);
+        return pastYears.length > 0 ? pastYears[0] : (allYears[0] || null);
+    }
+
+    // ════════════════════════════════════════════
+    // ── CSV 匯入功能（BGG 官方匯出格式）──
+    // ════════════════════════════════════════════
+    let csvRawData = [];  // 解析後的原始 CSV 列
+
+    function handleCsvDrop(event) {
+        event.preventDefault();
+        const dz = document.getElementById('csv-drop-zone');
+        dz.style.borderColor = 'var(--border-color)';
+        dz.style.background = 'var(--bg-color)';
+        const file = event.dataTransfer.files[0];
+        if (file) handleCsvFile(file);
+    }
+
+    function handleCsvFile(file) {
+        if (!file || !file.name.endsWith('.csv')) {
+            document.getElementById('csv-status').textContent = '❌ 請選擇 .csv 檔案';
+            return;
+        }
+        document.getElementById('csv-status').textContent = '⏳ 讀取中...';
+        const reader = new FileReader();
+        reader.onload = e => {
+            const text = e.target.result;
+            csvRawData = parseBGGCsv(text);
+            const total = csvRawData.length;
+            const owned = csvRawData.filter(r => r.own === '1').length;
+            const standalone = csvRawData.filter(r => r.itemtype === 'standalone').length;
+            document.getElementById('csv-status').innerHTML =
+                `✅ 讀取完成：共 <strong>${total}</strong> 筆 ／ 擁有 <strong>${owned}</strong> 筆 ／ 主遊戲 <strong>${standalone}</strong> 筆`;
+            document.getElementById('csv-options').style.display = 'flex';
+            document.getElementById('csv-drop-zone').style.borderColor = '#10b981';
+            document.getElementById('csv-drop-zone').querySelector('div:first-child').textContent = '✅';
+            document.getElementById('csv-drop-zone').querySelectorAll('div')[1].textContent = `已載入：${file.name}（${total} 筆）`;
+        };
+        reader.onerror = () => { document.getElementById('csv-status').textContent = '❌ 讀取失敗'; };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    // 解析 BGG CSV（處理帶引號的欄位、逗號包在引號內）
+    function parseBGGCsv(text) {
+        const lines = text.split(/\r?\n/);
+        if (lines.length < 2) return [];
+        const headers = parseCsvLine(lines[0]);
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const cols = parseCsvLine(lines[i]);
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h.trim()] = (cols[idx] || '').trim(); });
+            rows.push(obj);
+        }
+        return rows;
+    }
+
+    // CSV 行解析（正確處理引號內的逗號）
+    function parseCsvLine(line) {
+        const result = [];
+        let cur = '', inQuote = false;
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"') {
+                if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+                else inQuote = !inQuote;
+            } else if (c === ',' && !inQuote) {
+                result.push(cur); cur = '';
+            } else { cur += c; }
+        }
+        result.push(cur);
+        return result;
+    }
+
+    async function processCsvData() {
+        if (!csvRawData.length) { alert('請先載入 CSV 檔案'); return; }
+        const onlyOwned    = document.getElementById('csv-only-owned').checked;
+        const skipExpansion = document.getElementById('csv-skip-expansion').checked;
+
+        await loadExistingBggIds();
+
+        let rows = csvRawData;
+        if (onlyOwned)     rows = rows.filter(r => r.own === '1');
+        if (skipExpansion) rows = rows.filter(r => r.itemtype !== 'expansion');
+
+        fetchedGames = [];
+        rows.forEach(r => {
+            const bggId = String(r.objectid || '').trim();
+            if (!bggId || !/^\d+$/.test(bggId)) return;
+
+            // BGG imageid → 封面圖 URL（BGG CDN 正確格式）
+            const imageid = String(r.imageid || '').trim();
+            const imageUrl = imageid ? `https://cf.geekdo-images.com/pic${imageid}.jpg` : '';
+
+            const game = {
+                name_en:      r.originalname || r.objectname || '',
+                name_zh:      '',   // CSV 沒有中文名，需手動補或之後用 Jina 補
+                name_ja:      '',
+                year:         parseInt(r.yearpublished) || null,
+                min_players:  parseInt(r.minplayers) || null,
+                max_players:  parseInt(r.maxplayers) || null,
+                playing_time: parseInt(r.playingtime) || null,
+                complexity:   parseFloat(r.avgweight) ? Math.round(parseFloat(r.avgweight)*100)/100 : null,
+                image_url:    imageUrl,
+                description:  '',
+                bgg_id:       bggId,
+                source:       'BGG'
+            };
+            fetchedGames.push({
+                bggId,
+                status: existingBggIds.has(bggId) ? 'exists' : 'ok',
+                data: game,
+                selected: !existingBggIds.has(bggId),
+                rowId: `row-${bggId}`
+            });
+        });
+
+        document.getElementById('fetch-status').textContent = `✅ CSV 解析完成，共 ${fetchedGames.length} 筆`;
+        document.getElementById('preview-section').style.display = 'block';
+        document.getElementById('import-section').style.display = 'block';
+        renderPreview();
+        document.getElementById('preview-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── 載入已有 bgg_id ──
+    async function loadExistingBggIds() {
+        existingBggIds.clear();
+        try {
+            let page = 1;
+            while (true) {
+                const r = await fetch(`tables/game_database?limit=100&page=${page}`);
+                if (!r.ok) break;
+                const d = await r.json();
+                (d.data || []).forEach(g => { if (g.bgg_id) existingBggIds.add(String(g.bgg_id)); });
+                if (!d.data || d.data.length < 500) break;
+                page++;
+            }
+        } catch(e) { console.warn('載入既有 bgg_id 失敗', e); }
+    }
+
+    // ── 渲染預覽表格 ──
+    function renderPreview() {
+        const ok     = fetchedGames.filter(g => g.status === 'ok').length;
+        const exists = fetchedGames.filter(g => g.status === 'exists').length;
+        const err    = fetchedGames.filter(g => g.status === 'error').length;
+
+        document.getElementById('preview-summary').innerHTML = `
+            <div class="result-stat"><div class="num" style="color:#10b981;">${ok}</div><div class="label">新遊戲</div></div>
+            <div class="result-stat"><div class="num" style="color:#f59e0b;">${exists}</div><div class="label">已存在</div></div>
+            <div class="result-stat"><div class="num" style="color:#ef4444;">${err}</div><div class="label">錯誤</div></div>
+            <div class="result-stat"><div class="num">${fetchedGames.length}</div><div class="label">總計</div></div>`;
+
+        const tbody = document.getElementById('preview-tbody');
+        tbody.innerHTML = fetchedGames.map((g, idx) => {
+            if (g.status === 'error') {
+                return `<tr class="row-error" id="${g.rowId}">
+                    <td><input type="checkbox" disabled></td>
+                    <td><div class="cover-placeholder">❌</div></td>
+                    <td><div class="bgg-id-cell">
+                        <span class="bgg-id-num">${g.bggId}</span>
+                        <div class="bgg-id-actions">
+                            <button class="bgg-id-btn" onclick="copyBggId('${g.bggId}', this)" title="複製 ID">📋</button>
+                            <a class="bgg-id-btn" href="https://boardgamegeek.com/boardgame/${g.bggId}" target="_blank" title="開啟 BGG">🔗</a>
+                            <button class="bgg-id-btn" onclick="copyBggUrl('${g.bggId}', this)" title="複製網址">🌐</button>
+                        </div>
+                    </div></td>
+                    <td colspan="7" style="color:#ef4444;font-size:0.83rem;">${escHtml(g.error)}</td>
+                    <td><span class="status-badge badge-error">錯誤</span></td>
+                    <td><button class="btn-danger" onclick="removeGame(${idx})" title="移除此筆">✕</button></td>
+                </tr>`;
+            }
+            const d = g.data;
+            const rowClass = g.status === 'exists' ? 'row-exists' : 'row-ok';
+            const badgeClass = g.status === 'exists' ? 'badge-exists' : 'badge-ok';
+            const badgeText  = g.status === 'exists' ? '已存在' : '新遊戲';
+            // 封面欄：顯示縮圖 + 複製封面URL按鈕
+            const imgHtml = d.image_url
+                ? `<div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem;">
+                    <img class="game-cover-thumb" src="https://images.weserv.nl/?url=${encodeURIComponent(d.image_url)}&w=96&h=96&fit=cover" 
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                         title="${escHtml(d.image_url)}">
+                    <div class="cover-placeholder" style="display:none;">🎲</div>
+                    <button class="bgg-id-btn" data-url="${escHtml(d.image_url)}" onclick="copyImageUrl(this)" title="複製封面網址">📷 複製</button>
+                   </div>`
+                : `<div class="cover-placeholder">🎲</div>`;
+            return `<tr class="${rowClass}" id="${g.rowId}">
+                <td><input type="checkbox" ${g.selected ? 'checked' : ''} onchange="toggleSelect(${idx}, this.checked)"></td>
+                <td>${imgHtml}</td>
+                <td><div class="bgg-id-cell">
+                    <span class="bgg-id-num">${g.bggId}</span>
+                    <div class="bgg-id-actions">
+                        <button class="bgg-id-btn" onclick="copyBggId('${g.bggId}', this)" title="複製 ID">📋</button>
+                        <a class="bgg-id-btn" href="https://boardgamegeek.com/boardgame/${g.bggId}" target="_blank" title="開啟 BGG">🔗</a>
+                        <button class="bgg-id-btn" onclick="copyBggUrl('${g.bggId}', this)" title="複製網址">🌐</button>
+                    </div>
+                </div></td>
+                <td><input class="edit-input name-input" value="${escHtml(d.name_zh)}" oninput="updateField(${idx},'name_zh',this.value)" placeholder="（無）"></td>
+                <td><input class="edit-input name-input" value="${escHtml(d.name_en)}" oninput="updateField(${idx},'name_en',this.value)"></td>
+                <td><input class="edit-input name-input" value="${escHtml(d.name_ja)}" oninput="updateField(${idx},'name_ja',this.value)" placeholder="（無）"></td>
+                <td><input class="edit-input num-input" type="number" value="${d.year || ''}" oninput="updateField(${idx},'year',parseInt(this.value)||null)"></td>
+                <td><span style="font-size:0.82rem;">${d.min_players || '?'} - ${d.max_players || '?'}</span></td>
+                <td><input class="edit-input num-input" type="number" value="${d.playing_time || ''}" oninput="updateField(${idx},'playing_time',parseInt(this.value)||null)"></td>
+                <td><input class="edit-input num-input" type="number" step="0.01" min="1" max="5" value="${d.complexity || ''}" oninput="updateField(${idx},'complexity',parseFloat(this.value)||null)"></td>
+                <td><span class="status-badge ${badgeClass}">${badgeText}</span></td>
+                <td>
+                    <button class="btn-danger" onclick="removeGame(${idx})" title="移除此筆">✕</button>
+                </td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('preview-section').style.display = 'block';
+        document.getElementById('import-section').style.display = 'block';
+    }
+
+    // ── 封面圖 URL 複製 ──
+    function copyImageUrl(btn) {
+        const url = btn.getAttribute('data-url');
+        if (!url) return;
+        navigator.clipboard.writeText(url).then(() => {
+            btn.textContent = '✓ 已複製';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '📷 複製'; btn.classList.remove('copied'); }, 1800);
+        }).catch(() => {
+            // fallback：舊瀏覽器
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            btn.textContent = '✓ 已複製';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '📷 複製'; btn.classList.remove('copied'); }, 1800);
+        });
+    }
+
+    // ── BGG ID 複製功能 ──
+    function copyBggId(bggId, btn) {
+        navigator.clipboard.writeText(bggId).then(() => {
+            btn.textContent = '✓';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copied'); }, 1500);
+        });
+    }
+    function copyBggUrl(bggId, btn) {
+        const url = `https://boardgamegeek.com/boardgame/${bggId}`;
+        navigator.clipboard.writeText(url).then(() => {
+            btn.textContent = '✓';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '🌐'; btn.classList.remove('copied'); }, 1500);
+        });
+    }
+
+    function updateField(idx, field, value) {
+        if (fetchedGames[idx] && fetchedGames[idx].data) {
+            fetchedGames[idx].data[field] = value;
+        }
+    }
+    function toggleSelect(idx, checked) {
+        fetchedGames[idx].selected = checked;
+    }
+    function toggleAllSelect(checked) {
+        fetchedGames.forEach((g, idx) => {
+            if (g.status !== 'error') {
+                g.selected = checked;
+                const row = document.getElementById(g.rowId);
+                if (row) row.querySelector('input[type=checkbox]').checked = checked;
+            }
+        });
+    }
+    function removeGame(idx) {
+        fetchedGames.splice(idx, 1);
+        renderPreview();
+    }
+
+    // 勾選「跳過已存在」時更新選取狀態
+    document.getElementById('skip-existing').addEventListener('change', function() {
+        if (this.checked) {
+            fetchedGames.forEach(g => { if (g.status === 'exists') g.selected = false; });
+        }
+        renderPreview();
+    });
+
+    // ── 匯入 ──
+    async function importGames() {
+        const toImport = fetchedGames.filter(g => g.selected && g.data);
+        if (!toImport.length) {
+            alert('沒有選取任何遊戲');
+            return;
+        }
+
+        const skipExisting = document.getElementById('skip-existing').checked;
+        const btn = document.getElementById('import-btn');
+        btn.disabled = true;
+        const log = document.getElementById('import-log');
+        log.style.display = 'block';
+        log.innerHTML = '';
+        document.getElementById('import-progress').style.display = 'block';
+
+        let successCount = 0, skipCount = 0, errorCount = 0;
+
+        for (let i = 0; i < toImport.length; i++) {
+            const g = toImport[i];
+            setProgress('import', i + 1, toImport.length, `匯入中 ${i + 1} / ${toImport.length}`);
+
+            // 若已存在且勾選跳過
+            if (skipExisting && existingBggIds.has(String(g.bggId))) {
+                appendLog(log, 'skip', `⚡ 跳過（已存在）：${g.data.name_zh || g.data.name_en} [${g.bggId}]`);
+                skipCount++;
+                continue;
+            }
+
+            try {
+                const payload = { ...g.data };
+                // 確保欄位格式正確
+                payload.bgg_id = String(g.bggId);
+                // 移除空字串
+                Object.keys(payload).forEach(k => { if (payload[k] === '' || payload[k] === null) delete payload[k]; });
+
+                const resp = await fetch('tables/game_database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (resp.ok || resp.status === 201) {
+                    appendLog(log, 'ok', `✅ 匯入成功：${g.data.name_zh || g.data.name_en} [${g.bggId}]`);
+                    successCount++;
+                    existingBggIds.add(String(g.bggId));
+                    // 更新預覽表格狀態
+                    const row = document.getElementById(g.rowId);
+                    if (row) {
+                        row.classList.remove('row-ok'); row.classList.add('row-exists');
+                        row.querySelector('.status-badge').textContent = '已匯入';
+                        row.querySelector('.status-badge').className = 'status-badge badge-skip';
+                    }
+                } else {
+                    const errText = await resp.text();
+                    appendLog(log, 'err', `❌ 失敗：${g.data.name_zh || g.data.name_en} [${g.bggId}] → ${resp.status} ${errText.slice(0,100)}`);
+                    errorCount++;
+                }
+            } catch(e) {
+                appendLog(log, 'err', `❌ 錯誤：${g.data.name_zh || g.data.name_en} [${g.bggId}] → ${e.message}`);
+                errorCount++;
+            }
+            await sleep(100); // 避免過快打 API
+        }
+
+        setProgress('import', toImport.length, toImport.length, '完成');
+        appendLog(log, 'info', `\n─── 完成：成功 ${successCount} 筆｜跳過 ${skipCount} 筆｜失敗 ${errorCount} 筆 ───`);
+        document.getElementById('import-status').textContent = `✅ 成功 ${successCount}、跳過 ${skipCount}、失敗 ${errorCount}`;
+        btn.disabled = false;
+    }
+
+    // ── 工具函式 ──
+    function setProgress(type, done, total, text) {
+        const pct = total ? Math.round(done / total * 100) : 0;
+        const fillId = type === 'fetch' ? 'progress-fill' : 'import-progress-fill';
+        const textId = type === 'fetch' ? 'progress-text'  : 'import-progress-text';
+        document.getElementById(fillId).style.width = pct + '%';
+        document.getElementById(textId).textContent = text;
+    }
+    function appendLog(el, cls, msg) {
+        const span = document.createElement('span');
+        span.className = 'log-' + cls;
+        span.textContent = msg + '\n';
+        el.appendChild(span);
+        el.scrollTop = el.scrollHeight;
+    }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function escHtml(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function clearAll() {
+        document.getElementById('bgg-ids').value = '';
+        document.getElementById('fetch-status').textContent = '';
+        document.getElementById('preview-section').style.display = 'none';
+        document.getElementById('import-section').style.display = 'none';
+        fetchedGames = [];
+    }
+    </script>
+</body>
+</html>

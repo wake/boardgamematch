@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的主題清單 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        /* ── 清單格（與 recommend.html 一致的格距）── */
+        .collections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        /* ── 清單卡片（參考 recommend.html .collection-card 簡化版）── */
+        .coll-card {
+            background: var(--card-bg);
+            border-radius: 0.6rem;
+            padding: 1rem;
+            box-shadow: var(--shadow-sm);
+            border: 2px solid transparent;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .coll-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        /* 卡片標頭 */
+        .coll-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .coll-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-color);
+            word-break: break-word;
+            flex: 1;
+        }
+        .pub-badge {
+            font-size: 0.72rem;
+            padding: 0.18rem 0.55rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .pub-badge.public  { background: rgba(34,197,94,0.15); color: #16a34a; }
+        .pub-badge.private { background: var(--bg-color); color: var(--text-light); border: 1px solid var(--border-color); }
+
+        /* 簡介 */
+        .coll-desc {
+            font-size: 0.83rem;
+            color: var(--text-light);
+            line-height: 1.5;
+            min-height: 1.2rem;
+        }
+
+        /* 遊戲 tag */
+        .coll-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            min-height: 2.2rem;
+        }
+        .coll-tag {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.79rem;
+            color: var(--text-color);
+        }
+        .coll-tag.extra {
+            opacity: 0.65;
+            font-style: italic;
+        }
+
+        /* 卡片底部 */
+        .coll-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 0.65rem;
+            border-top: 1px solid var(--border-color);
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .coll-count {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: var(--card-bg);
+            border-radius: 1.25rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 540px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal-field { margin-bottom: 1.25rem; }
+        .modal-field label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.92rem;
+            margin-bottom: 0.4rem;
+            color: var(--text-color);
+        }
+        .modal-field input,
+        .modal-field textarea {
+            width: 100%;
+            padding: 0.6rem 0.85rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.6rem;
+            font-size: 0.95rem;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .modal-field input:focus,
+        .modal-field textarea:focus { outline: none; border-color: var(--primary-color); }
+
+        /* 遊戲輸入+建議 */
+        .game-input-wrap { position: relative; }
+        .suggest-dropdown {
+            position: absolute;
+            top: 100%; left: 0; right: 0;
+            background: var(--card-bg);
+            border: 1.5px solid var(--primary-color);
+            border-top: none;
+            border-radius: 0 0 0.6rem 0.6rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10001;
+            box-shadow: var(--shadow-md);
+        }
+        .suggest-opt {
+            padding: 0.5rem 0.85rem;
+            cursor: pointer;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+        }
+        .suggest-opt:hover, .suggest-opt.active { background: var(--bg-color); }
+        .suggest-opt .szo-zh { font-weight: 600; }
+        .suggest-opt .szo-en { font-size: 0.8em; color: var(--text-light); }
+
+        /* 遊戲 pill（已加入列表）*/
+        .game-pill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-top: 0.5rem;
+            min-height: 2rem;
+        }
+        .game-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: linear-gradient(135deg, rgba(102,126,234,0.12), rgba(118,75,162,0.08));
+            border: 1px solid rgba(102,126,234,0.3);
+            border-radius: 1rem;
+            padding: 0.25rem 0.55rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .game-pill-del {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-light); font-size: 0.9rem; line-height: 1;
+            padding: 0; transition: color 0.15s;
+        }
+        .game-pill-del:hover { color: #ef4444; }
+
+        /* 空狀態 */
+        .empty-wrap {
+            text-align: center;
+            padding: 3.5rem 1rem;
+            color: var(--text-light);
+        }
+        .empty-wrap .ei { font-size: 3rem; margin-bottom: 0.75rem; }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: 1.5rem; left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            color: white; padding: 0.7rem 1.5rem;
+            border-radius: 2rem; font-weight: 600; font-size: 0.95rem;
+            z-index: 10002; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            animation: toastIn 0.25s ease;
+        }
+        @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(-10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+
+        @media (max-width: 600px) {
+            .collections-grid { grid-template-columns: 1fr; }
+            .modal-box { padding: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width:960px;">
+
+        <!-- 載入中 -->
+        <div id="loading-state" style="text-align:center; padding:4rem 2rem;">
+            <div class="simple-hourglass large">
+                <span class="hourglass-icon-simple combined">⏳</span>
+                <span class="hourglass-text-simple">載入中...</span>
+            </div>
+        </div>
+
+        <!-- 未登入 -->
+        <div id="not-logged-in" style="display:none;">
+            <div class="empty-wrap">
+                <div class="ei">🔒</div>
+                <h2 style="margin-bottom:0.75rem;">需要登入</h2>
+                <p style="margin-bottom:2rem;">請先登入才能建立主題清單</p>
+                <a href="index.html" class="btn btn-primary">🔑 前往登入</a>
+            </div>
+        </div>
+
+        <!-- 主內容 -->
+        <div id="main-content" style="display:none;">
+
+            <!-- 標題列 -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:0.5rem; padding-top:2rem;">
+                <div>
+                    <h1 style="font-size:1.8rem; margin-bottom:0.3rem;">📚 我的主題清單</h1>
+                    <p style="color:var(--text-light); font-size:0.9rem;">建立你的桌遊主題清單，與其他玩家分享！</p>
+                </div>
+                <button class="btn btn-primary" onclick="openCreateModal()">＋ 建立新清單</button>
+            </div>
+
+            <!-- 說明提示 -->
+            <div style="background:rgba(102,126,234,0.08); border:1px solid rgba(102,126,234,0.2); border-radius:0.6rem; padding:0.75rem 1rem; margin-bottom:1.75rem; font-size:0.85rem; color:var(--text-light);">
+                💡 你可以建立如「Top 10 派對遊戲」、「適合兩人的遊戲」等主題清單。遊戲名稱可自由輸入，不限資料庫內容。
+            </div>
+
+            <!-- 返回我的檔案 + 封面產生器 -->
+            <div style="margin-bottom:1.25rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                <a href="profile.html" style="color:var(--text-light); font-size:0.88rem; text-decoration:none;">← 返回我的檔案</a>
+                <a href="collection-poster.html" style="
+                    display:inline-flex; align-items:center; gap:0.4rem;
+                    background:linear-gradient(135deg,#667eea,#764ba2);
+                    color:white; text-decoration:none; font-size:0.88rem; font-weight:600;
+                    padding:0.4rem 0.9rem; border-radius:1.5rem;
+                    transition:all 0.2s; box-shadow:0 2px 8px rgba(102,126,234,0.35);
+                " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+                    🖼️ 製作清單封面海報
+                </a>
+            </div>
+
+            <!-- 清單格 -->
+            <div id="collections-grid" class="collections-grid"></div>
+
+        </div>
+    </div>
+
+    <!-- ── 新增/編輯 Modal ── -->
+    <div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeModal()">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h2 id="modal-heading" style="font-size:1.3rem; margin:0;">建立新清單</h2>
+                <button onclick="closeModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-light);line-height:1;">✕</button>
+            </div>
+
+            <!-- 標題 -->
+            <div class="modal-field">
+                <label>📌 清單名稱 <span style="color:#ef4444;">*</span></label>
+                <input id="m-title" type="text" maxlength="40" placeholder="例如：Top 10 派對遊戲">
+                <div style="text-align:right; font-size:0.78rem; color:var(--text-light); margin-top:0.2rem;">
+                    <span id="m-title-count">0</span> / 40
+                </div>
+            </div>
+
+            <!-- 簡介 -->
+            <div class="modal-field">
+                <label>📝 清單簡介（選填）</label>
+                <textarea id="m-desc" rows="2" maxlength="100" placeholder="簡單說明這份清單的主題..."></textarea>
+                <div style="text-align:right; font-size:0.78rem; color:var(--text-light); margin-top:0.2rem;">
+                    <span id="m-desc-count">0</span> / 100
+                </div>
+            </div>
+
+            <!-- 加入遊戲 -->
+            <div class="modal-field">
+                <label>🎲 遊戲清單 <span style="color:#ef4444;">*</span>
+                    <span style="font-weight:400; color:var(--text-light); font-size:0.82rem;">（可輸入任意遊戲名稱，不限資料庫）</span>
+                </label>
+                <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                    <div class="game-input-wrap" style="flex:1;">
+                        <input id="m-game-input" type="text"
+                            placeholder="輸入遊戲名稱後按 Enter"
+                            autocomplete="off"
+                            oninput="onSuggestInput()"
+                            onkeydown="onSuggestKeydown(event)">
+                        <div id="suggest-dropdown" class="suggest-dropdown" style="display:none;"></div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="addGameToList()" style="white-space:nowrap; padding:0.6rem 1rem;">加入</button>
+                </div>
+                <div id="game-pill-list" class="game-pill-list"></div>
+                <div style="font-size:0.8rem; color:var(--text-light); margin-top:0.4rem;">
+                    已加入 <span id="game-count">0</span> 款遊戲
+                    <span id="game-limit-hint" style="display:none; color:#ef4444; margin-left:0.3rem;">（已達 50 款上限）</span>
+                </div>
+            </div>
+
+            <!-- 公開設定 -->
+            <div class="modal-field">
+                <label>🌐 可見度</label>
+                <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; background:var(--bg-color); border-radius:0.6rem; border:1.5px solid var(--border-color);">
+                    <input type="checkbox" id="m-public" style="width:1.1rem;height:1.1rem;cursor:pointer;accent-color:var(--primary-color);">
+                    <div>
+                        <div style="font-weight:600; font-size:0.92rem;" id="m-public-label">🔒 私密</div>
+                        <div style="font-size:0.8rem; color:var(--text-light);">開啟後其他玩家可在你的公開檔案看到這份清單</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 按鈕 -->
+            <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+                <button class="btn btn-primary" onclick="saveCollection()" style="flex:1;" id="modal-save-btn">💾 儲存</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex:1;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 刪除確認 Modal -->
+    <div class="modal-overlay" id="delete-modal" onclick="if(event.target===this)closeDeleteModal()">
+        <div class="modal-box" style="max-width:380px; text-align:center;">
+            <div style="font-size:2.5rem; margin-bottom:0.75rem;">🗑️</div>
+            <h3 style="margin-bottom:0.5rem;">確定要刪除這份清單？</h3>
+            <p style="color:var(--text-light); font-size:0.9rem; margin-bottom:1.5rem;">「<span id="delete-title-preview"></span>」將永久刪除，無法還原。</p>
+            <div style="display:flex; gap:0.75rem; justify-content:center;">
+                <button class="btn btn-primary" onclick="confirmDelete()"
+                    style="background:linear-gradient(135deg,#ef4444,#dc2626); min-width:100px;">刪除</button>
+                <button class="btn btn-secondary" onclick="closeDeleteModal()" style="min-width:100px;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api-base.js?v=20260302-clear"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script>
+        if (typeof safePatch === 'undefined') { window.safePatch = async function(url, d, h={}) { const sys=['gs_project_id','gs_table_name','gs_created_at','gs_updated_at','created_at','updated_at','deleted','deleted_at','_rid','_id','__rid','__id']; const g=await fetch(url,{headers:h}); const ex=g.ok?await g.json():{}; const cleaned=Object.fromEntries(Object.entries(ex).filter(([k])=>!sys.includes(k))); const merged={...cleaned,...d}; const s={}; for(const [k,v] of Object.entries(merged)){s[k]=(v!==null&&v!==undefined&&typeof v==='object')?JSON.stringify(v):v;} const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json',...h},body:JSON.stringify(s)}); if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('PUT '+r.status+': '+t.slice(0,100));} return r.json(); }; }
+    </script>
+    <script>
+    // ===== 我的主題清單 =====
+
+    const TABLE = 'user_collections';
+    let currentUser   = null;
+    let myCollections = [];
+    let editingId     = null;
+    let pendingGames  = [];
+    let allDbGames    = [];
+    let suggestIdx    = -1;
+    let deletingId    = null;
+
+    // ── 登入判斷（與 profile.html 相同邏輯）────────────────────────
+    async function resolveCurrentUser() {
+        // 1. currentUser JSON object
+        try {
+            const u = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            if (u?.id) {
+                const r = await fetch(`tables/users/${u.id}`);
+                if (r.ok) return await r.json();
+            }
+        } catch(e) {}
+
+        // 2. googleUser → 查 DB
+        try {
+            const g = JSON.parse(localStorage.getItem('googleUser') || 'null');
+            if (g?.sub) {
+                const r = await fetch(`tables/users?search=${encodeURIComponent(g.sub)}&limit=100`);
+                if (r.ok) {
+                    const d = await r.json();
+                    const found = (d.data || []).find(u => u.google_id === g.sub);
+                    if (found) {
+                        const r2 = await fetch(`tables/users/${found.id}`);
+                        if (r2.ok) return await r2.json();
+                    }
+                }
+            }
+        } catch(e) {}
+
+        return null;
+    }
+
+    // ── 初始化 ───────────────────────────────────────────────────────
+    async function init() {
+        currentUser = await resolveCurrentUser();
+        if (!currentUser) {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('not-logged-in').style.display = 'block';
+            return;
+        }
+
+        // 載入資料庫遊戲供自動建議（分批載入全部）
+        try {
+            const countRes = await fetch('tables/game_database?limit=1');
+            const countData = await countRes.json();
+            const total = countData.total || 0;
+            const batchSize = 100;
+            const pages = Math.ceil(total / batchSize) || 1;
+            let allData = [];
+            for (let p = 1; p <= pages; p++) {
+                const res = await fetch(`tables/game_database?page=${p}&limit=${batchSize}`);
+                if (res.ok) { const d = await res.json(); allData = allData.concat(d.data || []); }
+            }
+            allDbGames = allData;
+        } catch(e) {}
+
+        await loadMyCollections();
+        updateQuotaBadge();
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+    }
+
+    // ── 載入我的清單 ─────────────────────────────────────────────────
+    async function loadMyCollections() {
+        try {
+            const r = await fetch(`tables/${TABLE}?limit=200`);
+            if (!r.ok) throw new Error();
+            const d = await r.json();
+            myCollections = (d.data || []).filter(c => c.created_by === currentUser.id);
+            // 依建立時間新→舊排序
+            myCollections.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+        } catch(e) {
+            myCollections = [];
+        }
+        renderGrid();
+        updateQuotaBadge();
+    }
+
+    // ── 配額徽章 ─────────────────────────────────────────────────────
+    function updateQuotaBadge() {
+        const count = myCollections.length;
+        const badge = document.getElementById('quota-badge');
+        const btn   = document.getElementById('create-btn');
+        if (badge) {
+            badge.textContent = `${count} / ${MAX_COLLECTIONS} 份`;
+            badge.style.color = count >= MAX_COLLECTIONS ? '#ef4444' : 'var(--text-light)';
+        }
+        if (btn) {
+            btn.disabled = count >= MAX_COLLECTIONS;
+            btn.title    = count >= MAX_COLLECTIONS ? `已達上限 ${MAX_COLLECTIONS} 份` : '';
+        }
+    }
+
+    // ── 渲染清單格 ───────────────────────────────────────────────────
+    function renderGrid() {
+        const grid = document.getElementById('collections-grid');
+        if (myCollections.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-wrap" style="grid-column:1/-1;">
+                    <div class="ei">📭</div>
+                    <p style="font-size:1rem; margin-bottom:1.25rem;">還沒有主題清單，建立第一份吧！</p>
+                    <button class="btn btn-primary" onclick="openCreateModal()">＋ 建立新清單</button>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = myCollections.map(c => {
+            const games = c.games || [];
+            const pubBadge = c.is_public
+                ? '<span class="pub-badge public">🔓 公開</span>'
+                : '<span class="pub-badge private">🔒 私密</span>';
+
+            // 最多顯示 8 個 tag，超出顯示 +N
+            const MAX_TAGS = 8;
+            const visTags = games.slice(0, MAX_TAGS);
+            const extraCount = games.length - visTags.length;
+            const tagsHtml = visTags.map(g =>
+                `<span class="coll-tag">${escHtml(g)}</span>`
+            ).join('') + (extraCount > 0 ? `<span class="coll-tag extra">+${extraCount} 款</span>` : '');
+
+            const descHtml = c.description
+                ? `<div class="coll-desc">${escHtml(c.description)}</div>`
+                : `<div class="coll-desc" style="opacity:.45;">（無簡介）</div>`;
+
+            return `
+            <div class="coll-card">
+                <!-- 卡片標頭 -->
+                <div class="coll-header">
+                    <div class="coll-title">${escHtml(c.title)}</div>
+                    ${pubBadge}
+                </div>
+
+                <!-- 簡介 -->
+                ${descHtml}
+
+                <!-- 遊戲 tags -->
+                <div class="coll-tags">
+                    ${tagsHtml || '<span style="color:var(--border-color); font-size:0.82rem;">尚未加入遊戲</span>'}
+                </div>
+
+                <!-- 底部 -->
+                <div class="coll-footer">
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <span class="coll-count">🎲 ${games.length} 款</span>
+                        ${c.play_count > 0 ? `<span class="coll-count">👥 ${c.play_count} 人評過</span>` : ''}
+                    </div>
+                    <div style="display:flex; gap:0.4rem;">
+                        <button class="btn btn-secondary"
+                            onclick="openEditModal('${c.id}')"
+                            style="font-size:0.82rem; padding:0.3rem 0.75rem;">
+                            ✏️ 編輯
+                        </button>
+                        <button class="btn btn-secondary"
+                            onclick="openDeleteModal('${c.id}', ${JSON.stringify(escHtml(c.title))})"
+                            style="font-size:0.82rem; padding:0.3rem 0.6rem; color:#ef4444;">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Modal 開啟 / 關閉 ────────────────────────────────────────────
+    function openCreateModal() {
+        editingId = null;
+        pendingGames = [];
+        document.getElementById('modal-heading').textContent = '建立新清單';
+        document.getElementById('m-title').value = '';
+        document.getElementById('m-title-count').textContent = '0';
+        document.getElementById('m-desc').value = '';
+        document.getElementById('m-desc-count').textContent = '0';
+        document.getElementById('m-game-input').value = '';
+        document.getElementById('m-public').checked = false;
+        document.getElementById('m-public-label').textContent = '🔒 私密';
+        renderPills();
+        document.getElementById('edit-modal').classList.add('open');
+        setTimeout(() => document.getElementById('m-title').focus(), 100);
+    }
+
+    function openEditModal(id) {
+        const c = myCollections.find(c => c.id === id);
+        if (!c) return;
+        editingId = id;
+        pendingGames = [...(c.games || [])];
+        document.getElementById('modal-heading').textContent = '編輯清單';
+        document.getElementById('m-title').value = c.title || '';
+        document.getElementById('m-title-count').textContent = (c.title || '').length;
+        document.getElementById('m-desc').value = c.description || '';
+        document.getElementById('m-desc-count').textContent = (c.description || '').length;
+        document.getElementById('m-game-input').value = '';
+        document.getElementById('m-public').checked = !!c.is_public;
+        document.getElementById('m-public-label').textContent = c.is_public ? '🔓 公開' : '🔒 私密';
+        renderPills();
+        document.getElementById('edit-modal').classList.add('open');
+        setTimeout(() => document.getElementById('m-title').focus(), 100);
+    }
+
+    function closeModal() {
+        document.getElementById('edit-modal').classList.remove('open');
+        hideSuggest();
+    }
+
+    // ── 遊戲搜尋建議 ─────────────────────────────────────────────────
+    function onSuggestInput() {
+        const q = document.getElementById('m-game-input').value.trim().toLowerCase();
+        if (!q || q.length < 1) { hideSuggest(); return; }
+
+        const suggestions = [];
+        const seen = new Set();
+        allDbGames.forEach(g => {
+            const zh = (g.name_zh || '').toLowerCase();
+            const en = (g.name_en || '').toLowerCase();
+            const ja = (g.name_ja || '').toLowerCase();
+            if (zh.includes(q) || en.includes(q) || ja.includes(q)) {
+                const key = g.name_zh || g.name_en;
+                if (!seen.has(key)) {
+                    suggestions.push({ zh: g.name_zh || '', en: g.name_en || '' });
+                    seen.add(key);
+                }
+            }
+        });
+
+        if (suggestions.length === 0) { hideSuggest(); return; }
+        suggestIdx = -1;
+        const dd = document.getElementById('suggest-dropdown');
+        dd.innerHTML = suggestions.slice(0, 8).map((s, i) =>
+            `<div class="suggest-opt"
+                data-name="${escHtml(s.zh || s.en)}"
+                onmousedown="pickSuggest('${escHtml(s.zh || s.en)}')"
+                onmouseover="suggestIdx=${i};highlightSuggest()">
+                <span class="szo-zh">${escHtml(s.zh)}</span>
+                ${s.en ? `<span class="szo-en">${escHtml(s.en)}</span>` : ''}
+            </div>`
+        ).join('');
+        dd.style.display = 'block';
+    }
+
+    function onSuggestKeydown(e) {
+        const items = document.querySelectorAll('.suggest-opt');
+        if (e.key === 'ArrowDown')  { e.preventDefault(); suggestIdx = Math.min(suggestIdx+1, items.length-1); highlightSuggest(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); suggestIdx = Math.max(suggestIdx-1, -1); highlightSuggest(); }
+        else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (suggestIdx >= 0 && items[suggestIdx]) pickSuggest(items[suggestIdx].dataset.name);
+            else addGameToList();
+        }
+        else if (e.key === 'Escape') hideSuggest();
+    }
+
+    function highlightSuggest() {
+        document.querySelectorAll('.suggest-opt').forEach((el, i) =>
+            el.classList.toggle('active', i === suggestIdx));
+    }
+
+    function pickSuggest(name) {
+        document.getElementById('m-game-input').value = name;
+        hideSuggest();
+        addGameToList();
+    }
+
+    function hideSuggest() {
+        const dd = document.getElementById('suggest-dropdown');
+        if (dd) dd.style.display = 'none';
+    }
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#m-game-input') && !e.target.closest('#suggest-dropdown')) hideSuggest();
+    });
+
+    // ── 遊戲 pill 操作 ───────────────────────────────────────────────
+    function addGameToList() {
+        const input = document.getElementById('m-game-input');
+        const name = input.value.trim();
+        if (!name) return;
+        if (pendingGames.some(g => g.toLowerCase() === name.toLowerCase())) {
+            input.value = '';
+            return;
+        }
+        pendingGames.push(name);
+        input.value = '';
+        hideSuggest();
+        renderPills();
+        input.focus();
+    }
+
+    function removeGame(idx) {
+        pendingGames.splice(idx, 1);
+        renderPills();
+    }
+
+    function renderPills() {
+        const wrap = document.getElementById('game-pill-list');
+        const countEl = document.getElementById('game-count');
+        if (countEl) countEl.textContent = pendingGames.length;
+        if (pendingGames.length === 0) { wrap.innerHTML = ''; return; }
+        wrap.innerHTML = pendingGames.map((g, i) =>
+            `<span class="game-pill">
+                ${escHtml(g)}
+                <button class="game-pill-del" onclick="removeGame(${i})" title="移除">✕</button>
+            </span>`
+        ).join('');
+    }
+
+    // 公開 checkbox 與字數計算
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('m-public').addEventListener('change', function() {
+            document.getElementById('m-public-label').textContent = this.checked ? '🔓 公開' : '🔒 私密';
+        });
+        document.getElementById('m-title').addEventListener('input', function() {
+            document.getElementById('m-title-count').textContent = this.value.length;
+        });
+        document.getElementById('m-desc').addEventListener('input', function() {
+            document.getElementById('m-desc-count').textContent = this.value.length;
+        });
+    });
+
+    // ── 儲存 ─────────────────────────────────────────────────────────
+    async function saveCollection() {
+        const title = document.getElementById('m-title').value.trim();
+        if (!title) { showToast('⚠️ 請填入清單名稱', true); return; }
+        if (pendingGames.length === 0) { showToast('⚠️ 請至少加入一款遊戲', true); return; }
+
+        const btn = document.getElementById('modal-save-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ 儲存中...';
+
+        const payload = {
+            title,
+            description: document.getElementById('m-desc').value.trim(),
+            games: pendingGames,
+            created_by:   currentUser.id,
+            creator_name: currentUser.username || currentUser.nickname || '匿名玩家',
+            is_public:    document.getElementById('m-public').checked
+        };
+
+        try {
+            let res;
+            if (editingId) {
+                res = await safePatch(`tables/${TABLE}/${editingId}`, payload);
+            } else {
+                payload.id = `uc_${currentUser.id.slice(0,8)}_${Date.now()}`;
+                res = await fetch(`tables/${TABLE}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            if (!res.ok) throw new Error('Save failed');
+            closeModal();
+            await loadMyCollections();
+            showToast(editingId ? '✅ 清單已更新！' : '✅ 清單已建立！');
+        } catch(e) {
+            showToast('❌ 儲存失敗，請稍後再試', true);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '💾 儲存';
+        }
+    }
+
+    // ── 刪除 ─────────────────────────────────────────────────────────
+    function openDeleteModal(id, title) {
+        deletingId = id;
+        document.getElementById('delete-title-preview').textContent = title;
+        document.getElementById('delete-modal').classList.add('open');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('delete-modal').classList.remove('open');
+        deletingId = null;
+    }
+
+    async function confirmDelete() {
+        if (!deletingId) return;
+        try {
+            const res = await fetch(`tables/${TABLE}/${deletingId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error();
+            closeDeleteModal();
+            await loadMyCollections();
+            showToast('🗑️ 清單已刪除');
+        } catch(e) {
+            showToast('❌ 刪除失敗，請稍後再試', true);
+        }
+    }
+
+    // ── 工具 ─────────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str || '')
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;');
+    }
+
+    function showToast(msg, isWarn = false) {
+        const el = document.createElement('div');
+        el.className = 'toast';
+        if (isWarn) el.style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2600);
+    }
+
+    // ── 啟動 ─────────────────────────────────────────────────────────
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    </script>
+</body>
+</html>

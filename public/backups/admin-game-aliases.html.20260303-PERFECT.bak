@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲別名整合 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        /* ── Admin Header（對齊 admin-quiz.html 格式）── */
+        .admin-header {
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+        }
+        .admin-header h2 {
+            margin: 0 0 0.5rem;
+            color: white;
+            background: none;
+            -webkit-text-fill-color: white;
+        }
+        .admin-header p {
+            margin: 0;
+            opacity: 0.9;
+            color: white;
+        }
+        .admin-header .back-btn {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.35rem 1rem;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1.5px solid rgba(255,255,255,0.6);
+            border-radius: 2rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .admin-header .back-btn:hover { background: rgba(255,255,255,0.35); }
+
+        .admin-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-light);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-color);
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .game-alias-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .alias-card {
+            background: var(--card-bg);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+
+        .alias-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .alias-card.integrated {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        }
+
+        .alias-card.pending {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+        }
+
+        .alias-card.conflict {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+        }
+
+        .alias-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .alias-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-color);
+            flex: 1;
+        }
+
+        .alias-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-count {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.35rem 0.75rem;
+            background: var(--bg-color);
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .status-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-integrated {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-pending {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .status-conflict {
+            background: #ef4444;
+            color: white;
+        }
+
+        .mapping-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .mapping-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            min-width: 100px;
+        }
+
+        .mapping-select {
+            flex: 1;
+            padding: 0.6rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .mapping-select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .btn-icon {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .search-box {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .filter-group label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .filter-group select {
+            padding: 0.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .conflict-info {
+            background: #fef2f2;
+            border: 1px solid #fee2e2;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: #991b1b;
+        }
+
+        .players-list {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .players-list-title {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .player-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .player-tag {
+            padding: 0.25rem 0.6rem;
+            background: var(--bg-color);
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-color);
+        }
+
+        /* Autocomplete dropdown */
+        .autocomplete-wrap {
+            position: relative;
+            flex: 1;
+        }
+        .autocomplete-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            background: white;
+            box-sizing: border-box;
+        }
+        .autocomplete-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        .autocomplete-input.matched {
+            border-color: var(--success-color, #22c55e);
+            background: #f0fdf4;
+        }
+        .autocomplete-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 999;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .autocomplete-dropdown.open {
+            display: block;
+        }
+        .ac-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.88rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .ac-item:last-child { border-bottom: none; }
+        .ac-item:hover, .ac-item.highlighted {
+            background: var(--bg-light);
+        }
+        .ac-score {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-left: 0.5rem;
+            white-space: nowrap;
+        }
+        .ac-highlight {
+            background: #fef08a;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="admin-container">
+        <!-- 頁面標題 -->
+        <div class="admin-header" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);">
+            <h2>🎯 遊戲別名整合工具</h2>
+            <p>將玩家輸入的遊戲名稱對應到標準遊戲資料庫</p>
+            <a href="admin.html" class="back-btn">← 返回管理後台</a>
+        </div>
+
+        <!-- 統計資訊 -->
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <div class="simple-hourglass" style="margin: 0 auto 0.5rem;"><div class="hourglass">⏳</div></div>
+                <div class="stat-label">載入中...</div>
+            </div>
+        </div>
+
+        <!-- 批量操作 -->
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.75rem; align-items:center;">
+            <button onclick="previewAliasApply()" id="preview-apply-btn"
+                style="padding:0.5rem 1.2rem; background:#10b981; color:white; border:none; border-radius:0.5rem; cursor:pointer; font-size:0.9rem; font-weight:600;">
+                🔍 預覽別名套用影響
+            </button>
+            <span id="apply-all-result" style="font-size:0.85rem; color:var(--text-light); align-self:center;"></span>
+        </div>
+        <!-- 預覽報告區域 -->
+        <div id="alias-preview-panel" style="display:none; background:#f8fafc; border:1.5px solid #10b981; border-radius:0.75rem; padding:1.25rem; margin-bottom:1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <strong style="font-size:1rem; color:#065f46;">📋 套用預覽報告</strong>
+                <div style="display:flex; gap:0.5rem;">
+                    <button onclick="confirmApplyAliases()" id="confirm-apply-btn"
+                        style="padding:0.4rem 1rem; background:#10b981; color:white; border:none; border-radius:0.5rem; cursor:pointer; font-size:0.85rem; font-weight:600;">
+                        ✅ 確認執行套用
+                    </button>
+                    <button onclick="document.getElementById('alias-preview-panel').style.display='none'" 
+                        style="padding:0.4rem 0.8rem; background:#e2e8f0; color:#475569; border:none; border-radius:0.5rem; cursor:pointer; font-size:0.85rem;">
+                        ✕ 取消
+                    </button>
+                </div>
+            </div>
+            <div id="alias-preview-content"></div>
+        </div>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('unintegrated')">
+                ⚠️ 待整合 <span id="tab-count-unintegrated"></span>
+            </button>
+            <button class="tab" onclick="switchTab('integrated')">
+                ✅ 已整合 <span id="tab-count-integrated"></span>
+            </button>
+            <button class="tab" onclick="switchTab('all')">
+                📋 全部 <span id="tab-count-all"></span>
+            </button>
+        </div>
+
+        <!-- 搜尋與篩選 -->
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="🔍 搜尋遊戲名稱..." oninput="filterAliases()">
+        </div>
+
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>排序方式：</label>
+                <select id="sort-select" onchange="filterAliases()">
+                    <option value="count-desc">使用次數（高→低）</option>
+                    <option value="count-asc">使用次數（低→高）</option>
+                    <option value="name-asc">名稱（A→Z）</option>
+                    <option value="name-desc">名稱（Z→A）</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>最少使用次數：</label>
+                <select id="min-count-select" onchange="filterAliases()">
+                    <option value="1">1+ 次</option>
+                    <option value="2">2+ 次</option>
+                    <option value="3">3+ 次</option>
+                    <option value="5">5+ 次</option>
+                    <option value="10">10+ 次</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 待整合清單 -->
+        <div class="tab-content active" id="content-unintegrated">
+            <div class="game-alias-grid" id="unintegrated-list">
+                <div class="empty-state">
+                    <div class="simple-hourglass" style="margin: 0 auto 1rem;"><div class="hourglass">⏳</div></div>
+                    <p>載入中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 已整合清單 -->
+        <div class="tab-content" id="content-integrated">
+            <div class="game-alias-grid" id="integrated-list">
+                <div class="empty-state">
+                    <div class="simple-hourglass" style="margin: 0 auto 1rem;"><div class="hourglass">⏳</div></div>
+                    <p>載入中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 全部清單 -->
+        <div class="tab-content" id="content-all">
+            <div class="game-alias-grid" id="all-list">
+                <div class="empty-state">
+                    <div class="simple-hourglass" style="margin: 0 auto 1rem;"><div class="hourglass">⏳</div></div>
+                    <p>載入中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Sign-In SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- 管理後台驗證 -->
+    <script src="js/admin-auth.js?v=20240222-fix"></script>
+    <script src="js/show-admin-link.js?v=20240222-fix"></script>
+    <script src="js/admin-navbar-cleanup.js"></script>
+    <script>
+        let allAliases = [];
+        let allGames = [];
+        let currentTab = 'unintegrated';
+
+        // 頁面載入
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadData();
+        });
+
+        // 載入所有資料
+        async function loadData() {
+            try {
+                // 載入遊戲資料庫（分批抓全部）
+                const gamesCountRes = await fetch('tables/game_database?limit=1');
+                const gamesCountData = await gamesCountRes.json();
+                const gamesTotal = gamesCountData.total || 0;
+                const gamesBatchSize = 100;
+                const gamesBatches = Math.ceil(gamesTotal / gamesBatchSize);
+                allGames = [];
+                for (let i = 1; i <= gamesBatches; i++) {
+                    const res = await fetch(`tables/game_database?limit=${gamesBatchSize}&page=${i}`);
+                    const data = await res.json();
+                    allGames = allGames.concat(data.data || []);
+                }
+
+                // 載入所有使用者資料（分批）
+                const usersCountRes = await fetch('tables/users?limit=1');
+                const usersCountData = await usersCountRes.json();
+                const usersTotal = usersCountData.total || 0;
+                const usersBatches = Math.ceil(usersTotal / 500);
+                let users = [];
+                for (let i = 1; i <= usersBatches; i++) {
+                    const res = await fetch(`tables/users?limit=500&page=${i}`);
+                    const data = await res.json();
+                    users = users.concat(data.data || []);
+                }
+
+                // 載入別名對應資料
+                const aliasesResponse = await fetch('tables/game_aliases?limit=1000');
+                const aliasesData = await aliasesResponse.json();
+                const existingAliases = aliasesData.data || [];
+
+                // 統計所有遊戲名稱（從 liked_games, neutral_games, disliked_games, wishlist）
+                const gameStats = new Map();
+                const playersByGame = new Map();
+
+                users.forEach(user => {
+                    const allUserGames = [
+                        ...(user.liked_games || []),
+                        ...(user.neutral_games || []),
+                        ...(user.disliked_games || []),
+                        ...(user.wishlist || [])
+                    ];
+
+                    allUserGames.forEach(game => {
+                        if (!gameStats.has(game)) {
+                            gameStats.set(game, 0);
+                            playersByGame.set(game, []);
+                        }
+                        gameStats.set(game, gameStats.get(game) + 1);
+                        const displayName = user.nickname || user.username || user.email || '匿名玩家';
+                        if (!playersByGame.get(game).includes(displayName)) {
+                            playersByGame.get(game).push(displayName);
+                        }
+                    });
+                });
+
+                // 建立別名對應表
+                // game_aliases 結構：{ id, primary_name, aliases (array) }
+                // aliases 陣列裡的每個字串都是 primary_name 的別名
+                const aliasMap = new Map(); // aliasName → { primary_name, id }
+                existingAliases.forEach(record => {
+                    const primaryName = record.primary_name || '';
+                    const aliasList = Array.isArray(record.aliases) ? record.aliases : [];
+                    aliasList.forEach(aliasName => {
+                        if (aliasName) {
+                            aliasMap.set(aliasName, {
+                                standard_name: primaryName,
+                                id: record.id
+                            });
+                        }
+                    });
+                });
+
+                // 組合資料
+                allAliases = Array.from(gameStats.entries()).map(([name, count]) => {
+                    const aliasInfo = aliasMap.get(name);
+                    // 判斷是否已在遊戲資料庫（比對 name_zh, name_en）
+                    const isInDatabase = allGames.some(g =>
+                        (g.name_zh && g.name_zh === name) ||
+                        (g.name_en && g.name_en === name)
+                    );
+                    
+                    return {
+                        name: name,
+                        count: count,
+                        players: playersByGame.get(name) || [],
+                        isIntegrated: !!aliasInfo,
+                        standardName: aliasInfo?.standard_name || '',
+                        aliasId: aliasInfo?.id || null,
+                        isInDatabase: isInDatabase,
+                        status: isInDatabase ? 'database' : (aliasInfo ? 'integrated' : 'pending')
+                    };
+                });
+
+                // 更新統計與清單
+                updateStats();
+                filterAliases();
+
+            } catch (error) {
+                console.error('❌ 載入資料失敗:', error);
+                document.getElementById('stats-grid').innerHTML = `
+                    <div class="stat-card" style="grid-column: 1 / -1;">
+                        <div style="color: var(--danger-color);">❌ 載入失敗</div>
+                        <div class="stat-label">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 更新統計資訊
+        function updateStats() {
+            const total = allAliases.length;
+            const integrated = allAliases.filter(a => a.isIntegrated).length;
+            const unintegrated = allAliases.filter(a => !a.isIntegrated && !a.isInDatabase).length;
+            const inDatabase = allAliases.filter(a => a.isInDatabase).length;
+            const totalPlayers = new Set(allAliases.flatMap(a => a.players)).size;
+
+            document.getElementById('stats-grid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${total}</div>
+                    <div class="stat-label">📊 遊戲名稱總數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${unintegrated}</div>
+                    <div class="stat-label">⚠️ 待整合</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${integrated}</div>
+                    <div class="stat-label">✅ 已建立別名</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${inDatabase}</div>
+                    <div class="stat-label">🎮 已在資料庫</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalPlayers}</div>
+                    <div class="stat-label">👥 參與玩家數</div>
+                </div>
+            `;
+
+            // 更新分頁計數
+            document.getElementById('tab-count-unintegrated').textContent = `(${unintegrated})`;
+            document.getElementById('tab-count-integrated').textContent = `(${integrated})`;
+            document.getElementById('tab-count-all').textContent = `(${total})`;
+        }
+
+        // 切換分頁
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // 更新按鈕狀態
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 更新內容顯示
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`content-${tabName}`).classList.add('active');
+            
+            // 重新篩選
+            filterAliases();
+        }
+
+        // 篩選與排序
+        function filterAliases() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const sortBy = document.getElementById('sort-select').value;
+            const minCount = parseInt(document.getElementById('min-count-select').value);
+
+            // 篩選
+            let filtered = allAliases.filter(alias => {
+                if (alias.count < minCount) return false;
+                if (searchTerm && !alias.name.toLowerCase().includes(searchTerm)) return false;
+                
+                if (currentTab === 'unintegrated') {
+                    return !alias.isIntegrated && !alias.isInDatabase;
+                } else if (currentTab === 'integrated') {
+                    return alias.isIntegrated;
+                }
+                return true; // 'all' tab
+            });
+
+            // 排序
+            filtered.sort((a, b) => {
+                switch (sortBy) {
+                    case 'count-desc': return b.count - a.count;
+                    case 'count-asc': return a.count - b.count;
+                    case 'name-asc': return a.name.localeCompare(b.name, 'zh-TW');
+                    case 'name-desc': return b.name.localeCompare(a.name, 'zh-TW');
+                    case 'similarity': {
+                        // 已整合/已在DB的排最後，其餘按相似度高低（分數越高越相似排越前）
+                        const sa = (a.isInDatabase || a.isIntegrated) ? -1 : bestSimilarity(a.name);
+                        const sb = (b.isInDatabase || b.isIntegrated) ? -1 : bestSimilarity(b.name);
+                        return sb - sa;
+                    }
+                    default: return 0;
+                }
+            });
+
+            // 渲染
+            renderAliases(filtered, `${currentTab}-list`);
+        }
+
+        // 渲染別名清單
+        function renderAliases(aliases, containerId) {
+            const container = document.getElementById(containerId);
+            
+            if (aliases.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">✨</div>
+                        <p>沒有符合條件的遊戲名稱</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = aliases.map(alias => {
+                const statusClass = alias.isInDatabase ? 'integrated' : (alias.isIntegrated ? 'integrated' : 'pending');
+                const statusBadge = alias.isInDatabase ? 
+                    '<span class="status-badge status-integrated">✅ 已在資料庫</span>' :
+                    (alias.isIntegrated ? 
+                        '<span class="status-badge status-integrated">✅ 已建立別名</span>' :
+                        '<span class="status-badge status-pending">⚠️ 待整合</span>');
+
+                // autocomplete 的 id（用於 saveAlias/editAliasAc 取值）
+                const safeId = btoa(encodeURIComponent(alias.name)).replace(/[^a-zA-Z0-9]/g, '_');
+                const inputId = `input-${safeId}`;
+                const dropId  = `drop-${safeId}`;
+                const currentVal = alias.standardName || '';
+
+                return `
+                    <div class="alias-card ${statusClass}">
+                        <div class="alias-header">
+                            <div class="alias-name">${alias.name}</div>
+                            <div class="alias-meta">
+                                <div class="user-count">
+                                    <span>👥</span>
+                                    <span>${alias.count} 次</span>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                        </div>
+
+                        ${!alias.isInDatabase ? `
+                            <div class="mapping-section">
+                                <div class="mapping-label">對應到 →</div>
+                                <div class="autocomplete-wrap">
+                                    <input
+                                        type="text"
+                                        class="autocomplete-input${currentVal ? ' matched' : ''}"
+                                        id="${inputId}"
+                                        value="${currentVal}"
+                                        placeholder="輸入遊戲名稱搜尋…"
+                                        data-alias="${alias.name.replace(/"/g, '&quot;')}"
+                                        ${alias.isIntegrated ? 'readonly' : ''}
+                                        autocomplete="off"
+                                        oninput="onAcInput(this, '${dropId}')"
+                                        onkeydown="onAcKey(event, '${dropId}', '${inputId}')"
+                                        onfocus="onAcInput(this, '${dropId}')"
+                                        onblur="onAcBlur('${dropId}')"
+                                    >
+                                    <div class="autocomplete-dropdown" id="${dropId}"></div>
+                                </div>
+                            </div>
+
+                            <div class="action-buttons">
+                                ${!alias.isIntegrated ? `
+                                    <button class="btn btn-primary btn-icon" onclick="saveAlias('${alias.name.replace(/'/g, "\\'")}')">
+                                        💾 儲存對應
+                                    </button>
+                                ` : `
+                                    <button class="btn btn-secondary btn-icon" onclick="editAliasAc('${alias.aliasId}', '${alias.name.replace(/'/g, "\\'")}')">
+                                        ✏️ 修改對應
+                                    </button>
+                                    <button class="btn btn-danger btn-icon" onclick="deleteAlias('${alias.aliasId}', '${alias.name.replace(/'/g, "\\'")}')">
+                                        🗑️ 刪除對應
+                                    </button>
+                                `}
+                            </div>
+                        ` : `
+                            <div style="padding: 0.75rem; background: #f0fdf4; border-radius: 0.5rem; font-size: 0.9rem; color: #166534;">
+                                ✨ 此名稱已在遊戲資料庫中，無需建立別名
+                            </div>
+                        `}
+
+                        ${alias.players.length > 0 ? `
+                            <div class="players-list">
+                                <div class="players-list-title">使用此名稱的玩家：</div>
+                                <div class="player-tags">
+                                    ${alias.players.slice(0, 10).map(p => `<span class="player-tag">${p}</span>`).join('')}
+                                    ${alias.players.length > 10 ? `<span class="player-tag">+${alias.players.length - 10} 位</span>` : ''}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ════════════════════════════════════════════
+        // ── Autocomplete 相關函數 ──
+        // ════════════════════════════════════════════
+
+        // 字串相似度：結合「最長公共子字串長度比例」+「共同字符比例」
+        function similarity(a, b) {
+            if (!a || !b) return 0;
+            a = a.toLowerCase().replace(/\s/g, '');
+            b = b.toLowerCase().replace(/\s/g, '');
+            if (a === b) return 1;
+            // 最長公共子字串
+            let lcs = 0;
+            for (let i = 0; i < a.length; i++) {
+                for (let j = 0; j < b.length; j++) {
+                    let len = 0;
+                    while (i + len < a.length && j + len < b.length && a[i + len] === b[j + len]) len++;
+                    if (len > lcs) lcs = len;
+                }
+            }
+            // 公共字符集合比例
+            const setA = new Set(a.split(''));
+            const setB = new Set(b.split(''));
+            let common = 0;
+            setA.forEach(c => { if (setB.has(c)) common++; });
+            const charScore = common / Math.max(setA.size, setB.size);
+            const lcsScore  = (2 * lcs) / (a.length + b.length);
+            return (lcsScore * 0.6 + charScore * 0.4);
+        }
+
+        // 取得與 allGames 相似度最高的分數（用於排序整列卡片）
+        function bestSimilarity(aliasName) {
+            let best = 0;
+            const gameNames = allGames.map(g => g.name_zh || g.name_en || '').filter(Boolean);
+            gameNames.forEach(n => {
+                const s = similarity(aliasName, n);
+                if (s > best) best = s;
+            });
+            return best;
+        }
+
+        // 取得相似度最高的前 N 個遊戲（含分數）
+        function getTopSuggestions(aliasName, topN = 8) {
+            const gameNames = allGames.map(g => g.name_zh || g.name_en || '').filter(Boolean);
+            return gameNames
+                .map(n => ({ name: n, score: similarity(aliasName, n) }))
+                .sort((a, b) => b.score - a.score)
+                .slice(0, topN);
+        }
+
+        // 根據輸入即時過濾候選清單
+        function onAcInput(inputEl, dropId) {
+            const query = inputEl.value.trim();
+            const drop = document.getElementById(dropId);
+            const aliasName = inputEl.dataset.alias || '';
+
+            // 計算候選：先過濾包含關鍵字，再依相似度排序
+            const gameNames = allGames.map(g => g.name_zh || g.name_en || '').filter(Boolean);
+            let candidates;
+            if (!query) {
+                // 無輸入 → 顯示相似度最高的前 8 筆
+                candidates = gameNames
+                    .map(n => ({ name: n, score: similarity(aliasName, n) }))
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 8);
+            } else {
+                // 有輸入 → 過濾含關鍵字，再依相似度排序
+                candidates = gameNames
+                    .filter(n => n.toLowerCase().includes(query.toLowerCase()) || query.toLowerCase().includes(n.toLowerCase().slice(0,2)))
+                    .map(n => ({ name: n, score: similarity(query, n) }))
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 10);
+                // 若關鍵字過濾結果太少，補充相似度排名
+                if (candidates.length < 3) {
+                    const extra = gameNames
+                        .filter(n => !candidates.find(c => c.name === n))
+                        .map(n => ({ name: n, score: similarity(query, n) }))
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, 5);
+                    candidates = [...candidates, ...extra];
+                }
+            }
+
+            if (candidates.length === 0) { drop.classList.remove('open'); return; }
+
+            // 高亮匹配字符
+            function highlight(text, q) {
+                if (!q) return text;
+                const idx = text.toLowerCase().indexOf(q.toLowerCase());
+                if (idx < 0) return text;
+                return text.slice(0, idx)
+                    + `<span class="ac-highlight">${text.slice(idx, idx + q.length)}</span>`
+                    + text.slice(idx + q.length);
+            }
+
+            drop.innerHTML = candidates.map((c, i) => `
+                <div class="ac-item" data-value="${c.name}"
+                    onmousedown="onAcSelect('${inputEl.id}', '${dropId}', '${c.name.replace(/'/g, "\\'")}')">
+                    <span>${highlight(c.name, query)}</span>
+                    <span class="ac-score">${Math.round(c.score * 100)}% 相符</span>
+                </div>
+            `).join('');
+            drop.classList.add('open');
+        }
+
+        // 鍵盤導航
+        function onAcKey(e, dropId, inputId) {
+            const drop = document.getElementById(dropId);
+            const items = drop.querySelectorAll('.ac-item');
+            let idx = [...items].findIndex(el => el.classList.contains('highlighted'));
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (idx < items.length - 1) {
+                    if (idx >= 0) items[idx].classList.remove('highlighted');
+                    items[idx + 1].classList.add('highlighted');
+                    items[idx + 1].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (idx > 0) {
+                    items[idx].classList.remove('highlighted');
+                    items[idx - 1].classList.add('highlighted');
+                    items[idx - 1].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (idx >= 0) {
+                    const val = items[idx].dataset.value;
+                    onAcSelect(inputId, dropId, val);
+                }
+            } else if (e.key === 'Escape') {
+                drop.classList.remove('open');
+            }
+        }
+
+        // 選中候選項
+        function onAcSelect(inputId, dropId, value) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = value;
+                input.classList.add('matched');
+            }
+            document.getElementById(dropId).classList.remove('open');
+
+            // 顯示選中遊戲的詳細資訊
+            const confirmId = `confirm-${dropId}`;
+            let confirmEl = document.getElementById(confirmId);
+            if (!confirmEl) {
+                confirmEl = document.createElement('div');
+                confirmEl.id = confirmId;
+                confirmEl.style.cssText = 'margin-top:0.75rem; padding:0.75rem 1rem; background:var(--bg-light); border-radius:0.5rem; border:1px solid var(--border-color); font-size:0.85rem;';
+                const drop = document.getElementById(dropId);
+                drop.parentElement.parentElement.appendChild(confirmEl);
+            }
+
+            const game = allGames.find(g => (g.name_zh || g.name_en) === value);
+            if (game) {
+                const imgHtml = game.image_url
+                    ? `<img src="${game.image_url}" alt="${game.name_zh || game.name_en}" onerror="this.style.display='none'" style="width:64px;height:64px;object-fit:cover;border-radius:0.5rem;flex-shrink:0;border:1px solid var(--border-color);">`
+                    : `<div style="width:64px;height:64px;border-radius:0.5rem;background:var(--border-color);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;">🎲</div>`;
+                const infoLines = [
+                    game.name_zh && game.name_en && game.name_zh !== game.name_en ? `🌐 ${game.name_en}` : null,
+                    game.year ? `📅 ${game.year} 年` : null,
+                    (game.min_players || game.max_players) ? `👥 ${game.min_players || '?'}～${game.max_players || '?'} 人` : null,
+                    game.playing_time ? `⏱️ ${game.playing_time} 分鐘` : null,
+                    game.bgg_id ? `🔗 BGG #${game.bgg_id}` : null,
+                ].filter(Boolean).join('　');
+                confirmEl.innerHTML = `
+                    <div style="display:flex;gap:0.75rem;align-items:center;">
+                        ${imgHtml}
+                        <div style="min-width:0;">
+                            <div style="color:var(--success-color);font-weight:700;font-size:0.95rem;margin-bottom:0.25rem;">✅ 已選：${game.name_zh || game.name_en}</div>
+                            <div style="color:var(--text-light);font-size:0.82rem;line-height:1.6;">${infoLines || '（無詳細資料）'}</div>
+                        </div>
+                    </div>`;
+            } else {
+                confirmEl.innerHTML = `<div style="color:var(--warning-color);">⚠️ 找不到此遊戲的詳細資料</div>`;
+            }
+        }
+
+        // 失去焦點時延遲關閉（留時間給 onmousedown）
+        function onAcBlur(dropId) {
+            setTimeout(() => {
+                const drop = document.getElementById(dropId);
+                if (drop) drop.classList.remove('open');
+            }, 200);
+        }
+
+        // 點其他地方關掉所有 dropdown
+        document.addEventListener('mousedown', function(e) {
+            if (!e.target.closest('.autocomplete-wrap')) {
+                document.querySelectorAll('.autocomplete-dropdown.open').forEach(d => d.classList.remove('open'));
+            }
+        });
+
+        // ════════════════════════════════════════════
+        // ── 儲存 / 修改 / 刪除 ──
+        // ════════════════════════════════════════════
+
+        // 儲存別名對應
+        // ════════════════════════════════════════════
+        // ── 批量更新玩家資料中的舊名稱 ──
+        // ════════════════════════════════════════════
+        async function updateAllUsersGames(oldName, newName) {
+            if (oldName === newName) return;
+            const fields = ['super_liked_games','liked_games','neutral_games','disliked_games','no_interest_games','wishlist','pinned_games'];
+
+            // 抓全部玩家
+            const countRes = await fetch('tables/users?limit=1');
+            const countData = await countRes.json();
+            const total = countData.total || 0;
+            let allUsers = [];
+            for (let i = 1; i <= Math.ceil(total / 500); i++) {
+                const res = await fetch(`tables/users?limit=500&page=${i}`);
+                const data = await res.json();
+                allUsers = allUsers.concat(data.data || []);
+            }
+
+            let updatedCount = 0;
+            for (const user of allUsers) {
+                const patch = {};
+                let changed = false;
+
+                for (const field of fields.slice(0, 6)) {
+                    const arr = user[field];
+                    if (Array.isArray(arr) && arr.includes(oldName)) {
+                        patch[field] = arr.map(g => g === oldName ? newName : g);
+                        changed = true;
+                    }
+                }
+
+                // pinned_games 是 JSON string
+                if (user.pinned_games) {
+                    try {
+                        const pinned = JSON.parse(user.pinned_games);
+                        let pinnedChanged = false;
+                        for (const key of Object.keys(pinned)) {
+                            if (Array.isArray(pinned[key])) {
+                                const updated = pinned[key].map(g => g === oldName ? newName : g);
+                                if (updated.some((g, i) => g !== pinned[key][i])) {
+                                    pinned[key] = updated;
+                                    pinnedChanged = true;
+                                }
+                            }
+                        }
+                        if (pinnedChanged) {
+                            patch.pinned_games = JSON.stringify(pinned);
+                            changed = true;
+                        }
+                    } catch(e) {}
+                }
+
+                if (changed) {
+                    await fetch(`tables/users/${user.id}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(patch)
+                    });
+                    updatedCount++;
+                }
+            }
+
+            alert(`✅ 已將 ${updatedCount} 位玩家資料中的「${oldName}」更新為「${newName}」`);
+        }
+
+        // game_aliases 結構：{ primary_name, aliases[] }
+        async function saveAlias(aliasName) {
+            const inputId = `input-${btoa(encodeURIComponent(aliasName)).replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const inputEl = document.getElementById(inputId);
+            const standardName = (inputEl ? inputEl.value : '').trim();
+
+            if (!standardName) {
+                alert('⚠️ 請在輸入框中輸入並選擇標準遊戲名稱');
+                return;
+            }
+            // 驗證輸入的名稱是否存在於遊戲資料庫，並取出 bgg_id
+            const matchedGame = allGames.find(g => (g.name_zh || g.name_en || g.name) === standardName);
+            if (!matchedGame) {
+                alert(`⚠️ 「${standardName}」不存在於遊戲資料庫中！\n請從候選清單中選取正確的名稱。`);
+                return;
+            }
+            const resolvedBggId = matchedGame.bgg_id ? String(matchedGame.bgg_id) : '';
+
+            if (!confirm(`確定要將「${aliasName}」對應到「${standardName}」嗎？`)) {
+                return;
+            }
+
+            try {
+                // 先查是否已有 primary_name = standardName 的記錄
+                const existingResp = await fetch(`tables/game_aliases?limit=1000`);
+                const existingData = await existingResp.json();
+                const allRecords = existingData.data || [];
+                const existingRecord = allRecords.find(r => r.primary_name === standardName);
+
+                if (existingRecord) {
+                    // 已有記錄：將 aliasName 加入 aliases 陣列
+                    const currentAliases = Array.isArray(existingRecord.aliases) ? existingRecord.aliases : [];
+                    if (!currentAliases.includes(aliasName)) {
+                        currentAliases.push(aliasName);
+                    }
+                    // 同時更新 bgg_id（若尚未有或需補上）
+                    const patchBody = { aliases: currentAliases };
+                    if (resolvedBggId && !existingRecord.bgg_id) patchBody.bgg_id = resolvedBggId;
+                    const response = await fetch(`tables/game_aliases/${existingRecord.id}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(patchBody)
+                    });
+                    if (!response.ok) throw new Error('更新失敗');
+                } else {
+                    // 沒有記錄：新建一筆
+                    const postBody = { primary_name: standardName, aliases: [aliasName] };
+                    if (resolvedBggId) postBody.bgg_id = resolvedBggId;
+                    const response = await fetch('tables/game_aliases', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(postBody)
+                    });
+                    if (!response.ok) throw new Error('新增失敗');
+                }
+
+                alert('✅ 別名對應已儲存！正在更新所有玩家資料...');
+                await updateAllUsersGames(aliasName, standardName);
+                // 清除 GameNames 快取，讓下次開頁面能讀到最新別名
+                if (window.GameNames && GameNames.clearCache) GameNames.clearCache();
+                await loadData();
+
+            } catch (error) {
+                console.error('❌ 儲存失敗:', error);
+                alert('❌ 儲存失敗：' + error.message);
+            }
+        }
+
+        // 修改別名對應（從 input 元素讀取新標準名稱）
+        async function editAliasAc(aliasId, aliasName) {
+            const inputId = `input-${btoa(encodeURIComponent(aliasName)).replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const inputEl = document.getElementById(inputId);
+            const newStandardName = (inputEl ? inputEl.value : '').trim();
+
+            if (!newStandardName) {
+                alert('⚠️ 請先在輸入框中選擇新的標準遊戲名稱');
+                return;
+            }
+
+            // 檢查是否在資料庫中，並取出 bgg_id
+            const matchedGameEdit = allGames.find(g => (g.name_zh || g.name_en || g.name) === newStandardName);
+            if (!matchedGameEdit) {
+                alert(`⚠️ 「${newStandardName}」不存在於遊戲資料庫中！\n請從候選清單中選取一個正確的名稱。`);
+                return;
+            }
+            const editBggId = matchedGameEdit.bgg_id ? String(matchedGameEdit.bgg_id) : '';
+
+            if (!confirm(`確定要將「${aliasName}」改對應到「${newStandardName}」嗎？`)) return;
+
+            try {
+                // 從舊記錄移除 aliasName
+                const oldResp = await fetch(`tables/game_aliases/${aliasId}`);
+                const oldRecord = await oldResp.json();
+                const oldAliases = (Array.isArray(oldRecord.aliases) ? oldRecord.aliases : []).filter(a => a !== aliasName);
+                
+                if (oldAliases.length > 0) {
+                    // 舊記錄還有其他別名，只更新
+                    await fetch(`tables/game_aliases/${aliasId}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ aliases: oldAliases })
+                    });
+                } else {
+                    // 舊記錄清空了，刪除它
+                    await fetch(`tables/game_aliases/${aliasId}`, { method: 'DELETE' });
+                }
+
+                // 加入新記錄
+                const allRecordsResp = await fetch(`tables/game_aliases?limit=1000`);
+                const allRecordsData = await allRecordsResp.json();
+                const newRecord = (allRecordsData.data || []).find(r => r.primary_name === newStandardName.trim());
+
+                if (newRecord) {
+                    const newAliases = Array.isArray(newRecord.aliases) ? newRecord.aliases : [];
+                    if (!newAliases.includes(aliasName)) newAliases.push(aliasName);
+                    const editPatchBody = { aliases: newAliases };
+                    if (editBggId && !newRecord.bgg_id) editPatchBody.bgg_id = editBggId;
+                    await fetch(`tables/game_aliases/${newRecord.id}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(editPatchBody)
+                    });
+                } else {
+                    const editPostBody = { primary_name: newStandardName.trim(), aliases: [aliasName] };
+                    if (editBggId) editPostBody.bgg_id = editBggId;
+                    await fetch('tables/game_aliases', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(editPostBody)
+                    });
+                }
+
+                alert('✅ 別名對應已修改！');
+                await loadData();
+
+            } catch (error) {
+                console.error('❌ 修改失敗:', error);
+                alert('❌ 修改失敗：' + error.message);
+            }
+        }
+
+        // 刪除別名對應（從 aliases 陣列移除該別名）
+        async function deleteAlias(aliasId, aliasName) {
+            if (!confirm(`確定要刪除「${aliasName}」的別名對應嗎？\n\n刪除後，此名稱將回到「待整合」狀態。`)) {
+                return;
+            }
+
+            try {
+                const resp = await fetch(`tables/game_aliases/${aliasId}`);
+                const record = await resp.json();
+                const updatedAliases = (Array.isArray(record.aliases) ? record.aliases : []).filter(a => a !== aliasName);
+
+                let response;
+                if (updatedAliases.length > 0) {
+                    // 還有其他別名，只更新陣列
+                    response = await fetch(`tables/game_aliases/${aliasId}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ aliases: updatedAliases })
+                    });
+                } else {
+                    // 已無別名，刪除整筆記錄
+                    response = await fetch(`tables/game_aliases/${aliasId}`, {
+                        method: 'DELETE'
+                    });
+                }
+
+                if (!response.ok && response.status !== 204) throw new Error('刪除失敗');
+
+                alert('✅ 別名對應已刪除！');
+                await loadData();
+
+            } catch (error) {
+                console.error('❌ 刪除失敗:', error);
+                alert('❌ 刪除失敗：' + error.message);
+            }
+        }
+
+        // ── 共用：載入 aliasToStandard map + 所有玩家 ──
+        async function loadAliasAndUsers(statusEl) {
+            // 載入所有 game_aliases 記錄
+            if (statusEl) statusEl.textContent = '⏳ 載入別名資料...';
+            const aliasCountRes = await fetch('tables/game_aliases?limit=1');
+            const aliasCountData = await aliasCountRes.json();
+            const aliasTotal = aliasCountData.total || 0;
+            let allAliasRecords = [];
+            for (let i = 1; i <= Math.ceil(aliasTotal / 500); i++) {
+                const res = await fetch(`tables/game_aliases?limit=500&page=${i}`);
+                const data = await res.json();
+                allAliasRecords = allAliasRecords.concat(data.data || []);
+            }
+
+            // 建立別名 → 標準名稱 的對應 map
+            const aliasToStandard = {}; // { '黃銅': '工業革命: 伯明翰', ... }
+            for (const record of allAliasRecords) {
+                const primary = record.primary_name;
+                if (!primary || !Array.isArray(record.aliases)) continue;
+                for (const alias of record.aliases) {
+                    if (alias && alias !== primary) {
+                        aliasToStandard[alias] = primary;
+                    }
+                }
+            }
+
+            // 載入所有玩家
+            if (statusEl) statusEl.textContent = '⏳ 載入玩家資料...';
+            const countRes = await fetch('tables/users?limit=1');
+            const countData = await countRes.json();
+            const userTotal = countData.total || 0;
+            let allUsers = [];
+            for (let i = 1; i <= Math.ceil(userTotal / 500); i++) {
+                const res = await fetch(`tables/users?limit=500&page=${i}`);
+                const data = await res.json();
+                allUsers = allUsers.concat(data.data || []);
+            }
+
+            return { aliasToStandard, allUsers, allAliasRecords };
+        }
+
+        // 暫存預覽結果，供 confirmApplyAliases 使用
+        let _previewData = null;
+
+        // ── 步驟一：預覽 ──
+        async function previewAliasApply() {
+            const btn = document.getElementById('preview-apply-btn');
+            const resultEl = document.getElementById('apply-all-result');
+            const panel = document.getElementById('alias-preview-panel');
+            const contentEl = document.getElementById('alias-preview-content');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ 分析中...';
+            resultEl.textContent = '';
+            panel.style.display = 'none';
+
+            try {
+                const { aliasToStandard, allUsers, allAliasRecords } = await loadAliasAndUsers(resultEl);
+                resultEl.textContent = '';
+
+                const aliasCount = Object.keys(aliasToStandard).length;
+                if (aliasCount === 0) {
+                    resultEl.textContent = '✅ 目前沒有任何別名需要套用';
+                    btn.disabled = false;
+                    btn.textContent = '🔍 預覽別名套用影響';
+                    return;
+                }
+
+                const fields = ['super_liked_games','liked_games','neutral_games','disliked_games','no_interest_games','wishlist'];
+                const fieldLabels = {
+                    super_liked_games: '超喜歡', liked_games: '喜歡',
+                    neutral_games: '普普', disliked_games: '不喜歡',
+                    no_interest_games: '沒興趣', wishlist: '待玩清單'
+                };
+
+                // 分析每個別名的影響
+                // aliasImpact: { alias: { standard, players: [{username, field}] } }
+                const aliasImpact = {};
+                for (const [alias, standard] of Object.entries(aliasToStandard)) {
+                    aliasImpact[alias] = { standard, players: [] };
+                }
+
+                for (const user of allUsers) {
+                    for (const field of fields) {
+                        const arr = user[field];
+                        if (!Array.isArray(arr)) continue;
+                        for (const g of arr) {
+                            if (aliasToStandard[g]) {
+                                aliasImpact[g].players.push({
+                                    username: user.username || user.nickname || '（無名）',
+                                    field: fieldLabels[field] || field
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // 分成「有影響玩家」和「無影響玩家」兩組
+                const hasImpact = Object.entries(aliasImpact).filter(([,v]) => v.players.length > 0);
+                const noImpact  = Object.entries(aliasImpact).filter(([,v]) => v.players.length === 0);
+
+                // 暫存供確認執行使用
+                _previewData = { aliasToStandard, allUsers, hasImpact, noImpact, allAliasRecords };
+
+                // 建立 HTML 報告
+                let html = '';
+
+                if (hasImpact.length > 0) {
+                    const totalAffectedUsers = new Set();
+                    hasImpact.forEach(([,v]) => v.players.forEach(p => totalAffectedUsers.add(p.username)));
+
+                    html += `<div style="margin-bottom:1rem; padding:0.75rem; background:#d1fae5; border-radius:0.5rem;">
+                        <strong>📊 套用後將影響 ${totalAffectedUsers.size} 位玩家，共置換以下 ${hasImpact.length} 個別名：</strong>
+                    </div>`;
+
+                    html += `<table style="width:100%; border-collapse:collapse; font-size:0.88rem; margin-bottom:1rem;">
+                        <thead>
+                            <tr style="background:#ecfdf5; text-align:left;">
+                                <th style="padding:0.5rem 0.75rem; border-bottom:1.5px solid #a7f3d0;">別名（會被替換）</th>
+                                <th style="padding:0.5rem 0.75rem; border-bottom:1.5px solid #a7f3d0;">→ 標準名稱</th>
+                                <th style="padding:0.5rem 0.75rem; border-bottom:1.5px solid #a7f3d0;">影響玩家</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                    for (const [alias, { standard, players }] of hasImpact) {
+                        const playerList = players.map(p => `<span style="background:#e0f2fe; border-radius:3px; padding:1px 6px; margin:1px; display:inline-block;">${p.username} <span style="color:#64748b;font-size:0.8em;">(${p.field})</span></span>`).join('');
+                        html += `<tr style="border-bottom:1px solid #d1fae5;">
+                            <td style="padding:0.5rem 0.75rem; color:#dc2626; font-weight:500;">「${alias}」</td>
+                            <td style="padding:0.5rem 0.75rem; color:#065f46; font-weight:500;">→「${standard}」</td>
+                            <td style="padding:0.5rem 0.75rem;">${playerList}</td>
+                        </tr>`;
+                    }
+
+                    html += `</tbody></table>`;
+                } else {
+                    html += `<div style="padding:0.75rem; background:#fef9c3; border-radius:0.5rem; margin-bottom:1rem;">
+                        ℹ️ 目前所有別名均無玩家使用，套用後不影響任何玩家資料。
+                    </div>`;
+                }
+
+                if (noImpact.length > 0) {
+                    html += `<details style="margin-top:0.5rem;">
+                        <summary style="cursor:pointer; font-size:0.85rem; color:#64748b; padding:0.4rem 0;">🗑️ 無玩家使用的別名（套用後將自動刪除，共 ${noImpact.length} 個）</summary>
+                        <div style="padding:0.5rem 0.75rem; display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.4rem;">`;
+                    for (const [alias, { standard }] of noImpact) {
+                        html += `<span style="background:#fee2e2; color:#991b1b; border-radius:4px; padding:2px 8px; font-size:0.82rem;">「${alias}」→「${standard}」</span>`;
+                    }
+                    html += `</div></details>`;
+                }
+
+                contentEl.innerHTML = html;
+                panel.style.display = 'block';
+                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            } catch (error) {
+                console.error('❌ 預覽失敗:', error);
+                resultEl.textContent = '❌ 載入失敗：' + error.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 預覽別名套用影響';
+            }
+        }
+
+        // ── 步驟二：確認執行 ──
+        async function confirmApplyAliases() {
+            if (!_previewData) return;
+            const confirmBtn = document.getElementById('confirm-apply-btn');
+            const resultEl = document.getElementById('apply-all-result');
+            const panel = document.getElementById('alias-preview-panel');
+
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = '⏳ 執行中...';
+
+            try {
+                const { aliasToStandard, allUsers, noImpact, allAliasRecords } = _previewData;
+                const fields = ['super_liked_games','liked_games','neutral_games','disliked_games','no_interest_games','wishlist'];
+
+                resultEl.textContent = '更新玩家資料中...';
+                let updatedUsers = 0;
+                let totalReplacements = 0;
+
+                for (let ui = 0; ui < allUsers.length; ui++) {
+                    const user = allUsers[ui];
+                    const patch = {};
+                    let changed = false;
+
+                    for (const field of fields) {
+                        const arr = user[field];
+                        if (!Array.isArray(arr)) continue;
+                        let fieldChanged = false;
+                        const newArr = arr.map(g => {
+                            if (aliasToStandard[g]) { fieldChanged = true; totalReplacements++; return aliasToStandard[g]; }
+                            return g;
+                        });
+                        if (fieldChanged) { patch[field] = newArr; changed = true; }
+                    }
+
+                    // pinned_games
+                    if (user.pinned_games) {
+                        try {
+                            const pinned = JSON.parse(user.pinned_games);
+                            let pinnedChanged = false;
+                            for (const key of Object.keys(pinned)) {
+                                if (Array.isArray(pinned[key])) {
+                                    const updated = pinned[key].map(g => aliasToStandard[g] || g);
+                                    if (updated.some((g, i) => g !== pinned[key][i])) { pinned[key] = updated; pinnedChanged = true; }
+                                }
+                            }
+                            if (pinnedChanged) { patch.pinned_games = JSON.stringify(pinned); changed = true; }
+                        } catch(e) {}
+                    }
+
+                    if (changed) {
+                        await fetch(`tables/users/${user.id}`, {
+                            method: 'PATCH',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(patch)
+                        });
+                        updatedUsers++;
+                    }
+                    if (ui % 10 === 0) resultEl.textContent = `更新中... (${ui + 1}/${allUsers.length})，已更新 ${updatedUsers} 位`;
+                }
+
+                // 自動刪除無影響玩家的別名記錄
+                let deletedAliases = 0;
+                if (noImpact.length > 0) {
+                    resultEl.textContent = `玩家資料更新完成，正在清理無用別名...`;
+                    // 找出對應的 record ids
+                    const noImpactAliasNames = new Set(noImpact.map(([alias]) => alias));
+                    // 找出哪些 record 的所有 aliases 都在 noImpact 中（即整筆記錄都無人使用）
+                    for (const record of allAliasRecords) {
+                        if (!Array.isArray(record.aliases) || record.aliases.length === 0) {
+                            await fetch(`tables/game_aliases/${record.id}`, { method: 'DELETE' });
+                            deletedAliases++;
+                            continue;
+                        }
+                        const allUnused = record.aliases.every(a => noImpactAliasNames.has(a));
+                        if (allUnused) {
+                            await fetch(`tables/game_aliases/${record.id}`, { method: 'DELETE' });
+                            deletedAliases++;
+                        }
+                    }
+                }
+
+                panel.style.display = 'none';
+                _previewData = null;
+                const deleteMsg = deletedAliases > 0 ? `，已自動清除 ${deletedAliases} 筆無用別名` : '';
+                resultEl.textContent = `✅ 完成！已更新 ${updatedUsers} 位玩家，置換 ${totalReplacements} 筆${deleteMsg}`;
+                alert(`✅ 套用完成！\n\n已更新 ${updatedUsers} 位玩家\n置換 ${totalReplacements} 筆遊戲名稱${deleteMsg}`);
+                // 清除 GameNames 快取，讓下次開頁面能讀到最新別名
+                if (window.GameNames && GameNames.clearCache) GameNames.clearCache();
+                await loadData(); // 重新載入頁面資料
+
+            } catch (error) {
+                console.error('❌ 套用失敗:', error);
+                resultEl.textContent = '❌ 套用失敗：' + error.message;
+                alert('❌ 套用失敗：' + error.message);
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = '✅ 確認執行套用';
+            }
+        }
+
+        // ── 清除影響玩家數為 0 的整合記錄 ──
+        async function autoCleanZeroAliases() {
+            const btn = document.getElementById('clean-zero-btn');
+            const resultEl = document.getElementById('clean-zero-result');
+
+            if (!confirm('確定要刪除所有「影響玩家數 = 0」的整合記錄？\n\n這些別名目前沒有任何玩家使用，刪除後可避免污染 autocomplete 推薦。')) return;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ 掃描中...';
+            resultEl.textContent = '';
+
+            try {
+                // 載入所有玩家的遊戲清單
+                resultEl.textContent = '載入玩家資料...';
+                const uCount = await fetch('tables/users?limit=1').then(r => r.json());
+                const uTotal = uCount.total || 0;
+                let allUsers = [];
+                for (let p = 1; p <= Math.ceil(uTotal / 500); p++) {
+                    const d = await fetch(`tables/users?page=${p}&limit=500`).then(r => r.json());
+                    allUsers = allUsers.concat(d.data || []);
+                }
+
+                // 收集所有玩家使用的遊戲名稱（全部分類）
+                const fields = ['super_liked_games','liked_games','neutral_games','disliked_games','no_interest_games','wishlist'];
+                const usedNames = new Set();
+                allUsers.forEach(u => {
+                    fields.forEach(f => {
+                        (u[f] || []).forEach(name => usedNames.add(name));
+                    });
+                });
+
+                // 載入所有整合記錄
+                resultEl.textContent = '分析整合記錄...';
+                const aCount = await fetch('tables/game_aliases?limit=1').then(r => r.json());
+                const aTotal = aCount.total || 0;
+                let allAliasRecords = [];
+                for (let p = 1; p <= Math.ceil(aTotal / 500); p++) {
+                    const d = await fetch(`tables/game_aliases?page=${p}&limit=500`).then(r => r.json());
+                    allAliasRecords = allAliasRecords.concat(d.data || []);
+                }
+
+                // 找出影響玩家數 = 0 的整合記錄
+                // 一筆記錄的「影響玩家數」= 有多少玩家的遊戲清單中包含它的任一 alias
+                const toDelete = [];
+                for (const record of allAliasRecords) {
+                    const aliases = Array.isArray(record.aliases) ? record.aliases : [];
+                    if (aliases.length === 0) {
+                        toDelete.push(record); // 空 alias 也刪
+                        continue;
+                    }
+                    const affected = aliases.some(alias => usedNames.has(alias));
+                    if (!affected) toDelete.push(record);
+                }
+
+                if (toDelete.length === 0) {
+                    resultEl.textContent = '✅ 沒有需要清除的記錄！';
+                    btn.disabled = false;
+                    btn.textContent = '🧹 清除影響玩家數為 0 的整合';
+                    return;
+                }
+
+                // 確認後刪除
+                const names = toDelete.map(r => `「${r.primary_name}」（${(r.aliases||[]).join('、') || '無別名'}）`).join('\n');
+                if (!confirm(`即將刪除以下 ${toDelete.length} 筆整合記錄（影響玩家數均為 0）：\n\n${names}\n\n確定繼續？`)) {
+                    btn.disabled = false;
+                    btn.textContent = '🧹 清除影響玩家數為 0 的整合';
+                    resultEl.textContent = '已取消';
+                    return;
+                }
+
+                let deleted = 0;
+                for (const record of toDelete) {
+                    await fetch(`tables/game_aliases/${record.id}`, { method: 'DELETE' });
+                    deleted++;
+                    resultEl.textContent = `刪除中 ${deleted}/${toDelete.length}...`;
+                }
+
+                resultEl.textContent = `✅ 已清除 ${deleted} 筆無效整合！`;
+                await loadData();
+
+            } catch(e) {
+                resultEl.textContent = `❌ 失敗：${e.message}`;
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🧹 清除影響玩家數為 0 的整合';
+            }
+        }
+    </script>
+</body>
+</html>

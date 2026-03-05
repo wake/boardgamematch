@@ -1,0 +1,381 @@
+/* 真實沙漏動畫 - 模擬參考 GIF */
+
+.realistic-hourglass {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.hourglass-svg {
+    width: 80px;
+    height: 120px;
+    position: relative;
+    display: inline-block;
+}
+
+/* 沙漏外框 */
+.hourglass-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* 上半部的沙子（逐漸減少） */
+.sand-top {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 25px solid transparent;
+    border-right: 25px solid transparent;
+    border-top: 40px solid #ffd700;
+    animation: sand-decrease 4s linear infinite;
+    z-index: 1;
+}
+
+@keyframes sand-decrease {
+    0% {
+        border-top-width: 40px;
+        border-left-width: 25px;
+        border-right-width: 25px;
+        opacity: 1;
+    }
+    90% {
+        border-top-width: 2px;
+        border-left-width: 3px;
+        border-right-width: 3px;
+        opacity: 1;
+    }
+    100% {
+        border-top-width: 0;
+        border-left-width: 0;
+        border-right-width: 0;
+        opacity: 0;
+    }
+}
+
+/* 下半部的沙子（逐漸堆積） */
+.sand-bottom {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 0 solid transparent;
+    border-right: 0 solid transparent;
+    border-bottom: 0 solid #ffd700;
+    animation: sand-increase 4s linear infinite;
+    z-index: 1;
+}
+
+@keyframes sand-increase {
+    0% {
+        border-bottom-width: 0;
+        border-left-width: 0;
+        border-right-width: 0;
+    }
+    10% {
+        border-bottom-width: 2px;
+        border-left-width: 3px;
+        border-right-width: 3px;
+    }
+    100% {
+        border-bottom-width: 40px;
+        border-left-width: 25px;
+        border-right-width: 25px;
+    }
+}
+
+/* 中間流動的沙流 */
+.sand-stream-center {
+    position: absolute;
+    top: 48%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(to bottom,
+        #ffd700 0%,
+        #ffed4e 30%,
+        #ffd700 60%,
+        rgba(255, 215, 0, 0.5) 100%
+    );
+    animation: stream-flow 4s linear infinite;
+    z-index: 3;
+}
+
+@keyframes stream-flow {
+    0%, 5% {
+        opacity: 0;
+        height: 0;
+    }
+    10% {
+        opacity: 1;
+        height: 24px;
+    }
+    85% {
+        opacity: 1;
+        height: 24px;
+    }
+    95%, 100% {
+        opacity: 0;
+        height: 0;
+    }
+}
+
+/* 流動的沙粒 */
+.sand-particles {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 30px;
+    z-index: 2;
+}
+
+.particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #ffd700;
+    border-radius: 50%;
+    left: 50%;
+    animation: particle-drop 1s linear infinite;
+    opacity: 0;
+}
+
+.particle:nth-child(1) { animation-delay: 0s; }
+.particle:nth-child(2) { animation-delay: 0.15s; }
+.particle:nth-child(3) { animation-delay: 0.3s; }
+.particle:nth-child(4) { animation-delay: 0.45s; }
+.particle:nth-child(5) { animation-delay: 0.6s; }
+.particle:nth-child(6) { animation-delay: 0.75s; }
+
+@keyframes particle-drop {
+    0% {
+        transform: translate(-50%, -15px);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, 15px);
+        opacity: 0;
+    }
+}
+
+/* 沙漏翻轉動畫 */
+.hourglass-svg.with-flip {
+    animation: flip-hourglass 4.5s ease-in-out infinite;
+}
+
+@keyframes flip-hourglass {
+    0%, 88% {
+        transform: rotate(0deg);
+    }
+    94%, 100% {
+        transform: rotate(180deg);
+    }
+}
+
+/* 使用 Emoji 版本的真實沙漏 */
+.realistic-hourglass-emoji {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+}
+
+.hourglass-emoji-container {
+    position: relative;
+    font-size: 4rem;
+    display: inline-block;
+    animation: flip-emoji 5s ease-in-out infinite;
+}
+
+@keyframes flip-emoji {
+    0%, 90% {
+        transform: rotate(0deg);
+    }
+    95%, 100% {
+        transform: rotate(180deg);
+    }
+}
+
+/* 在 Emoji 上疊加的沙子效果 */
+.emoji-sand-top {
+    position: absolute;
+    top: 28%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 24px solid rgba(255, 215, 0, 0.8);
+    animation: emoji-sand-decrease 5s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes emoji-sand-decrease {
+    0% {
+        border-top-width: 24px;
+        border-left-width: 15px;
+        border-right-width: 15px;
+        opacity: 1;
+    }
+    85% {
+        border-top-width: 2px;
+        border-left-width: 3px;
+        border-right-width: 3px;
+        opacity: 0.8;
+    }
+    90% {
+        opacity: 0;
+    }
+    100% {
+        border-top-width: 0;
+        opacity: 0;
+    }
+}
+
+.emoji-sand-bottom {
+    position: absolute;
+    bottom: 28%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 0 solid transparent;
+    border-right: 0 solid transparent;
+    border-bottom: 0 solid rgba(255, 215, 0, 0.8);
+    animation: emoji-sand-increase 5s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes emoji-sand-increase {
+    0%, 5% {
+        border-bottom-width: 0;
+        border-left-width: 0;
+        border-right-width: 0;
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8;
+        border-bottom-width: 2px;
+        border-left-width: 3px;
+        border-right-width: 3px;
+    }
+    90% {
+        border-bottom-width: 24px;
+        border-left-width: 15px;
+        border-right-width: 15px;
+        opacity: 1;
+    }
+    100% {
+        border-bottom-width: 24px;
+        border-left-width: 15px;
+        border-right-width: 15px;
+        opacity: 0;
+    }
+}
+
+.emoji-sand-stream {
+    position: absolute;
+    top: 48.5%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 0;
+    background: linear-gradient(to bottom,
+        rgba(255, 215, 0, 0.9) 0%,
+        rgba(255, 237, 78, 0.8) 50%,
+        rgba(255, 215, 0, 0.3) 100%
+    );
+    animation: emoji-stream 5s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes emoji-stream {
+    0%, 5% {
+        height: 0;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+        height: 15px;
+    }
+    85% {
+        height: 15px;
+        opacity: 1;
+    }
+    90%, 100% {
+        height: 0;
+        opacity: 0;
+    }
+}
+
+/* 文字標籤 */
+.hourglass-label {
+    color: var(--text-light, #888);
+    font-size: 0.95rem;
+    animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* 尺寸變化 */
+.realistic-hourglass-emoji.small .hourglass-emoji-container {
+    font-size: 2rem;
+}
+
+.realistic-hourglass-emoji.small .emoji-sand-top {
+    border-left-width: 8px;
+    border-right-width: 8px;
+    border-top-width: 12px;
+}
+
+.realistic-hourglass-emoji.small .emoji-sand-bottom {
+    border-left-width: 8px;
+    border-right-width: 8px;
+    border-bottom-width: 12px;
+}
+
+.realistic-hourglass-emoji.large .hourglass-emoji-container {
+    font-size: 5rem;
+}
+
+.realistic-hourglass-emoji.large .emoji-sand-top {
+    border-left-width: 20px;
+    border-right-width: 20px;
+    border-top-width: 30px;
+}
+
+.realistic-hourglass-emoji.large .emoji-sand-bottom {
+    border-left-width: 20px;
+    border-right-width: 20px;
+    border-bottom-width: 30px;
+}
+
+.realistic-hourglass-emoji.large .emoji-sand-stream {
+    width: 3px;
+    height: 20px;
+}

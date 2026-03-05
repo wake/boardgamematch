@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理員管理 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    
+    <!-- Google Sign-In SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- 管理後台驗證 -->
+    <script src="js/admin-auth.js"></script>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <span>🎲</span>
+                MBTI × 桌遊配對
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="admin.html">管理後台</a></li>
+                <li><a href="admin-admins.html" class="active">管理員管理</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+        <div class="page-header">
+            <h1 class="page-title">👥 管理員管理</h1>
+            <p class="page-subtitle">管理後台訪問權限，新增或移除受信任的管理員</p>
+        </div>
+
+        <!-- 當前登入管理員資訊 -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; box-shadow: var(--shadow-lg);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <img id="current-admin-picture" src="" alt="管理員" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid white;">
+                <div>
+                    <div style="font-size: 1.1rem; font-weight: 600;" id="current-admin-name">載入中...</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;" id="current-admin-email"></div>
+                    <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">
+                        <span id="current-admin-role-badge"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 統計資訊 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; box-shadow: var(--shadow-md); text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: bold; color: #667eea;" id="total-admins">0</div>
+                <div style="color: var(--text-light); margin-top: 0.5rem;">總管理員數</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; box-shadow: var(--shadow-md); text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: bold; color: #10b981;" id="active-admins">0</div>
+                <div style="color: var(--text-light); margin-top: 0.5rem;">啟用中</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; box-shadow: var(--shadow-md); text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: bold; color: #f59e0b;" id="super-admins">1</div>
+                <div style="color: var(--text-light); margin-top: 0.5rem;">超級管理員</div>
+            </div>
+        </div>
+
+        <!-- 新增管理員 -->
+        <div style="background: var(--card-bg); padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-md); margin-bottom: 2rem;">
+            <h2 style="margin: 0 0 1.5rem 0; font-size: 1.3rem; color: var(--text-color);">➕ 新增管理員</h2>
+            
+            <div style="border: 2px dashed var(--border-color); border-radius: 0.5rem; padding: 2rem; text-align: center; background: var(--bg-color);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">👤</div>
+                <p style="margin: 0 0 1.5rem 0; color: var(--text-light);">
+                    請您要新增的管理員使用 Google 帳號登入<br>
+                    登入後，您可以將其加入白名單
+                </p>
+                <div id="add-admin-google-signin"></div>
+                <div id="add-admin-form" style="display: none; margin-top: 2rem; text-align: left;">
+                    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <img id="new-admin-picture" src="" alt="新管理員" style="width: 48px; height: 48px; border-radius: 50%;">
+                            <div>
+                                <div style="font-weight: 600;" id="new-admin-name"></div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);" id="new-admin-email"></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">備註說明：</label>
+                            <input type="text" id="new-admin-notes" placeholder="例如：負責遊戲管理" 
+                                   style="width: 100%; padding: 0.75rem; border: 2px solid var(--border-color); border-radius: 0.5rem; font-size: 1rem;">
+                        </div>
+                        <button id="confirm-add-admin-btn" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 0.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;">
+                            ✅ 確認新增為管理員
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理員列表 -->
+        <div style="background: var(--card-bg); padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-md);">
+            <h2 style="margin: 0 0 1.5rem 0; font-size: 1.3rem; color: var(--text-color);">📋 管理員列表</h2>
+            
+            <div id="admins-list">
+                <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+                    ⏳ 載入中...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .admin-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .admin-item:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .admin-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 3px solid var(--border-color);
+        }
+        
+        .admin-info {
+            flex: 1;
+        }
+        
+        .admin-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.25rem;
+        }
+        
+        .admin-email {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+        
+        .admin-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        
+        .admin-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .badge-super-admin {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        .badge-admin {
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        
+        .badge-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .admin-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-remove {
+            padding: 0.5rem 1rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-remove:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+        
+        .btn-remove:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+
+    <script>
+        let currentAdmin = null;
+        let pendingNewAdmin = null;
+        
+        // 頁面載入時執行
+        document.addEventListener('adminAuthenticated', async (e) => {
+            console.log('✅ 管理員已驗證:', e.detail);
+            currentAdmin = window.AdminAuth.getCurrentAdmin();
+            
+            // 顯示當前管理員資訊
+            displayCurrentAdmin();
+            
+            // 載入管理員列表
+            await loadAdminsList();
+            
+            // 初始化新增管理員按鈕
+            initAddAdminButton();
+        });
+        
+        function displayCurrentAdmin() {
+            if (!currentAdmin) return;
+            
+            document.getElementById('current-admin-picture').src = currentAdmin.picture || '';
+            document.getElementById('current-admin-name').textContent = currentAdmin.name || '未知';
+            document.getElementById('current-admin-email').textContent = currentAdmin.email || '';
+            
+            const roleBadge = currentAdmin.role === 'super_admin' 
+                ? '⭐ 超級管理員' 
+                : '👤 管理員';
+            document.getElementById('current-admin-role-badge').textContent = roleBadge;
+        }
+        
+        async function loadAdminsList() {
+            try {
+                const whitelist = await window.AdminAuth.loadWhitelist();
+                const listEl = document.getElementById('admins-list');
+                
+                if (whitelist.length === 0) {
+                    listEl.innerHTML = `
+                        <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+                            📭 目前沒有其他管理員<br>
+                            <small>您可以新增受信任的管理員來協助管理後台</small>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 更新統計
+                document.getElementById('total-admins').textContent = whitelist.length + 1; // +1 是超級管理員
+                document.getElementById('active-admins').textContent = whitelist.filter(a => a.is_active !== false).length + 1;
+                
+                // 顯示列表
+                listEl.innerHTML = whitelist.map(admin => `
+                    <div class="admin-item">
+                        <img src="${admin.picture || ''}" alt="${admin.nickname}" class="admin-avatar">
+                        <div class="admin-info">
+                            <div class="admin-name">${admin.nickname || admin.email}</div>
+                            <div class="admin-email">${admin.email}</div>
+                            <div class="admin-meta">
+                                <span class="admin-badge ${admin.role === 'super_admin' ? 'badge-super-admin' : 'badge-admin'}">
+                                    ${admin.role === 'super_admin' ? '⭐ 超級管理員' : '👤 管理員'}
+                                </span>
+                                <span class="admin-badge ${admin.is_active === false ? 'badge-inactive' : 'badge-active'}">
+                                    ${admin.is_active === false ? '❌ 已停用' : '✅ 啟用中'}
+                                </span>
+                                ${admin.notes ? `<span>💬 ${admin.notes}</span>` : ''}
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">
+                                由 ${admin.added_by || '系統'} 於 ${new Date(admin.added_at).toLocaleDateString('zh-TW')} 新增
+                                ${admin.last_access ? ` · 最後訪問: ${new Date(admin.last_access).toLocaleDateString('zh-TW')}` : ''}
+                            </div>
+                        </div>
+                        <div class="admin-actions">
+                            <button class="btn-remove" onclick="removeAdmin('${admin.id}', '${admin.nickname || admin.email}')">
+                                🗑️ 移除
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('❌ 載入管理員列表失敗:', error);
+                document.getElementById('admins-list').innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #ef4444;">
+                        ❌ 載入失敗: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function initAddAdminButton() {
+            if (typeof google === 'undefined' || !google.accounts) {
+                console.error('Google SDK 未載入');
+                return;
+            }
+            
+            google.accounts.id.initialize({
+                client_id: '105319270176-djqr0n6r4l3mvmpalsqjn8kasqii9ukt.apps.googleusercontent.com',
+                callback: handleNewAdminLogin,
+                auto_select: false
+            });
+            
+            google.accounts.id.renderButton(
+                document.getElementById('add-admin-google-signin'),
+                { 
+                    theme: 'outline', 
+                    size: 'large',
+                    text: 'signin_with',
+                    width: 280
+                }
+            );
+        }
+        
+        function handleNewAdminLogin(response) {
+            try {
+                const credential = response.credential;
+                const payload = parseJwt(credential);
+                
+                if (!payload) {
+                    alert('❌ 無法解析 Google 登入資訊');
+                    return;
+                }
+                
+                pendingNewAdmin = payload;
+                
+                // 顯示確認表單
+                document.getElementById('add-admin-form').style.display = 'block';
+                document.getElementById('new-admin-picture').src = payload.picture || '';
+                document.getElementById('new-admin-name').textContent = payload.name || '未知';
+                document.getElementById('new-admin-email').textContent = payload.email || '';
+                
+            } catch (error) {
+                console.error('❌ 處理登入失敗:', error);
+                alert('❌ 登入失敗: ' + error.message);
+            }
+        }
+        
+        document.getElementById('confirm-add-admin-btn')?.addEventListener('click', async () => {
+            if (!pendingNewAdmin) return;
+            
+            const btn = document.getElementById('confirm-add-admin-btn');
+            const notes = document.getElementById('new-admin-notes').value.trim();
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ 新增中...';
+            
+            try {
+                const result = await window.AdminAuth.addAdmin(
+                    pendingNewAdmin,
+                    currentAdmin.email,
+                    notes
+                );
+                
+                if (result.success) {
+                    alert('✅ 新增管理員成功！');
+                    
+                    // 重置表單
+                    document.getElementById('add-admin-form').style.display = 'none';
+                    document.getElementById('new-admin-notes').value = '';
+                    pendingNewAdmin = null;
+                    
+                    // 重新載入列表
+                    await loadAdminsList();
+                } else {
+                    throw new Error(result.error || '未知錯誤');
+                }
+            } catch (error) {
+                console.error('❌ 新增管理員失敗:', error);
+                alert('❌ 新增失敗: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✅ 確認新增為管理員';
+            }
+        });
+        
+        async function removeAdmin(adminId, adminName) {
+            if (!confirm(`確定要移除管理員「${adminName}」嗎？\n\n移除後，該用戶將無法再訪問管理後台。`)) {
+                return;
+            }
+            
+            try {
+                const result = await window.AdminAuth.removeAdmin(adminId);
+                
+                if (result.success) {
+                    alert('✅ 已成功移除管理員');
+                    await loadAdminsList();
+                } else {
+                    throw new Error(result.error || '未知錯誤');
+                }
+            } catch (error) {
+                console.error('❌ 移除管理員失敗:', error);
+                alert('❌ 移除失敗: ' + error.message);
+            }
+        }
+        
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+    </script>
+</body>
+</html>

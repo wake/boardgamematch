@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲資料庫編輯器</title>
+    <script src="js/admin-auth.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1e293b; padding: 2rem; }
+        h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+        .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 2rem; }
+        .card {
+            background: white; border-radius: 1rem; padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem;
+        }
+        .card h2 { font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .btn {
+            padding: 0.6rem 1.2rem; border: none; border-radius: 0.5rem;
+            cursor: pointer; font-size: 0.9rem; font-weight: 500;
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-danger  { background: #ef4444; color: white; }
+        .btn-danger:hover  { background: #dc2626; }
+        .btn-secondary { background: #e2e8f0; color: #475569; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+
+        /* 狀態訊息 */
+        .status-bar {
+            padding: 0.75rem 1rem; border-radius: 0.5rem;
+            font-size: 0.9rem; margin-top: 1rem; display: none;
+        }
+        .status-info    { background: #dbeafe; color: #1e40af; display: block; }
+        .status-success { background: #d1fae5; color: #065f46; display: block; }
+        .status-warning { background: #fef3c7; color: #92400e; display: block; }
+        .status-error   { background: #fee2e2; color: #991b1b; display: block; }
+
+        /* 進度條 */
+        .progress-wrap { margin-top: 1rem; display: none; }
+        .progress-label { font-size: 0.85rem; color: #64748b; margin-bottom: 0.4rem; }
+        .progress-bar-bg { background: #e2e8f0; border-radius: 99px; height: 10px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: #3b82f6; border-radius: 99px; transition: width 0.3s; width: 0%; }
+
+        /* 統計 */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .stat-box { text-align: center; background: #f8fafc; padding: 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
+        .stat-num { font-size: 1.8rem; font-weight: 700; color: #3b82f6; }
+        .stat-label { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; }
+
+        /* 欄位說明 */
+        .fields-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.75rem; }
+        .fields-table th { background: #f1f5f9; padding: 0.5rem 0.75rem; text-align: left; }
+        .fields-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #f1f5f9; }
+        .fields-table tr:last-child td { border-bottom: none; }
+        .tag { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+        .tag-required { background: #fee2e2; color: #991b1b; }
+        .tag-optional { background: #dbeafe; color: #1e40af; }
+
+        /* 預覽表格 */
+        .preview-section { display: none; }
+        .preview-scroll { overflow-x: auto; margin-top: 0.75rem; max-height: 400px; overflow-y: auto; }
+        table.preview-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        table.preview-table th { background: #1e293b; color: white; padding: 0.5rem 0.75rem; position: sticky; top: 0; white-space: nowrap; }
+        table.preview-table td { padding: 0.4rem 0.75rem; border-bottom: 1px solid #f1f5f9; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        table.preview-table tr:nth-child(even) { background: #f8fafc; }
+        table.preview-table tr.row-new td { background: #d1fae5 !important; }
+        table.preview-table tr.row-update td { background: #fef3c7 !important; }
+        table.preview-table tr.row-skip td { background: #f1f5f9 !important; color: #94a3b8; }
+        .preview-legend { display: flex; gap: 1rem; font-size: 0.8rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 4px; }
+
+        /* 上傳區域 */
+        .dropzone {
+            border: 2px dashed #cbd5e1; border-radius: 0.75rem;
+            padding: 2rem; text-align: center; cursor: pointer;
+            transition: all 0.2s; color: #64748b;
+        }
+        .dropzone:hover, .dropzone.drag-over { border-color: #3b82f6; background: #eff6ff; color: #1e40af; }
+        .dropzone input { display: none; }
+        .dropzone .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+        /* 選項 */
+        .option-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; font-size: 0.9rem; }
+        .option-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+        select.form-select {
+            padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0;
+            border-radius: 0.5rem; font-size: 0.9rem; background: white;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+            .btn-row { flex-direction: column; }
+            .btn-row .btn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>🗃️ 遊戲資料庫編輯器</h1>
+<p class="subtitle">下載 game_database 為 CSV，在 Excel / Google Sheets 編輯後再上傳匯回</p>
+
+<!-- ① 下載 -->
+<div class="card">
+    <h2>📥 步驟一：下載現有資料</h2>
+    <div class="btn-row">
+        <button class="btn btn-primary" onclick="loadAndExport('csv')">⬇️ 下載 CSV（Excel 可開）</button>
+        <button class="btn btn-secondary" onclick="loadAndExport('json')">⬇️ 下載 JSON（備份）</button>
+        <button class="btn btn-secondary" onclick="showStats()">📊 查看統計</button>
+    </div>
+    <div id="export-status" class="status-bar"></div>
+    <div id="progress-export" class="progress-wrap">
+        <div class="progress-label" id="progress-export-label">載入中...</div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-export-bar"></div></div>
+    </div>
+    <div id="stats-area" class="stats-grid" style="display:none;"></div>
+</div>
+
+<!-- ② 欄位說明 -->
+<div class="card">
+    <h2>📋 欄位說明（CSV 欄位對照）</h2>
+    <table class="fields-table">
+        <thead><tr><th>CSV 欄名</th><th>說明</th><th>必填</th><th>格式</th></tr></thead>
+        <tbody>
+            <tr><td><code>id</code></td><td>唯一識別碼</td><td><span class="tag tag-required">必填</span></td><td>保留原值，新增可填空（自動產生）</td></tr>
+            <tr><td><code>name_zh</code></td><td>中文名稱</td><td><span class="tag tag-optional">選填</span></td><td>純文字</td></tr>
+            <tr><td><code>name_en</code></td><td>英文名稱</td><td><span class="tag tag-required">必填</span></td><td>純文字</td></tr>
+            <tr><td><code>name_ja</code></td><td>日文名稱</td><td><span class="tag tag-optional">選填</span></td><td>純文字</td></tr>
+            <tr><td><code>year</code></td><td>出版年份</td><td><span class="tag tag-optional">選填</span></td><td>數字，如 2020</td></tr>
+            <tr><td><code>min_players</code></td><td>最少人數</td><td><span class="tag tag-optional">選填</span></td><td>數字</td></tr>
+            <tr><td><code>max_players</code></td><td>最多人數</td><td><span class="tag tag-optional">選填</span></td><td>數字</td></tr>
+            <tr><td><code>playing_time</code></td><td>遊戲時間（分鐘）</td><td><span class="tag tag-optional">選填</span></td><td>數字</td></tr>
+            <tr><td><code>complexity</code></td><td>複雜度（1-5）</td><td><span class="tag tag-optional">選填</span></td><td>數字，1=簡單，5=複雜</td></tr>
+            <tr><td><code>image_url</code></td><td>封面圖片網址</td><td><span class="tag tag-optional">選填</span></td><td>完整 URL</td></tr>
+            <tr><td><code>description</code></td><td>遊戲描述</td><td><span class="tag tag-optional">選填</span></td><td>純文字，可含換行</td></tr>
+            <tr><td><code>bgg_id</code></td><td>BGG 編號</td><td><span class="tag tag-optional">選填</span></td><td>數字</td></tr>
+            <tr><td><code>source</code></td><td>資料來源</td><td><span class="tag tag-optional">選填</span></td><td>如 bgg / manual</td></tr>
+        </tbody>
+    </table>
+    <p style="margin-top:0.75rem; font-size:0.82rem; color:#64748b;">
+        💡 <strong>編輯 CSV 時注意：</strong>
+        內容含逗號或換行的欄位請用英文雙引號包住。
+        <code>id</code> 留空代表新增，有 id 代表更新。
+        不可刪除標題列。
+    </p>
+</div>
+
+<!-- ③ 上傳 -->
+<div class="card">
+    <h2>📤 步驟二：上傳修改後的 CSV</h2>
+
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+        <input type="file" id="file-input" accept=".csv,.json" onchange="handleFileSelect(event)">
+        <div class="icon">📂</div>
+        <div>點擊選擇檔案 或 拖放到此處</div>
+        <div style="font-size:0.8rem; margin-top:0.3rem;">支援 .csv / .json 格式</div>
+    </div>
+
+    <!-- 匯入選項 -->
+    <div style="margin-top:1rem;">
+        <strong style="font-size:0.9rem;">匯入選項：</strong>
+        <div class="option-row">
+            <select class="form-select" id="conflict-mode">
+                <option value="update">有 id → 更新；無 id → 新增</option>
+                <option value="skip">有 id → 略過（不覆蓋）；無 id → 新增</option>
+                <option value="overwrite">強制覆蓋所有有 id 的資料</option>
+            </select>
+        </div>
+        <div class="option-row">
+            <input type="checkbox" id="skip-empty-name" checked>
+            <label for="skip-empty-name">略過 name_en 空白的列</label>
+        </div>
+        <div class="option-row">
+            <input type="checkbox" id="dry-run">
+            <label for="dry-run">🔍 試跑模式（只預覽，不實際寫入）</label>
+        </div>
+    </div>
+
+    <div id="import-status" class="status-bar"></div>
+    <div id="progress-import" class="progress-wrap">
+        <div class="progress-label" id="progress-import-label">處理中...</div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-import-bar"></div></div>
+    </div>
+</div>
+
+<!-- ④ 預覽 -->
+<div class="card preview-section" id="preview-section">
+    <h2>🔍 預覽匯入結果</h2>
+    <div class="preview-legend">
+        <span><span class="legend-dot" style="background:#d1fae5;"></span>新增</span>
+        <span><span class="legend-dot" style="background:#fef3c7;"></span>更新</span>
+        <span><span class="legend-dot" style="background:#f1f5f9;"></span>略過/無變化</span>
+    </div>
+    <div id="preview-summary" style="font-size:0.9rem; color:#64748b; margin-bottom:0.5rem;"></div>
+    <div class="preview-scroll" id="preview-scroll"></div>
+    <div class="btn-row" style="margin-top:1rem;">
+        <button class="btn btn-success" id="confirm-import-btn" onclick="confirmImport()">✅ 確認匯入</button>
+        <button class="btn btn-secondary" onclick="cancelImport()">❌ 取消</button>
+    </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// 全域狀態
+// ════════════════════════════════════════
+let allDbGames = [];          // 資料庫現有所有遊戲
+let pendingRows = [];         // 待匯入的解析列
+let previewData = [];         // 預覽用資料 [{action, row}]
+
+// ════════════════════════════════════════
+// 工具函式
+// ════════════════════════════════════════
+function setStatus(id, msg, type = 'info') {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = `status-bar status-${type}`;
+}
+
+function setProgress(prefix, pct, label) {
+    const wrap = document.getElementById(`progress-${prefix}`);
+    const bar  = document.getElementById(`progress-${prefix}-bar`);
+    const lbl  = document.getElementById(`progress-${prefix}-label`);
+    wrap.style.display = 'block';
+    bar.style.width = pct + '%';
+    lbl.textContent  = label;
+    if (pct >= 100) setTimeout(() => wrap.style.display = 'none', 1200);
+}
+
+// ════════════════════════════════════════
+// 載入資料庫所有遊戲
+// ════════════════════════════════════════
+async function loadAllGames() {
+    let page = 1, all = [], total = 0;
+    do {
+        const r = await fetch(`tables/game_database?page=${page}&limit=100`);
+        const d = await r.json();
+        total = d.total || 0;
+        all = all.concat(d.data || []);
+        setProgress('export', Math.round(all.length / Math.max(total,1) * 100),
+            `載入中... ${all.length} / ${total}`);
+        page++;
+    } while (all.length < total && page < 100);
+    allDbGames = all;
+    return all;
+}
+
+// ════════════════════════════════════════
+// 匯出
+// ════════════════════════════════════════
+async function loadAndExport(format) {
+    setStatus('export-status', '載入中，請稍候...', 'info');
+    try {
+        await loadAllGames();
+        setStatus('export-status', `已載入 ${allDbGames.length} 筆資料，準備下載...`, 'success');
+
+        if (format === 'csv') {
+            downloadCSV(allDbGames);
+        } else {
+            downloadJSON(allDbGames);
+        }
+        setProgress('export', 100, '完成！');
+    } catch(e) {
+        setStatus('export-status', '❌ 載入失敗：' + e.message, 'error');
+    }
+}
+
+const CSV_FIELDS = ['id','name_zh','name_en','name_ja','year','min_players','max_players',
+    'playing_time','complexity','image_url','description','bgg_id','source'];
+
+function escapeCSV(val) {
+    if (val === null || val === undefined) return '';
+    const s = String(val);
+    if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+}
+
+function downloadCSV(rows) {
+    const header = CSV_FIELDS.join(',');
+    const lines  = rows.map(r => CSV_FIELDS.map(f => escapeCSV(r[f])).join(','));
+    const csv    = '\uFEFF' + [header, ...lines].join('\r\n');  // BOM for Excel UTF-8
+    const blob   = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    a.href = url;
+    a.download = `game_database_${dateStr()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function downloadJSON(rows) {
+    const blob = new Blob([JSON.stringify(rows, null, 2)], {type: 'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `game_database_${dateStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function dateStr() {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ════════════════════════════════════════
+// 統計
+// ════════════════════════════════════════
+async function showStats() {
+    setStatus('export-status', '載入統計中...', 'info');
+    try {
+        if (allDbGames.length === 0) await loadAllGames();
+        const total    = allDbGames.length;
+        const withImg  = allDbGames.filter(g => g.image_url).length;
+        const withEn   = allDbGames.filter(g => g.name_en).length;
+        const withJa   = allDbGames.filter(g => g.name_ja).length;
+        const withBgg  = allDbGames.filter(g => g.bgg_id).length;
+        const withYear = allDbGames.filter(g => g.year).length;
+
+        const area = document.getElementById('stats-area');
+        area.style.display = 'grid';
+        area.innerHTML = `
+            <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-label">總遊戲數</div></div>
+            <div class="stat-box"><div class="stat-num">${withImg}</div><div class="stat-label">有封面圖</div></div>
+            <div class="stat-box"><div class="stat-num">${withEn}</div><div class="stat-label">有英文名</div></div>
+            <div class="stat-box"><div class="stat-num">${withJa}</div><div class="stat-label">有日文名</div></div>
+            <div class="stat-box"><div class="stat-num">${withYear}</div><div class="stat-label">有年份</div></div>
+            <div class="stat-box"><div class="stat-num">${withBgg}</div><div class="stat-label">有 BGG ID</div></div>
+        `;
+        setStatus('export-status', '✅ 統計完成', 'success');
+    } catch(e) {
+        setStatus('export-status', '❌ 統計失敗：' + e.message, 'error');
+    }
+}
+
+// ════════════════════════════════════════
+// 上傳 / 解析
+// ════════════════════════════════════════
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropzone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+}
+
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) processFile(file);
+}
+
+function processFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+    reader.onload = ev => {
+        try {
+            if (ext === 'json') {
+                const arr = JSON.parse(ev.target.result);
+                pendingRows = Array.isArray(arr) ? arr : [];
+            } else {
+                pendingRows = parseCSV(ev.target.result);
+            }
+            setStatus('import-status', `✅ 解析完成，共 ${pendingRows.length} 列資料`, 'success');
+            runPreview();
+        } catch(e) {
+            setStatus('import-status', '❌ 解析失敗：' + e.message, 'error');
+        }
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
+// 完整 CSV 解析（支援引號、換行）
+function parseCSV(text) {
+    // 移除 BOM
+    text = text.replace(/^\uFEFF/, '');
+    const rows = [];
+    let field = '', inQuotes = false, cells = [];
+    let headers = null;
+
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i+1];
+
+        if (inQuotes) {
+            if (c === '"' && next === '"') { field += '"'; i++; }
+            else if (c === '"') { inQuotes = false; }
+            else { field += c; }
+        } else {
+            if (c === '"') { inQuotes = true; }
+            else if (c === ',') { cells.push(field); field = ''; }
+            else if (c === '\n' || (c === '\r' && next === '\n')) {
+                if (c === '\r') i++;
+                cells.push(field); field = '';
+                if (cells.some(v => v.trim() !== '')) {
+                    if (!headers) { headers = cells.map(h => h.trim()); }
+                    else {
+                        const obj = {};
+                        headers.forEach((h, idx) => { obj[h] = (cells[idx] || '').trim(); });
+                        rows.push(obj);
+                    }
+                }
+                cells = [];
+            } else { field += c; }
+        }
+    }
+    // 最後一行
+    if (field || cells.length) {
+        cells.push(field);
+        if (headers && cells.some(v => v.trim() !== '')) {
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h] = (cells[idx] || '').trim(); });
+            rows.push(obj);
+        }
+    }
+    return rows;
+}
+
+// ════════════════════════════════════════
+// 預覽
+// ════════════════════════════════════════
+async function runPreview() {
+    // 先確保已載入資料庫
+    if (allDbGames.length === 0) {
+        setStatus('import-status', '正在載入資料庫比對...', 'info');
+        await loadAllGames();
+    }
+
+    const conflictMode  = document.getElementById('conflict-mode').value;
+    const skipEmptyName = document.getElementById('skip-empty-name').checked;
+
+    // 建立 id→index map
+    const idMap = new Map(allDbGames.map((g, i) => [g.id, i]));
+
+    previewData = [];
+    let newCount = 0, updateCount = 0, skipCount = 0;
+
+    for (const row of pendingRows) {
+        if (skipEmptyName && !row.name_en?.trim()) {
+            previewData.push({ action: 'skip', reason: 'name_en 空白', row });
+            skipCount++;
+            continue;
+        }
+
+        const hasId = row.id && row.id.trim() !== '';
+        const existsInDb = hasId && idMap.has(row.id);
+
+        if (!hasId) {
+            previewData.push({ action: 'new', row });
+            newCount++;
+        } else if (existsInDb) {
+            if (conflictMode === 'skip') {
+                previewData.push({ action: 'skip', reason: '已存在略過', row });
+                skipCount++;
+            } else {
+                previewData.push({ action: 'update', row });
+                updateCount++;
+            }
+        } else {
+            // 有 id 但資料庫不存在 → 當新增
+            previewData.push({ action: 'new', row });
+            newCount++;
+        }
+    }
+
+    // 渲染預覽表
+    const headers = ['action', ...CSV_FIELDS];
+    const headerHtml = headers.map(h => `<th>${h}</th>`).join('');
+    const bodyHtml = previewData.slice(0, 200).map(({ action, reason, row }) => {
+        const cls = action === 'new' ? 'row-new' : action === 'update' ? 'row-update' : 'row-skip';
+        const actionLabel = action === 'new' ? '🆕 新增' : action === 'update' ? '✏️ 更新' : `⏭️ 略過${reason ? '('+reason+')' : ''}`;
+        const cells = CSV_FIELDS.map(f => `<td title="${escHtml(String(row[f]||''))}">${escHtml(String(row[f]||'').substring(0,40))}</td>`).join('');
+        return `<tr class="${cls}"><td>${actionLabel}</td>${cells}</tr>`;
+    }).join('');
+
+    document.getElementById('preview-scroll').innerHTML = `
+        <table class="preview-table">
+            <thead><tr>${headerHtml}</tr></thead>
+            <tbody>${bodyHtml}</tbody>
+        </table>
+        ${previewData.length > 200 ? `<p style="text-align:center;padding:0.5rem;color:#64748b;font-size:0.85rem;">（只顯示前 200 列，共 ${previewData.length} 列）</p>` : ''}
+    `;
+
+    document.getElementById('preview-summary').innerHTML =
+        `共 <strong>${previewData.length}</strong> 列　🆕 新增 <strong style="color:#059669">${newCount}</strong>　✏️ 更新 <strong style="color:#d97706">${updateCount}</strong>　⏭️ 略過 <strong style="color:#94a3b8">${skipCount}</strong>`;
+
+    const dryRun = document.getElementById('dry-run').checked;
+    document.getElementById('confirm-import-btn').textContent = dryRun ? '🔍 試跑（不寫入）' : '✅ 確認匯入';
+    document.getElementById('preview-section').style.display = 'block';
+    document.getElementById('preview-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════
+// 確認匯入
+// ════════════════════════════════════════
+async function confirmImport() {
+    const dryRun = document.getElementById('dry-run').checked;
+    const toWrite = previewData.filter(d => d.action !== 'skip');
+
+    if (toWrite.length === 0) {
+        setStatus('import-status', '沒有需要寫入的資料', 'warning');
+        return;
+    }
+
+    if (!dryRun && !confirm(`確定要匯入 ${toWrite.length} 筆資料嗎？\n（新增 ${toWrite.filter(d=>d.action==='new').length} / 更新 ${toWrite.filter(d=>d.action==='update').length}）`)) return;
+
+    document.getElementById('confirm-import-btn').disabled = true;
+    let done = 0, errors = 0;
+
+    for (const { action, row } of toWrite) {
+        try {
+            // 整理欄位
+            const payload = buildPayload(row);
+
+            if (dryRun) {
+                // 試跑：只印 log
+                console.log(`[DRY RUN] ${action}`, payload);
+            } else if (action === 'new') {
+                // 新增（不帶 id 讓系統自動產生，或帶自訂 id）
+                if (!payload.id) delete payload.id;
+                await fetch('tables/game_database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else if (action === 'update') {
+                await fetch(`tables/game_database/${payload.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            done++;
+        } catch(e) {
+            errors++;
+            console.error('匯入失敗:', row, e);
+        }
+        setProgress('import', Math.round(done / toWrite.length * 100),
+            `${dryRun ? '[試跑] ' : ''}處理中... ${done} / ${toWrite.length}（失敗 ${errors}）`);
+    }
+
+    document.getElementById('confirm-import-btn').disabled = false;
+
+    if (dryRun) {
+        setStatus('import-status', `✅ 試跑完成！${done} 筆資料模擬處理成功（未實際寫入）`, 'success');
+    } else if (errors === 0) {
+        setStatus('import-status', `✅ 匯入完成！成功 ${done} 筆`, 'success');
+        // 重新載入資料庫快取
+        allDbGames = [];
+    } else {
+        setStatus('import-status', `⚠️ 完成，但有 ${errors} 筆失敗，請查看 Console`, 'warning');
+    }
+}
+
+function buildPayload(row) {
+    const p = {};
+    for (const f of CSV_FIELDS) {
+        const v = (row[f] || '').trim();
+        if (v === '') continue;
+        // 數字欄位
+        if (['year','min_players','max_players','playing_time','bgg_id'].includes(f)) {
+            const n = Number(v);
+            if (!isNaN(n) && v !== '') p[f] = n;
+        } else if (f === 'complexity') {
+            const n = parseFloat(v);
+            if (!isNaN(n)) p[f] = n;
+        } else {
+            p[f] = v;
+        }
+    }
+    if (!p.created_at) p.created_at = Date.now();
+    return p;
+}
+
+function cancelImport() {
+    document.getElementById('preview-section').style.display = 'none';
+    previewData = [];
+    pendingRows = [];
+    document.getElementById('file-input').value = '';
+    setStatus('import-status', '已取消匯入', 'warning');
+}
+</script>
+</body>
+</html>

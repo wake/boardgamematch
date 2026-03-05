@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今晚玩什麼？- MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+
+        body { font-family: 'Inter', sans-serif; }
+
+        .picker-hero {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+            color: white;
+            padding: 2.5rem 2rem 3rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .picker-hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .picker-hero h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 800; margin: 0 0 0.5rem; position: relative; }
+        .picker-hero p  { font-size: 1.05rem; opacity: 0.85; margin: 0; position: relative; }
+
+        .back-link {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem;
+            position: absolute; top: 1.2rem; left: 1.5rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
+        .container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* Settings Panel */
+        .settings-panel {
+            background: var(--card-bg);
+            border-radius: 1.25rem;
+            padding: 1.75rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+        }
+        .settings-panel h2 {
+            margin: 0 0 1.5rem;
+            font-size: 1.15rem; color: var(--text-color); font-weight: 700;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 0.85rem; font-weight: 600; color: var(--text-light);
+            margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .chip-group {
+            display: flex; flex-wrap: wrap; gap: 0.4rem;
+        }
+        .chip {
+            padding: 0.3rem 0.7rem;
+            border-radius: 1.5rem;
+            border: 1.5px solid var(--border-color);
+            background: transparent;
+            font-size: 0.82rem; font-weight: 500; color: var(--text-light);
+            cursor: pointer; transition: all 0.15s;
+            user-select: none;
+        }
+        .chip:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .chip.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .pool-option {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.65rem 0.85rem;
+            border-radius: 0.75rem;
+            border: 1.5px solid var(--border-color);
+            cursor: pointer; transition: all 0.15s;
+            font-size: 0.88rem; font-weight: 500; color: var(--text-color);
+            margin-bottom: 0.4rem;
+        }
+        .pool-option:hover  { border-color: var(--primary-color); background: var(--bg-light); }
+        .pool-option.active {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.08);
+            color: var(--primary-color);
+        }
+        .pool-option input[type=radio] { accent-color: var(--primary-color); }
+
+        /* Pick Button */
+        .pick-btn {
+            display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+            width: 100%; padding: 1.1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 1rem;
+            font-size: 1.1rem; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 4px 20px rgba(102,126,234,0.35);
+            margin-bottom: 2rem;
+        }
+        .pick-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(102,126,234,0.45); }
+        .pick-btn:active { transform: translateY(0); }
+        .pick-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Result Card */
+        .result-area {
+            text-align: center;
+            min-height: 120px;
+        }
+
+        .result-card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            overflow: hidden;
+            animation: cardReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .result-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(102,126,234,0.06), rgba(118,75,162,0.06));
+            z-index: 0;
+        }
+        .result-card > * { position: relative; z-index: 1; }
+
+        @keyframes cardReveal {
+            from { opacity: 0; transform: scale(0.85) translateY(20px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .spin-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999; backdrop-filter: blur(6px);
+        }
+        .spin-dice {
+            font-size: 5rem;
+            animation: spinDice 0.6s linear infinite;
+            margin-bottom: 1rem;
+        }
+        @keyframes spinDice {
+            0%   { transform: rotate(0deg) scale(1); }
+            50%  { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        .spin-text { color: white; font-size: 1.2rem; font-weight: 600; }
+
+        .game-cover {
+            width: 160px; height: 160px;
+            border-radius: 1rem; object-fit: cover;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            margin: 0 auto 1.5rem;
+            display: block;
+        }
+        .game-cover-placeholder {
+            width: 160px; height: 160px;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, #667eea22, #764ba222);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 4rem; margin: 0 auto 1.5rem;
+            border: 2px dashed var(--border-color);
+        }
+
+        .result-name {
+            font-size: 1.8rem; font-weight: 800; color: var(--text-color);
+            margin: 0 0 0.25rem;
+        }
+        .result-name-en {
+            font-size: 1rem; color: var(--text-light); margin: 0 0 1rem;
+        }
+        .result-meta {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            justify-content: center; margin-bottom: 1rem;
+        }
+        .meta-chip {
+            padding: 0.3rem 0.75rem;
+            border-radius: 2rem;
+            background: var(--bg-light);
+            font-size: 0.82rem; color: var(--text-light);
+            border: 1px solid var(--border-color);
+        }
+        .result-desc {
+            font-size: 0.9rem; color: var(--text-light);
+            max-width: 480px; margin: 0 auto 1.5rem;
+            line-height: 1.6;
+        }
+        .star-complexity {
+            color: #f59e0b; font-size: 0.9rem;
+        }
+        .result-source {
+            font-size: 0.75rem; color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .result-actions {
+            display: flex; flex-wrap: wrap; gap: 0.75rem;
+            justify-content: center; margin-top: 1.5rem;
+        }
+        .btn-reroll {
+            padding: 0.65rem 1.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 0.75rem;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-reroll:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+        .btn-secondary {
+            padding: 0.65rem 1.5rem;
+            background: transparent;
+            color: var(--text-color); border: 1.5px solid var(--border-color); border-radius: 0.75rem;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+        /* Candidate List */
+        .candidates-panel {
+            background: var(--card-bg);
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            margin-top: 1.5rem;
+        }
+        .candidates-panel h3 {
+            margin: 0 0 1rem;
+            font-size: 1rem; color: var(--text-color); font-weight: 700;
+        }
+        .candidates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.75rem;
+        }
+        .candidate-chip {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 0.75rem 0.5rem; border-radius: 0.75rem;
+            border: 1.5px solid var(--border-color);
+            cursor: pointer; transition: all 0.2s;
+            background: var(--bg-light);
+            text-align: center;
+            font-size: 0.8rem; color: var(--text-color);
+        }
+        .candidate-chip:hover { border-color: var(--primary-color); transform: translateY(-2px); }
+        .candidate-chip img, .candidate-chip .thumb-placeholder {
+            width: 60px; height: 60px; border-radius: 0.4rem;
+            object-fit: cover; margin-bottom: 0.4rem;
+        }
+        .candidate-chip .thumb-placeholder {
+            display: flex; align-items: center; justify-content: center;
+            background: var(--border-color); font-size: 1.5rem;
+        }
+
+        /* Pool summary */
+        .pool-summary {
+            text-align: center; padding: 0.6rem;
+            font-size: 0.85rem; color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+        .pool-summary strong { color: var(--primary-color); }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center; padding: 3rem 2rem; color: var(--text-light);
+        }
+        .empty-state .icon { font-size: 3.5rem; margin-bottom: 1rem; }
+        .empty-state h3 { font-size: 1.1rem; margin: 0 0 0.5rem; color: var(--text-color); }
+
+        @media (max-width: 600px) {
+            .settings-grid { grid-template-columns: 1fr; }
+            .result-name { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="picker-hero">
+        <a href="profile.html" class="back-link">← 返回個人頁</a>
+        <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🎲</div>
+        <h1>今晚玩什麼？</h1>
+        <p>設定條件，讓命運決定今晚的桌遊之夜！</p>
+    </div>
+
+    <div class="container">
+        <!-- 設定區 -->
+        <div class="settings-panel">
+            <h2>🎯 選擇遊戲來源</h2>
+            <div id="pool-options">
+                <label class="pool-option active" id="pool-liked">
+                    <input type="radio" name="pool" value="liked" checked> ❤️ 我喜歡的遊戲
+                    <small id="liked-count" style="margin-left:auto; color:var(--text-light); font-size:0.78rem;">載入中...</small>
+                </label>
+                <label class="pool-option" id="pool-all-rated">
+                    <input type="radio" name="pool" value="all_rated"> 🎮 我評過的所有遊戲（含不喜歡）
+                    <small id="all-rated-count" style="margin-left:auto; color:var(--text-light); font-size:0.78rem;"></small>
+                </label>
+                <label class="pool-option" id="pool-similar">
+                    <input type="radio" name="pool" value="similar"> 👥 相似玩家也喜歡的遊戲
+                    <small style="margin-left:auto; color:var(--text-light); font-size:0.78rem;">需要登入</small>
+                </label>
+                <label class="pool-option" id="pool-different">
+                    <input type="radio" name="pool" value="different"> 🔀 不同品味的玩家推薦
+                    <small style="margin-left:auto; color:var(--text-light); font-size:0.78rem;">探索未知！</small>
+                </label>
+                <label class="pool-option" id="pool-popular">
+                    <input type="radio" name="pool" value="popular"> 🌟 社群熱門遊戲
+                    <small style="margin-left:auto; color:var(--text-light); font-size:0.78rem;"></small>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-panel">
+            <h2>🔧 篩選條件</h2>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <label>👥 玩家人數</label>
+                    <div class="chip-group" id="filter-players">
+                        <div class="chip active" data-min="1" data-max="99">不限</div>
+                        <div class="chip" data-min="1" data-max="2">1-2 人</div>
+                        <div class="chip" data-min="2" data-max="4">2-4 人</div>
+                        <div class="chip" data-min="3" data-max="6">3-6 人</div>
+                        <div class="chip" data-min="5" data-max="99">5+ 人</div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>⏱️ 遊戲時間</label>
+                    <div class="chip-group" id="filter-time">
+                        <div class="chip active" data-tmin="0" data-tmax="999">不限</div>
+                        <div class="chip" data-tmin="0" data-tmax="30">30分內</div>
+                        <div class="chip" data-tmin="30" data-tmax="60">30-60分</div>
+                        <div class="chip" data-tmin="60" data-tmax="120">1-2小時</div>
+                        <div class="chip" data-tmin="120" data-tmax="999">2小時+</div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>🧠 複雜度</label>
+                    <div class="chip-group" id="filter-complexity">
+                        <div class="chip active" data-cmin="0" data-cmax="5">不限</div>
+                        <div class="chip" data-cmin="0" data-cmax="2">輕鬆 (≤2)</div>
+                        <div class="chip" data-cmin="2" data-cmax="3.5">中等 (2-3.5)</div>
+                        <div class="chip" data-cmin="3.5" data-cmax="5">燒腦 (3.5+)</div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>⚙️ 其他</label>
+                    <div class="chip-group" id="filter-extra">
+                        <div class="chip" data-extra="exclude-disliked" id="chip-exclude-disliked">排除不喜歡的</div>
+                        <div class="chip" data-extra="db-only" id="chip-db-only">需有遊戲資訊</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 按鈕 -->
+        <button class="pick-btn" id="pick-btn" onclick="pickGame()">
+            <span style="font-size: 1.5rem;">🎲</span>
+            隨機選一款！
+        </button>
+
+        <!-- 結果區 -->
+        <div class="result-area" id="result-area">
+            <div style="text-align:center; padding: 2rem; color: var(--text-light); font-size:0.95rem;">
+                <div style="font-size: 3rem; margin-bottom: 0.75rem;">🎯</div>
+                設定好條件後，點擊「隨機選一款！」開始！
+            </div>
+        </div>
+
+        <!-- 候選清單 -->
+        <div id="candidates-area"></div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="spin-overlay" id="spin-overlay" style="display:none;">
+        <div class="spin-dice">🎲</div>
+        <div class="spin-text">命運之輪轉動中...</div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script src="js/show-admin-link.js?v=20260223b"></script>
+    <script>
+    // ── 狀態變數 ──
+    let currentUser = null;
+    let allUsers = [];
+    let gameDatabase = [];
+    let candidatePool = [];   // 當前篩選後的候選遊戲（含 gameInfo）
+    let lastPicked = null;    // 上次選出的遊戲
+
+    // ── 初始化 ──
+    document.addEventListener('DOMContentLoaded', async () => {
+        // 從 localStorage 取使用者
+        try {
+            const raw = localStorage.getItem('currentUser');
+            if (raw) currentUser = JSON.parse(raw);
+        } catch(e) {}
+
+        // 更新喜歡數量顯示
+        updateCountLabels();
+
+        // 載入遊戲資料庫（背景）
+        loadGameDatabase();
+
+        // chip 互斥邏輯
+        setupChipGroups();
+
+        // pool 選項點擊
+        document.querySelectorAll('.pool-option input[type=radio]').forEach(radio => {
+            radio.addEventListener('change', updateCountLabels);
+        });
+        document.querySelectorAll('.pool-option').forEach(label => {
+            label.addEventListener('click', () => {
+                document.querySelectorAll('.pool-option').forEach(l => l.classList.remove('active'));
+                label.classList.add('active');
+                label.querySelector('input').checked = true;
+                updateCountLabels();
+            });
+        });
+    });
+
+    function setupChipGroups() {
+        ['filter-players','filter-time','filter-complexity'].forEach(groupId => {
+            const group = document.getElementById(groupId);
+            group.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                });
+            });
+        });
+        // extra chips：可多選
+        document.getElementById('filter-extra').querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('click', () => chip.classList.toggle('active'));
+        });
+    }
+
+    async function loadGameDatabase() {
+        try {
+            const r = await fetch('tables/game_database?limit=2000');
+            if (r.ok) {
+                const d = await r.json();
+                gameDatabase = d.data || [];
+            }
+        } catch(e) {}
+    }
+
+    function updateCountLabels() {
+        if (!currentUser) return;
+        const liked = (currentUser.liked_games || []).length;
+        const all   = liked + (currentUser.disliked_games || []).length;
+        document.getElementById('liked-count').textContent    = `${liked} 款`;
+        document.getElementById('all-rated-count').textContent = `${all} 款`;
+    }
+
+    // ── 取得遊戲庫資訊（by name）──
+    function getGameInfo(name) {
+        if (!name) return null;
+        const n = name.trim().toLowerCase();
+        return gameDatabase.find(g =>
+            (g.name_zh || '').toLowerCase() === n ||
+            (g.name_en || '').toLowerCase() === n ||
+            (g.name_ja || '').toLowerCase() === n
+        ) || null;
+    }
+
+    // ── 取得候選名單 ──
+    async function buildCandidatePool() {
+        const pool = document.querySelector('input[name="pool"]:checked')?.value || 'liked';
+
+        let names = [];
+
+        if (pool === 'liked') {
+            names = [...(currentUser?.liked_games || [])];
+        } else if (pool === 'all_rated') {
+            names = [
+                ...(currentUser?.liked_games || []),
+                ...(currentUser?.disliked_games || [])
+            ];
+        } else if (pool === 'similar') {
+            names = await getSimilarPlayersGames(true);
+        } else if (pool === 'different') {
+            names = await getSimilarPlayersGames(false);
+        } else if (pool === 'popular') {
+            names = await getPopularGames();
+        }
+
+        // 去重
+        names = [...new Set(names)];
+
+        // 排除不喜歡（如果勾選且來源非自己評分）
+        const excludeDisliked = document.getElementById('chip-exclude-disliked').classList.contains('active');
+        if (excludeDisliked && currentUser) {
+            const dislikes = new Set(currentUser.disliked_games || []);
+            names = names.filter(n => !dislikes.has(n));
+        }
+
+        // 套用遊戲資料庫篩選
+        const dbOnly = document.getElementById('chip-db-only').classList.contains('active');
+        const playersChip = document.querySelector('#filter-players .chip.active');
+        const timeChip    = document.querySelector('#filter-time .chip.active');
+        const complexChip = document.querySelector('#filter-complexity .chip.active');
+
+        const pMin = parseInt(playersChip?.dataset.min || 1);
+        const pMax = parseInt(playersChip?.dataset.max || 99);
+        const tMin = parseInt(timeChip?.dataset.tmin || 0);
+        const tMax = parseInt(timeChip?.dataset.tmax || 999);
+        const cMin = parseFloat(complexChip?.dataset.cmin || 0);
+        const cMax = parseFloat(complexChip?.dataset.cmax || 5);
+
+        const hasFilter = pMin > 1 || pMax < 99 || tMin > 0 || tMax < 999 || cMin > 0 || cMax < 5;
+
+        const results = names.map(name => {
+            const info = getGameInfo(name);
+            return { name, info };
+        });
+
+        // 篩選
+        return results.filter(({ name, info }) => {
+            if (dbOnly && !info) return false;
+            if (!info) return true; // 無資料庫資訊但未勾 dbOnly → 保留
+            if (hasFilter) {
+                if (info.min_players && info.max_players) {
+                    // 玩家數：所選範圍要與遊戲支援範圍有交集
+                    if (info.max_players < pMin || info.min_players > pMax) return false;
+                }
+                if (info.playing_time) {
+                    if (info.playing_time < tMin || info.playing_time > tMax) return false;
+                }
+                if (info.complexity) {
+                    if (info.complexity < cMin || info.complexity > cMax) return false;
+                }
+            }
+            return true;
+        });
+    }
+
+    // 取得相似/不同玩家的喜歡遊戲
+    async function getSimilarPlayersGames(wantSimilar) {
+        if (!currentUser) return [];
+        // 載入所有玩家
+        let users = allUsers;
+        if (!users.length) {
+            try {
+                const r = await fetch('tables/users?limit=500');
+                if (r.ok) { const d = await r.json(); users = allUsers = d.data || []; }
+            } catch(e) {}
+        }
+
+        const myLiked = new Set(currentUser.liked_games || []);
+        if (myLiked.size === 0) return [];
+
+        // 計算每位玩家的 Jaccard 相似度
+        const scores = users
+            .filter(u => u.id !== currentUser.id && (u.liked_games || []).length > 0)
+            .map(u => {
+                const theirLiked = new Set(u.liked_games || []);
+                const intersection = [...myLiked].filter(g => theirLiked.has(g)).length;
+                const union = new Set([...myLiked, ...theirLiked]).size;
+                const jaccard = union > 0 ? intersection / union : 0;
+                return { u, jaccard };
+            })
+            .filter(x => x.jaccard > 0)
+            .sort((a, b) => wantSimilar ? b.jaccard - a.jaccard : a.jaccard - b.jaccard)
+            .slice(0, 10);
+
+        // 收集這些玩家喜歡但我沒有的遊戲
+        const collected = new Set();
+        scores.forEach(({ u }) => {
+            (u.liked_games || []).forEach(g => {
+                if (!myLiked.has(g)) collected.add(g);
+            });
+        });
+        return [...collected];
+    }
+
+    // 取得社群熱門遊戲（喜歡次數最多）
+    async function getPopularGames() {
+        let users = allUsers;
+        if (!users.length) {
+            try {
+                const r = await fetch('tables/users?limit=500');
+                if (r.ok) { const d = await r.json(); users = allUsers = d.data || []; }
+            } catch(e) {}
+        }
+        const counts = {};
+        users.forEach(u => {
+            (u.liked_games || []).forEach(g => { counts[g] = (counts[g] || 0) + 1; });
+        });
+        return Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 100)
+            .map(([name]) => name);
+    }
+
+    // ── 主要函數：隨機選遊戲 ──
+    async function pickGame() {
+        if (!currentUser) {
+            showLoginPrompt();
+            return;
+        }
+
+        // 顯示 loading
+        document.getElementById('spin-overlay').style.display = 'flex';
+        document.getElementById('pick-btn').disabled = true;
+
+        try {
+            candidatePool = await buildCandidatePool();
+
+            // 排除上次選的（如果還有其他選項）
+            let pool = candidatePool;
+            if (lastPicked && pool.length > 1) {
+                pool = pool.filter(g => g.name !== lastPicked);
+            }
+
+            if (pool.length === 0) {
+                hideSpinner();
+                showEmptyResult();
+                return;
+            }
+
+            // 隨機選一個
+            await sleep(700); // 視覺效果
+            const picked = pool[Math.floor(Math.random() * pool.length)];
+            lastPicked = picked.name;
+
+            hideSpinner();
+            renderResult(picked);
+            renderCandidates(candidatePool, picked.name);
+
+        } catch(e) {
+            hideSpinner();
+            console.error(e);
+        }
+
+        document.getElementById('pick-btn').disabled = false;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function hideSpinner() { document.getElementById('spin-overlay').style.display = 'none'; }
+
+    function showLoginPrompt() {
+        document.getElementById('result-area').innerHTML = `
+            <div class="empty-state">
+                <div class="icon">🔐</div>
+                <h3>請先登入</h3>
+                <p>登入後才能使用遊戲篩選功能</p>
+                <a href="login.html" class="btn-reroll" style="display:inline-block; margin-top:1rem; text-decoration:none;">前往登入</a>
+            </div>`;
+    }
+
+    function showEmptyResult() {
+        document.getElementById('result-area').innerHTML = `
+            <div class="empty-state">
+                <div class="icon">😅</div>
+                <h3>找不到符合條件的遊戲</h3>
+                <p>試著放寬篩選條件，或更換遊戲來源</p>
+            </div>`;
+        document.getElementById('candidates-area').innerHTML = '';
+    }
+
+    function renderResult({ name, info }) {
+        const hasImg = info?.image_url;
+        const coverHtml = hasImg
+            ? `<img src="${info.image_url}" alt="${name}" class="game-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+               <div class="game-cover-placeholder" style="display:none;">🎲</div>`
+            : `<div class="game-cover-placeholder">🎲</div>`;
+
+        const metaChips = [];
+        if (info?.year)        metaChips.push(`📅 ${info.year}`);
+        if (info?.min_players && info?.max_players)
+                               metaChips.push(`👥 ${info.min_players === info.max_players ? info.min_players : `${info.min_players}-${info.max_players}`} 人`);
+        if (info?.playing_time) metaChips.push(`⏱️ ${info.playing_time} 分鐘`);
+        if (info?.complexity)  {
+            const stars = '★'.repeat(Math.round(info.complexity)) + '☆'.repeat(5 - Math.round(info.complexity));
+            metaChips.push(`🧠 ${info.complexity.toFixed(1)} <span class="star-complexity">${stars}</span>`);
+        }
+
+        document.getElementById('result-area').innerHTML = `
+            <div class="result-card">
+                ${coverHtml}
+                <div class="result-name">${info?.name_zh || name}</div>
+                ${info?.name_en ? `<div class="result-name-en">${info.name_en}${info?.year ? ` · ${info.year}` : ''}</div>` : ''}
+                <div class="result-meta">
+                    ${metaChips.map(c => `<span class="meta-chip">${c}</span>`).join('')}
+                </div>
+                ${info?.description ? `<p class="result-desc">${info.description}</p>` : ''}
+                <div class="result-actions">
+                    <button class="btn-reroll" onclick="reroll()">🎲 換一個</button>
+                    <button class="btn-secondary" onclick="showCandidates()">📋 查看所有候選</button>
+                    ${info?.bgg_id ? `<a href="https://boardgamegeek.com/boardgame/${info.bgg_id}" target="_blank" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">🔗 BGG 頁面</a>` : ''}
+                </div>
+            </div>`;
+    }
+
+    function renderCandidates(pool, highlightName) {
+        const area = document.getElementById('candidates-area');
+        if (!pool || pool.length <= 1) { area.innerHTML = ''; return; }
+
+        const others = pool.filter(g => g.name !== highlightName).slice(0, 20);
+        if (others.length === 0) { area.innerHTML = ''; return; }
+
+        area.innerHTML = `
+            <div class="candidates-panel">
+                <h3>📋 所有候選遊戲（${pool.length} 款，點擊直接選定）</h3>
+                <div class="pool-summary">從 <strong>${pool.length}</strong> 款符合條件的遊戲中隨機選出</div>
+                <div class="candidates-grid">
+                    ${pool.slice(0, 24).map(({ name, info }) => {
+                        const isHighlight = name === highlightName;
+                        const thumb = info?.image_url
+                            ? `<img src="${info.image_url}" alt="${name}" onerror="this.parentNode.innerHTML='<div class=thumb-placeholder>🎲</div>'" style="width:60px;height:60px;border-radius:0.4rem;object-fit:cover;margin-bottom:0.4rem;">`
+                            : `<div class="thumb-placeholder">🎲</div>`;
+                        return `
+                            <div class="candidate-chip" onclick="selectCandidate('${name.replace(/'/g,"\\'")}', ${JSON.stringify(info||null).replace(/"/g,'&quot;')})"
+                                style="${isHighlight ? 'border-color:var(--primary-color); background:rgba(102,126,234,0.1);' : ''}">
+                                ${thumb}
+                                <span style="${isHighlight ? 'color:var(--primary-color);font-weight:700;' : ''}">${info?.name_zh || name}</span>
+                            </div>`;
+                    }).join('')}
+                    ${pool.length > 24 ? `<div style="display:flex;align-items:center;justify-content:center;font-size:0.85rem;color:var(--text-light);">還有 ${pool.length - 24} 款...</div>` : ''}
+                </div>
+            </div>`;
+    }
+
+    function selectCandidate(name, info) {
+        lastPicked = name;
+        renderResult({ name, info });
+        document.getElementById('result-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function reroll() {
+        pickGame();
+    }
+
+    function showCandidates() {
+        const area = document.getElementById('candidates-area');
+        if (area.innerHTML && candidatePool.length > 0) {
+            area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (candidatePool.length > 0) {
+            renderCandidates(candidatePool, lastPicked);
+            area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+    </script>
+</body>
+</html>

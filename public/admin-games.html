@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲管理 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 1rem;
+        }
+        
+        .search-bar {
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .game-table {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            overflow-x: auto;   /* 手機橫向捲動備用 */
+            box-shadow: var(--shadow-md);
+        }
+
+        /* 手機：隱藏次要欄位，放大按鈕 */
+        @media (max-width: 768px) {
+            .col-year, .col-players, .col-time, .col-complexity, .col-source {
+                display: none;
+            }
+            .btn-small {
+                padding: 0.6rem 1.1rem;
+                font-size: 1rem;
+            }
+            td, th { padding: 0.75rem 0.5rem; }
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: var(--bg-light);
+        }
+        
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        tr:hover {
+            background: var(--bg-light);
+        }
+        
+        .game-icon {
+            font-size: 2rem;
+            text-align: center;
+        }
+        
+        .game-name {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .game-name-en {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+        
+        .complexity-stars {
+            color: #f39c12;
+        }
+        
+        .btn-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-edit {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .add-game-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+        }
+        
+        .add-game-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* 快速登記按鈕 */
+        .quick-add-btn {
+            position: fixed;
+            bottom: 7.5rem;
+            right: 2rem;
+            padding: 0.85rem 1.6rem;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            border-radius: 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(245,158,11,0.4);
+            transition: all 0.3s;
+        }
+        .quick-add-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(245,158,11,0.6);
+        }
+
+        /* 待補充 badge */
+        .badge-pending {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            background: #fff3cd;
+            color: #d97706;
+            border: 1px solid #fbbf24;
+            border-radius: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-left: 0.4rem;
+            vertical-align: middle;
+        }
+        /* 快速登記彈窗較小 */
+        .modal-quick .modal-content {
+            max-width: 480px;
+        }
+        .quick-form-group {
+            margin-bottom: 1.2rem;
+        }
+        .quick-form-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-weight: 600;
+            color: var(--text-color);
+            font-size: 0.95rem;
+        }
+        .quick-form-group input, .quick-form-group textarea {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        .required-star { color: #e74c3c; }
+    </style>
+    <!-- Google Sign-In SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- 管理後台驗證 -->
+    <script src="js/admin-auth.js?v=20240222-fix"></script>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 頁首 -->
+        <div class="admin-header">
+            <h2 style="margin: 0 0 0.5rem 0;">🎮 遊戲資料管理</h2>
+            <p style="margin: 0 0 1rem 0; opacity: 0.9;">管理遊戲資料庫中的所有桌遊資訊</p>
+            <a href="admin.html" class="btn btn-secondary" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4);">← 返回管理後台</a>
+        </div>
+
+        <!-- 統計資訊 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--primary-color);" id="total-games">-</div>
+                <div style="color: var(--text-light);">總遊戲數</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #27ae60;" id="bgg-games">-</div>
+                <div style="color: var(--text-light);">BGG 遊戲</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #e74c3c;" id="manual-games">-</div>
+                <div style="color: var(--text-light);">手動新增</div>
+            </div>
+        </div>
+
+        <!-- 搜尋列 -->
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="🔍 搜尋遊戲名稱..." onkeyup="filterGames()">
+            <select id="source-filter" onchange="filterGames()">
+                <option value="">全部來源</option>
+                <option value="BGG">BGG</option>
+                <option value="manual">手動新增</option>
+                <option value="pending">⚠️ 待補充</option>
+            </select>
+            <button onclick="showDuplicates()" class="btn btn-secondary" style="white-space:nowrap;">🔍 找重複遊戲</button>
+        </div>
+
+        <!-- 重複遊戲清單 -->
+        <div id="duplicate-panel" style="display:none; background:var(--card-bg); border-radius:1rem; padding:1.5rem; margin-bottom:1.5rem; box-shadow:var(--shadow-md);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="margin:0;">⚠️ 疑似重複的遊戲</h3>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <button onclick="autoBatchMergeBggDuplicates()" id="auto-merge-btn"
+                        style="padding:0.4rem 1rem;font-size:0.85rem;background:#ef4444;color:white;border:none;border-radius:0.5rem;cursor:pointer;font-weight:600;">
+                        🚀 一鍵批量合併所有 BGG ID 重複
+                    </button>
+                    <button onclick="document.getElementById('duplicate-panel').style.display='none'" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✕</button>
+                </div>
+            </div>
+            <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:1rem;">依相同名稱或相同 BGG ID 偵測重複，點「刪除」移除多餘的條目，或「合併」將玩家資料一起轉移後刪除。</p>
+            <div id="auto-merge-progress" style="display:none;padding:0.75rem;background:#f0fdf4;border:1px solid #86efac;border-radius:0.5rem;margin-bottom:1rem;font-size:0.85rem;"></div>
+            <div id="duplicate-list"></div>
+        </div>
+
+        <!-- 遊戲列表 -->
+        <div class="game-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">圖示</th>
+                        <th>遊戲名稱</th>
+                        <th class="col-year" style="width: 80px;">年份</th>
+                        <th class="col-players" style="width: 90px;">玩家數</th>
+                        <th class="col-time" style="width: 80px;">時間</th>
+                        <th class="col-complexity" style="width: 90px;">複雜度</th>
+                        <th class="col-source" style="width: 90px;">來源</th>
+                        <th style="width: 120px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="game-list">
+                    <!-- 動態插入 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 新增/編輯遊戲彈窗 -->
+    <div class="modal" id="game-modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 id="modal-title">新增遊戲</h2>
+                <button onclick="closeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+            </div>
+            
+            <form id="game-form" onsubmit="saveGame(event)">
+
+                <!-- BGG ID 快速抓取區 -->
+                <div style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.25rem;">
+                    <div style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:160px;">
+                            <label style="display:block; margin-bottom:0.35rem; font-weight:600; font-size:0.9rem;">🔢 BGG ID</label>
+                            <input type="text" id="game-bgg-id" placeholder="例：174430" oninput="updateSearchHint(); checkBggDuplicate()" style="width:100%; padding:0.55rem 0.75rem; border:1px solid var(--border-color); border-radius:0.5rem; font-size:0.95rem;">
+                        </div>
+                        <button type="button" onclick="fetchFromBGG()" id="bgg-fetch-btn"
+                            style="padding:0.55rem 1.1rem; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:0.5rem; cursor:pointer; font-size:0.9rem; white-space:nowrap;">
+                            🔍 從 BGG 抓取資料
+                        </button>
+                    </div>
+                    <div style="margin-top:0.5rem; font-size:0.78rem; color:var(--text-light);">
+                        📋 可自動填入：英文名稱、發行年份、玩家數、遊戲時間、複雜度、封面圖片、遊戲描述、中文名稱（DuckDuckGo 搜尋）
+                    </div>
+                    <div id="bgg-fetch-status" style="margin-top:0.4rem; font-size:0.85rem; color:var(--text-light); min-height:1.2em;"></div>
+                    <div id="bgg-duplicate-warning" style="display:none; margin-top:0.5rem; padding:0.6rem 0.85rem; background:#fff3cd; border:1px solid #ffc107; border-radius:0.5rem; font-size:0.85rem; color:#856404;"></div>
+                    <div id="bgg-search-hint" style="margin-top:0.4rem; font-size:0.82rem; display:none;">
+                        🔎 找中文名：
+                        <a id="bgg-google-link" href="#" target="_blank" style="color:var(--primary-color);">Google 搜尋</a>
+                        ·
+                        <a id="bgg-page-link" href="#" target="_blank" style="color:var(--primary-color);">BGG 版本頁</a>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>中文名稱</label>
+                        <input type="text" id="game-name-zh" placeholder="（可留空）">
+                    </div>
+                    <div class="form-group">
+                        <label>日文名稱</label>
+                        <input type="text" id="game-name-ja" placeholder="（可留空）">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>英文名稱</label>
+                        <input type="text" id="game-name-en">
+                    </div>
+                    <div class="form-group">
+                        <label>發行年份</label>
+                        <input type="number" id="game-year" min="1900" max="2099">
+                    </div>
+                </div>
+
+                <!-- 封面圖片 -->
+                <div class="form-group">
+                    <label>🖼️ 封面圖片 URL</label>
+                    <div style="display:flex; gap:0.6rem; align-items:center;">
+                        <input type="text" id="game-image-url" placeholder="https://cf.geekdo-images.com/..." style="flex:1;">
+                        <div id="image-preview" style="width:48px; height:48px; border-radius:0.4rem; border:1px solid var(--border-color); overflow:hidden; flex-shrink:0; background:var(--bg-color); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎲</div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>最少玩家數</label>
+                        <input type="number" id="game-min-players" min="1" max="99">
+                    </div>
+                    <div class="form-group">
+                        <label>最多玩家數</label>
+                        <input type="number" id="game-max-players" min="1" max="99">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>遊戲時間（分鐘）</label>
+                        <input type="number" id="game-playing-time" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>複雜度（1-5）</label>
+                        <input type="number" id="game-complexity" min="1" max="5" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>遊戲描述</label>
+                    <textarea id="game-description" rows="4"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>資料來源</label>
+                    <select id="game-source">
+                        <option value="manual">手動新增</option>
+                        <option value="BGG">BGG</option>
+                        <option value="BGA">BGA</option>
+                    </select>
+                </div>
+                
+                <input type="hidden" id="game-id">
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;">儲存遊戲</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 快速登記彈窗 -->
+    <div class="modal modal-quick" id="quick-modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+                <div>
+                    <h2 style="margin:0;">⚡ 快速登記</h2>
+                    <p style="margin:0.25rem 0 0; color:var(--text-light); font-size:0.88rem;">展場新遊戲快速建檔，之後可補充完整資料</p>
+                </div>
+                <button onclick="closeQuickModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+
+            <form id="quick-form" onsubmit="saveQuickGame(event)">
+                <div class="quick-form-group">
+                    <label>🎲 遊戲名稱 <span class="required-star">*</span></label>
+                    <input type="text" id="quick-name" placeholder="中文或英文名稱皆可" required autofocus>
+                    <div style="font-size:0.8rem; color:var(--text-light); margin-top:0.3rem;">💡 若之後補 BGG ID，可再完整編輯</div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
+                    <div class="quick-form-group">
+                        <label>📅 發行年份</label>
+                        <input type="number" id="quick-year" placeholder="2025" min="1900" max="2099">
+                    </div>
+                    <div class="quick-form-group">
+                        <label>👥 玩家數</label>
+                        <input type="text" id="quick-players" placeholder="2-4">
+                    </div>
+                </div>
+                <div class="quick-form-group">
+                    <label>🏢 出版社 / 系列</label>
+                    <input type="text" id="quick-publisher" placeholder="例：Asmodee、怡學享樂...">
+                </div>
+                <div class="quick-form-group">
+                    <label>🖼️ 封面圖片 URL</label>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="text" id="quick-image-url" placeholder="https://..." oninput="updateQuickImagePreview()" style="flex:1;">
+                        <div id="quick-image-preview" style="width:48px; height:48px; border-radius:0.4rem; border:1px solid var(--border-color); overflow:hidden; flex-shrink:0; background:var(--bg-color); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎲</div>
+                    </div>
+                </div>
+                <div class="quick-form-group">
+                    <label>📝 備註（可留空）</label>
+                    <input type="text" id="quick-note" placeholder="例：日本展商首發、繁中版待確認...">
+                </div>
+                <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+                    <button type="submit" style="flex:1; padding:0.85rem; background:linear-gradient(135deg,#f59e0b,#d97706); color:white; border:none; border-radius:0.5rem; font-size:1rem; font-weight:600; cursor:pointer;">⚡ 快速登記</button>
+                    <button type="button" onclick="closeQuickModal()" style="padding:0.85rem 1.2rem; background:var(--bg-light); border:none; border-radius:0.5rem; font-size:1rem; cursor:pointer;">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 快速登記按鈕 -->
+    <button class="quick-add-btn" onclick="openQuickModal()">⚡ 快速登記</button>
+
+    <!-- 新增按鈕 -->
+    <button class="add-game-btn" onclick="openModal()">完整新增</button>
+
+    <!-- 🧹 後台導覽列清理（必須最先載入） -->
+    <script src="js/admin-navbar-cleanup.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/show-admin-link.js"></script>
+    <script>
+        // ══ 分頁狀態 ══
+        let allGames = [];        // 全量快取（搜尋 + 重複偵測共用）
+        let allGamesLoaded = false;
+        let allGamesLoading = null; // Promise，防止重複 fetch
+        let isSuperAdmin = false;
+        let currentPage = 1;
+        const PAGE_SIZE = 50;     // 前端分頁每頁筆數
+        let currentSearch = '';
+        let currentSource = '';
+        let totalCount = 0;
+        let filteredGames = [];   // 目前顯示的（搜尋/篩選後）結果
+        let filterDebounce = null;
+
+        // ── site_stats 輔助函式 ──────────────────────────────────────
+        // 重新計算 game_database 總數並寫入 site_stats（id = 'global'）
+        async function refreshSiteStats() {
+            try {
+                const r = await fetch('tables/game_database?limit=1');
+                if (!r.ok) return;
+                const d = await r.json();
+                const total = d.total ?? 0;
+
+                // 先查 site_stats 是否已有 global 這筆
+                const sr = await fetch('tables/site_stats?limit=10');
+                const sd = sr.ok ? await sr.json() : { data: [] };
+                const existing = (sd.data || []).find(x => x.id === 'global');
+
+                if (existing) {
+                    await fetch(`tables/site_stats/${existing.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ total_games: total, updated_at_iso: new Date().toISOString() })
+                    });
+                } else {
+                    await fetch('tables/site_stats', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: 'global', total_games: total, updated_at_iso: new Date().toISOString() })
+                    });
+                }
+                console.log(`✅ site_stats 已更新：total_games = ${total}`);
+            } catch(e) {
+                console.warn('site_stats 更新失敗:', e);
+            }
+        }
+
+        // 角色判斷：非超管隱藏刪除按鈕
+        document.addEventListener('adminAuthenticated', (e) => {
+            const role = e.detail?.role || window.AdminAuth?.getCurrentAdmin()?.role;
+            isSuperAdmin = (role === 'super_admin');
+        });
+
+        // ── 載入全量快取（第一次才 fetch，之後直接用記憶體）──
+        async function ensureAllGames() {
+            if (allGamesLoaded) return;
+            if (allGamesLoading) return allGamesLoading;
+            allGamesLoading = (async () => {
+                const tbody = document.getElementById('game-list');
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light);">⏳ 載入全部遊戲資料中...</td></tr>';
+                const countRes = await fetch('tables/game_database?limit=1');
+                const totalAll = (await countRes.json()).total || 0;
+                const batchSize = 100;
+                const pages = Math.ceil(totalAll / batchSize);
+                let fetched = [];
+                for (let i = 1; i <= pages; i++) {
+                    const r = await fetch(`tables/game_database?page=${i}&limit=${batchSize}`);
+                    fetched = fetched.concat((await r.json()).data || []);
+                }
+                allGames = fetched;
+                allGamesLoaded = true;
+                updateSourceStats();
+            })();
+            return allGamesLoading;
+        }
+
+        // ── 套用搜尋 / 篩選，更新 filteredGames，跳到第 1 頁 ──
+        function applyFilter() {
+            const q = currentSearch.toLowerCase();
+            filteredGames = allGames.filter(g => {
+                // 文字搜尋（中、英、日、BGG ID 均比對）
+                if (q) {
+                    const hay = [
+                        g.name_zh || '', g.name_en || '', g.name_ja || '',
+                        String(g.bgg_id || '')
+                    ].join(' ').toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                // 來源篩選
+                if (currentSource === 'BGG')     return g.source === 'BGG';
+                if (currentSource === 'manual')  return g.source === 'manual';
+                if (currentSource === 'pending') return isPending(g);
+                return true;
+            });
+            totalCount = filteredGames.length;
+            currentPage = 1;
+        }
+
+        // ── 顯示目前頁 ──
+        async function loadGames(page = 1) {
+            currentPage = page;
+            const tbody = document.getElementById('game-list');
+
+            // 確保全量資料已載入
+            await ensureAllGames();
+
+            // 套用篩選
+            applyFilter();
+
+            // 切出目前頁
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const pageGames = filteredGames.slice(start, start + PAGE_SIZE);
+
+            // 更新統計
+            document.getElementById('total-games').textContent =
+                currentSearch || currentSource
+                    ? `${totalCount.toLocaleString()} / ${allGames.length.toLocaleString()}`
+                    : allGames.length.toLocaleString();
+
+            renderGames(pageGames);
+            renderPagination();
+        }
+
+        // 非同步更新來源統計（不影響主列表速度）
+        async function updateSourceStats() {
+            if (!allGamesLoaded) return;
+            const bggCount    = allGames.filter(g => g.source === 'BGG').length;
+            const manualCount = allGames.filter(g => g.source === 'manual').length;
+            document.getElementById('bgg-games').textContent    = bggCount.toLocaleString();
+            document.getElementById('manual-games').textContent = manualCount.toLocaleString();
+        }
+
+        // ── 渲染分頁導航 ──
+        function renderPagination() {
+            const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+            let nav = document.getElementById('pagination-nav');
+            if (!nav) {
+                nav = document.createElement('div');
+                nav.id = 'pagination-nav';
+                nav.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:0.4rem;flex-wrap:wrap;padding:1.25rem 0 0.5rem;';
+                document.querySelector('.game-table').after(nav);
+            }
+            if (totalPages <= 1) { nav.innerHTML = ''; return; }
+
+            const btnCss = (active) =>
+                `padding:0.35rem 0.7rem;border-radius:0.4rem;border:1px solid var(--border-color);cursor:pointer;` +
+                `background:${active ? 'var(--primary-color)' : 'var(--card-bg)'};` +
+                `color:${active ? '#fff' : 'var(--text-color)'};font-weight:${active ? '700' : '400'};`;
+
+            // 頁碼範圍
+            let pages = [];
+            if (totalPages <= 7) {
+                pages = Array.from({length: totalPages}, (_, i) => i + 1);
+            } else {
+                pages = [1];
+                if (currentPage > 3) pages.push('…');
+                for (let p = Math.max(2, currentPage-1); p <= Math.min(totalPages-1, currentPage+1); p++) pages.push(p);
+                if (currentPage < totalPages - 2) pages.push('…');
+                pages.push(totalPages);
+            }
+
+            const from = (currentPage - 1) * PAGE_SIZE + 1;
+            const to   = Math.min(currentPage * PAGE_SIZE, totalCount);
+
+            nav.innerHTML =
+                `<span style="color:var(--text-light);font-size:0.85rem;margin-right:0.5rem;">第 ${from}–${to} 筆，共 ${totalCount.toLocaleString()} 筆</span>` +
+                `<button style="${btnCss(false)}" onclick="loadGames(${currentPage-1})" ${currentPage===1?'disabled':''}>&lt;</button>` +
+                pages.map(p => p === '…'
+                    ? `<span style="padding:0 0.3rem;color:var(--text-light);">…</span>`
+                    : `<button style="${btnCss(p===currentPage)}" onclick="loadGames(${p})">${p}</button>`
+                ).join('') +
+                `<button style="${btnCss(false)}" onclick="loadGames(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>&gt;</button>`;
+        }
+
+        // ── 載入全部資料（重複偵測用，直接共用快取）──
+        async function loadAllGamesForDupDetect() {
+            await ensureAllGames();
+            return allGames;
+        }
+
+        // 篩選（後端分頁版）
+        function filterGames() {
+            clearTimeout(filterDebounce);
+            filterDebounce = setTimeout(() => {
+                currentSearch = document.getElementById('search-input').value.trim();
+                currentSource = document.getElementById('source-filter').value;
+                loadGames(1);
+            }, 200);
+        }
+
+        // 渲染遊戲列表
+        function renderGames(games) {
+            const tbody = document.getElementById('game-list');
+            
+            if (!games || games.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-light);">沒有找到遊戲</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = games.map(game => `
+                <tr>
+                    <td class="game-icon" style="width:56px; padding:0.3rem;">
+                        ${game.image_url && game.image_url.startsWith('http')
+                            ? `<img src="${game.image_url}" style="width:48px;height:48px;object-fit:cover;border-radius:0.4rem;border:1px solid var(--border-color);" onerror="this.outerHTML='🎲'">`
+                            : '<span style="font-size:1.5rem;">🎲</span>'}
+                    </td>
+                    <td>
+                        <div class="game-name">${game.name_zh || game.name_en || '未命名'}${isPending(game) ? ' <span class="badge-pending">⚠️待補充</span>' : ''}</div>
+                        <div class="game-name-en">${game.name_en || '-'}</div>
+                    </td>
+                    <td class="col-year">${game.year || '-'}</td>
+                    <td class="col-players">${game.min_players && game.max_players ? `${game.min_players}-${game.max_players}` : '-'}</td>
+                    <td class="col-time">${game.playing_time ? `${game.playing_time}分` : '-'}</td>
+                    <td class="col-complexity complexity-stars">${game.complexity ? '★'.repeat(game.complexity) : '-'}</td>
+                    <td class="col-source">
+                        <span style="padding: 0.25rem 0.75rem; background: var(--bg-light); border-radius: 0.5rem; font-size: 0.85rem;">${game.source || 'manual'}</span>
+                        ${isPending(game) ? '<span class="badge-pending">⚠️待補充</span>' : ''}
+                    </td>
+                    <td>
+                        <div class="btn-actions">
+                            <button class="btn-small btn-edit" onclick="editGame('${game.id}')">編輯</button>
+                            ${isSuperAdmin ? `<button class="btn-small btn-delete" onclick="deleteGame('${game.id}', '${game.name_zh}')">刪除</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 判斷遊戲是否「待補充」：source=manual 且名稱/bgg_id 任一不完整
+        function isPending(game) {
+            return game.source === 'manual' && (!game.bgg_id || !game.name_zh || !game.name_en);
+        }
+
+        // filterGames 已在上方定義（後端分頁版）
+
+        // 開啟彈窗
+        function openModal(gameId = null) {
+            document.getElementById('modal-title').textContent = gameId ? '編輯遊戲' : '新增遊戲';
+            
+            if (gameId) {
+                loadGameData(gameId);
+            } else {
+                document.getElementById('game-form').reset();
+                document.getElementById('game-id').value = '';
+                document.getElementById('image-preview').innerHTML = '🎲';
+                setFetchStatus('', '');
+            }
+            
+            document.getElementById('game-modal').classList.add('active');
+        }
+
+        // 關閉彈窗
+        function closeModal() {
+            document.getElementById('game-modal').classList.remove('active');
+        }
+
+        // 載入遊戲資料（由 API 拿）
+        async function loadGameData(gameId) {
+            let game = null;
+            if (allGamesLoaded) game = allGames.find(g => g.id === gameId);
+            if (!game) {
+                try {
+                    const r = await fetch(`tables/game_database/${gameId}`);
+                    if (r.ok) game = await r.json();
+                } catch(e) {}
+            }
+            if (!game) return;
+            
+            document.getElementById('game-id').value = game.id;
+            document.getElementById('game-name-zh').value = game.name_zh || '';
+            document.getElementById('game-name-ja').value = game.name_ja || '';
+            document.getElementById('game-name-en').value = game.name_en || '';
+            document.getElementById('game-image-url').value = game.image_url && game.image_url.startsWith('http') ? game.image_url : '';
+            document.getElementById('game-year').value = game.year || '';
+            document.getElementById('game-min-players').value = game.min_players || '';
+            document.getElementById('game-max-players').value = game.max_players || '';
+            document.getElementById('game-playing-time').value = game.playing_time || '';
+            document.getElementById('game-complexity').value = game.complexity || '';
+            document.getElementById('game-description').value = game.description || '';
+            document.getElementById('game-source').value = game.source || 'manual';
+            document.getElementById('game-bgg-id').value = game.bgg_id || '';
+            updateImagePreview();
+        }
+
+        // 編輯遊戲
+        function editGame(gameId) {
+            openModal(gameId);
+        }
+
+        // ── 即時檢查 BGG ID 重複 ──
+        function checkBggDuplicate() {
+            const bggId = document.getElementById('game-bgg-id').value.trim();
+            const currentId = document.getElementById('game-id').value; // 編輯模式時有值
+            const warn = document.getElementById('bgg-duplicate-warning');
+            if (!bggId || !allGames.length) { warn.style.display = 'none'; return; }
+            const dup = allGames.find(g => g.bgg_id && g.bgg_id === bggId && g.id !== currentId);
+            if (dup) {
+                const name = dup.name_zh || dup.name_en || '(未命名)';
+                warn.innerHTML = `⚠️ BGG ID <strong>${bggId}</strong> 已存在：<strong>${name}</strong>（id: ${dup.id}）<br>
+                    <a href="#" onclick="editGame('${dup.id}'); return false;" style="color:#856404; text-decoration:underline;">→ 點此直接編輯該筆記錄</a>`;
+                warn.style.display = 'block';
+            } else {
+                warn.style.display = 'none';
+            }
+        }
+
+        // 儲存遊戲
+        async function saveGame(event) {
+            event.preventDefault();
+            
+            const gameId = document.getElementById('game-id').value;
+            const imageUrlVal = document.getElementById('game-image-url').value.trim();
+            const gameData = {
+                name_zh:      document.getElementById('game-name-zh').value.trim(),
+                name_ja:      document.getElementById('game-name-ja').value.trim(),
+                name_en:      document.getElementById('game-name-en').value.trim(),
+                image_url:    imageUrlVal || '',
+                year:         parseInt(document.getElementById('game-year').value) || null,
+                min_players:  parseInt(document.getElementById('game-min-players').value) || null,
+                max_players:  parseInt(document.getElementById('game-max-players').value) || null,
+                playing_time: parseInt(document.getElementById('game-playing-time').value) || null,
+                complexity:   parseFloat(document.getElementById('game-complexity').value) || null,
+                description:  document.getElementById('game-description').value.trim(),
+                source:       document.getElementById('game-source').value,
+                bgg_id:       document.getElementById('game-bgg-id').value.trim()
+            };
+            
+            // ── 新增前做重複把關 ──
+            if (!gameId) {
+                const bggIdVal = gameData.bgg_id;
+                const nameZh = gameData.name_zh.toLowerCase();
+                const nameEn = gameData.name_en.toLowerCase();
+                const dups = allGames.filter(g =>
+                    (bggIdVal && g.bgg_id === bggIdVal) ||
+                    (nameZh && g.name_zh && g.name_zh.toLowerCase() === nameZh) ||
+                    (nameEn && g.name_en && g.name_en.toLowerCase() === nameEn)
+                );
+                if (dups.length > 0) {
+                    const dupNames = dups.map(g => `「${g.name_zh || g.name_en || '(未命名)'}」(id: ${g.id})`).join('、');
+                    const ok = confirm(`⚠️ 疑似重複遊戲！\n\n資料庫已有相似記錄：\n${dupNames}\n\n確定仍要新增？`);
+                    if (!ok) return;
+                }
+            }
+
+            try {
+                if (gameId) {
+                    // 更新
+                    const response = await fetch(`tables/game_database/${gameId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(gameData)
+                    });
+                    
+                    if (!response.ok) throw new Error('更新失敗');
+                    alert('遊戲更新成功！');
+                } else {
+                    // 新增
+                    gameData.id = 'game_' + Date.now();
+                    gameData.created_at = Date.now();
+                    
+                    const response = await fetch('tables/game_database', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(gameData)
+                    });
+                    
+                    if (!response.ok) throw new Error('新增失敗');
+                    alert('遊戲新增成功！');
+                    await refreshSiteStats();
+                }
+                
+                allGamesLoaded = false;
+                closeModal();
+                loadGames(currentPage);
+                
+            } catch (error) {
+                console.error('Error saving game:', error);
+                alert('儲存遊戲時發生錯誤：' + error.message);
+            }
+        }
+
+        // ── 圖片預覽（即時更新縮圖） ──
+        function updateImagePreview() {
+            const url = document.getElementById('game-image-url').value.trim();
+            const preview = document.getElementById('image-preview');
+            if (!preview) return;
+            if (url.startsWith('http')) {
+                preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='🎲'">`;
+            } else {
+                preview.innerHTML = '🎲';
+            }
+        }
+        // 綁定即時預覽
+        document.getElementById('game-image-url')?.addEventListener('input', updateImagePreview);
+
+        // ── 從 BGG 抓取資料 ──
+        async function fetchFromBGG() {
+            const bggId = document.getElementById('game-bgg-id').value.trim();
+            if (!bggId) {
+                setFetchStatus('❌ 請先填入 BGG ID', 'red');
+                return;
+            }
+
+            const btn = document.getElementById('bgg-fetch-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 抓取中...';
+            setFetchStatus('正在透過 Jina proxy 讀取 BGG 頁面...', '#888');
+
+            try {
+                // ════════════════════════════════════════════════
+                // 步驟一：抓主頁（英文名 + 玩家數 + 時間 + 複雜度 + 封面圖 + 描述）
+                // 注意：Jina 抓圖邏輯完全不動，已確認為唯一可靠方式
+                // ════════════════════════════════════════════════
+                const pageUrl  = `https://boardgamegeek.com/boardgame/${bggId}`;
+                const proxyUrl = `https://r.jina.ai/${pageUrl}`;
+                const res = await fetch(proxyUrl, { headers: { 'X-No-Cache': 'true' } });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+
+                let filled = [];
+
+                // ── 抓英文名稱（暫存，供組 credits URL 用）──
+                let enNameFromMain = '';
+                const titleMatch = text.match(/^#\s+(.+)/m);
+                if (titleMatch) {
+                    enNameFromMain = titleMatch[1].replace(/\s*\(\d{4}\)\s*$/, '').trim();
+                    if (enNameFromMain && !document.getElementById('game-name-en').value) {
+                        document.getElementById('game-name-en').value = enNameFromMain;
+                        filled.push('英文名稱');
+                    }
+                }
+
+                // ── 抓玩家數 ──
+                const playersMatch = text.match(/(\d+)\s*[–\-~]\s*(\d+)\s*[Pp]layers?/);
+                if (playersMatch) {
+                    if (!document.getElementById('game-min-players').value) {
+                        document.getElementById('game-min-players').value = playersMatch[1];
+                        filled.push('最少玩家');
+                    }
+                    if (!document.getElementById('game-max-players').value) {
+                        document.getElementById('game-max-players').value = playersMatch[2];
+                        filled.push('最多玩家');
+                    }
+                }
+
+                // ── 抓遊戲時間 ──
+                const timeMatch = text.match(/(\d+)\s*[–\-~]\s*(\d+)\s*[Mm]in|(\d+)\s*[Mm]inutes?/);
+                if (timeMatch && !document.getElementById('game-playing-time').value) {
+                    const t = timeMatch[2] || timeMatch[3];
+                    document.getElementById('game-playing-time').value = t;
+                    filled.push('遊戲時間');
+                }
+
+                // ── 抓複雜度（格式：「4.44 / 5」）──
+                const weightMatch = text.match(/(\d+\.\d+)\s*\/\s*5/);
+                if (weightMatch && !document.getElementById('game-complexity').value) {
+                    document.getElementById('game-complexity').value = parseFloat(weightMatch[1]).toFixed(2);
+                    filled.push(`複雜度 ${weightMatch[1]}`);
+                }
+
+                // ── 抓圖片（完全不動，Jina 抓圖唯一解）──
+                const imgRegex = /https:\/\/cf\.geekdo-images\.com\/[^\s"']+\.(?:jpg|png|jpeg)/gi;
+                const candidates = [];
+                let m;
+                while ((m = imgRegex.exec(text)) !== null) candidates.push(m[0]);
+
+                let imgUrl = candidates.find(u => u.includes('_original'))
+                          || candidates.find(u => !u.includes('user') && !u.includes('avatar')
+                                               && !u.includes('micro') && !u.includes('square')
+                                               && !u.includes('thumb'))
+                          || candidates[0]
+                          || null;
+
+                if (imgUrl) {
+                    document.getElementById('game-image-url').value = imgUrl;
+                    updateImagePreview();
+                    filled.push('封面圖片');
+                }
+
+                // ── 抓遊戲描述（英文 → Jina 翻譯濃縮成繁體中文 20 字內）──
+                if (!document.getElementById('game-description').value) {
+                    let rawEnDesc = null;
+
+                    // 策略1：找標題後的第一個較長段落（至少 40 字元）
+                    const descMatch = text.match(/^#{1,2}\s+.+\n{1,3}([\s\S]+?)(?=\n#{1,3}\s|\n---|\n\*\*\*)/m);
+                    if (descMatch) {
+                        const raw = descMatch[1]
+                            .replace(/!\[.*?\]\(.*?\)/g, '')
+                            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                            .replace(/\*\*([^*]+)\*\*/g, '$1')
+                            .replace(/\*([^*]+)\*/g, '$1')
+                            .replace(/\n+/g, ' ')
+                            .trim();
+                        if (raw.length >= 40) rawEnDesc = raw.slice(0, 300);
+                    }
+
+                    // 策略2：找 "Description" 段落
+                    if (!rawEnDesc) {
+                        const descSection = text.match(/#+\s*Description\s*\n+([\s\S]+?)(?=\n#)/i);
+                        if (descSection) {
+                            const raw = descSection[1]
+                                .replace(/!\[.*?\]\(.*?\)/g, '')
+                                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                                .replace(/\n+/g, ' ')
+                                .trim();
+                            if (raw.length >= 30) rawEnDesc = raw.slice(0, 300);
+                        }
+                    }
+
+                    if (rawEnDesc) {
+                        let zhDesc = null;
+                        try {
+                            setFetchStatus('🈯 翻譯描述中（Jina）...', '#888');
+                            const prompt = `以下是一款桌遊的英文描述，請翻譯成繁體中文並濃縮成20字以內的核心玩法介紹（不要加引號或標點以外的符號）：${rawEnDesc.slice(0, 200)}`;
+                            const jinaSearchUrl = `https://s.jina.ai/${encodeURIComponent(prompt)}`;
+                            const tRes = await fetch(jinaSearchUrl, {
+                                headers: { 'Accept': 'text/plain', 'X-No-Cache': 'true' }
+                            });
+                            if (tRes.ok) {
+                                const tText = await tRes.text();
+                                const lines = tText.split('\n').map(l => l.trim()).filter(Boolean);
+                                for (const line of lines) {
+                                    const zhMatch = line.match(/^[^#\[\]|*>]{5,30}$/) && /[\u4e00-\u9fff]/.test(line);
+                                    if (zhMatch) {
+                                        const cleaned = line.replace(/^[\s\-*•]+/, '').trim();
+                                        if (cleaned.length >= 5 && cleaned.length <= 30 && /[\u4e00-\u9fff]/.test(cleaned)) {
+                                            zhDesc = cleaned;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!zhDesc) {
+                                    const zhLines = lines.filter(l =>
+                                        /[\u4e00-\u9fff]{4,}/.test(l) &&
+                                        l.length <= 35 &&
+                                        !/^(Title|URL|https?|Source|\[)/.test(l)
+                                    );
+                                    if (zhLines.length > 0) {
+                                        zhDesc = zhLines[0].replace(/^[\s\-*•]+/, '').slice(0, 30).trim();
+                                    }
+                                }
+                            }
+                        } catch(e) { /* 翻譯失敗不影響其他資料 */ }
+
+                        if (zhDesc) {
+                            document.getElementById('game-description').value = zhDesc;
+                            filled.push(`遊戲描述（中）`);
+                        } else {
+                            document.getElementById('game-description').value = rawEnDesc.slice(0, 100);
+                            filled.push('遊戲描述（英文，請手動翻譯濃縮）');
+                        }
+                    }
+                }
+
+                // ════════════════════════════════════════════════
+                // 步驟二：抓 credits 頁 → 精確取得中文名、日文名、年份
+                // URL 格式：/boardgame/{id}/{name-slug}/credits
+                // ════════════════════════════════════════════════
+                setFetchStatus('🔍 正在讀取 credits 頁面（中日文名 + 年份）...', '#888');
+
+                // 組出 slug（英文名轉小寫 + 空格換連字號，去除特殊字元）
+                const enNameForSlug = (document.getElementById('game-name-en').value || enNameFromMain || bggId).trim();
+                const slug = enNameForSlug
+                    .toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '')   // 去除非英數
+                    .replace(/\s+/g, '-')             // 空格換 -
+                    .replace(/-+/g, '-')              // 合併多個 -
+                    .replace(/^-|-$/g, '');           // 去頭尾 -
+
+                try {
+                    const creditsUrl  = `https://boardgamegeek.com/boardgame/${bggId}/${slug}/credits`;
+                    const creditsProxy = `https://r.jina.ai/${creditsUrl}`;
+                    const cRes = await fetch(creditsProxy, { headers: { 'X-No-Cache': 'true' } });
+
+                    if (cRes.ok) {
+                        const cText = await cRes.text();
+
+                        // ── 解析 Primary Name ──
+                        // 格式通常是：
+                        //   Primary Name
+                        //   Gloomhaven
+                        // 或行內：Primary Name: Gloomhaven
+                        const primaryMatch = cText.match(/Primary\s+Name[:\s\n]+([^\n]+)/i);
+                        if (primaryMatch) {
+                            const pName = primaryMatch[1].trim().replace(/\*+/g, '').replace(/\[.*?\]/g, '').trim();
+                            if (pName && pName.length > 0 && !document.getElementById('game-name-en').value) {
+                                document.getElementById('game-name-en').value = pName;
+                                filled.push('英文名稱（credits）');
+                            }
+                        }
+
+                        // ── 解析 Alternate Names：找中文 & 日文 ──
+                        // BGG credits 頁的格式：
+                        //   Alternate Names
+                        //   瘟疫危機
+                        //   パンデミック
+                        //   Pandémie
+                        //   ...
+                        // 用「Alternate Names」到下一個標題之間的內容
+                        const altSection = cText.match(/Alternate\s+Names?[\s\S]*?\n([\s\S]+?)(?=\n#{1,3}\s|\n\*\*[A-Z]|\nYear|\nPublisher|\nDesigner|$)/i);
+                        if (altSection) {
+                            const altLines = altSection[1]
+                                .split('\n')
+                                .map(l => l.replace(/\*+/g, '').replace(/\[.*?\]/g, '').replace(/^[-•\s]+/, '').trim())
+                                .filter(l => l.length >= 2);
+
+                            // 找中文名（繁體 or 簡體）
+                            if (!document.getElementById('game-name-zh').value) {
+                                const zhLine = altLines.find(l => /[\u4e00-\u9fff]/.test(l) && !/[\u3040-\u309f\u30a0-\u30ff]/.test(l));
+                                if (zhLine) {
+                                    document.getElementById('game-name-zh').value = zhLine;
+                                    filled.push('中文名稱');
+                                }
+                            }
+
+                            // 找日文名（有平假名或片假名的才算日文）
+                            if (!document.getElementById('game-name-ja').value) {
+                                const jaLine = altLines.find(l => /[\u3040-\u309f\u30a0-\u30ff]/.test(l));
+                                if (jaLine) {
+                                    document.getElementById('game-name-ja').value = jaLine;
+                                    filled.push('日文名稱');
+                                }
+                            }
+                        }
+
+                        // ── 解析 Year Released ──
+                        if (!document.getElementById('game-year').value) {
+                            // 格式：Year Released\n2017  或  Year Released: 2017
+                            const yearRelMatch = cText.match(/Year\s+(?:Released|Published)[:\s\n]+(\d{4})/i);
+                            if (yearRelMatch) {
+                                document.getElementById('game-year').value = yearRelMatch[1];
+                                filled.push(`年份 ${yearRelMatch[1]}`);
+                            }
+                        }
+
+                        filled.push('credits 頁完成');
+                    }
+                } catch(creditsErr) {
+                    console.warn('credits 頁讀取失敗（不影響其他資料）:', creditsErr.message);
+                    // 降級：用原有 DuckDuckGo 方式補中文名
+                    if (!document.getElementById('game-name-zh').value) {
+                        try {
+                            setFetchStatus('🔍 搜尋中文名稱（DuckDuckGo 備援）...', '#888');
+                            const enName = document.getElementById('game-name-en').value.trim();
+                            const q = encodeURIComponent(`${enName || 'BGG ' + bggId} 中文名 桌遊`);
+                            const dRes = await fetch(
+                                `https://r.jina.ai/https://duckduckgo.com/?q=${q}&ia=web`,
+                                { headers: { 'X-No-Cache': 'true' } }
+                            );
+                            if (dRes.ok) {
+                                const dText = await dRes.text();
+                                const zhName = extractChineseGameNameFallback(dText, enName || bggId);
+                                if (zhName) {
+                                    document.getElementById('game-name-zh').value = zhName;
+                                    filled.push('中文名稱（DuckDuckGo）');
+                                }
+                            }
+                        } catch(e) { /* 靜默失敗 */ }
+                    }
+
+                    // 降級：年份用主頁的簡單 match
+                    if (!document.getElementById('game-year').value) {
+                        const yearMatch2 = text.match(/\b(19|20)\d{2}\b/);
+                        if (yearMatch2) {
+                            document.getElementById('game-year').value = yearMatch2[0];
+                            filled.push('年份（備援）');
+                        }
+                    }
+                }
+
+                // ── 設定來源為 BGG ──
+                document.getElementById('game-source').value = 'BGG';
+
+                if (filled.length > 0) {
+                    const zhHint = document.getElementById('game-name-zh').value ? '' : '（中文名未找到，請手動填寫）';
+                    setFetchStatus(`✅ 已填入：${filled.join('、')}${zhHint}`, 'green');
+                } else {
+                    setFetchStatus('⚠️ 頁面已讀取，但未能解析出資料，請手動填寫', 'orange');
+                }
+
+            } catch (err) {
+                console.error('BGG fetch error:', err);
+                setFetchStatus('❌ 抓取失敗：' + err.message, 'red');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 從 BGG 抓取資料';
+                updateSearchHint();
+                checkBggDuplicate();
+            }
+        }
+
+        // DuckDuckGo 備援：從搜尋結果文字中提取中文遊戲名
+        function extractChineseGameNameFallback(dText, enGameName) {
+            const enKeyword = (enGameName.split(/[\s:：]+/).find(w => w.length > 3 && !/^(the|a|an|of|in|at)$/i.test(w)) || enGameName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const p1 = new RegExp(`([\\u4e00-\\u9fff][\\u4e00-\\u9fff\\uff1a：:·\\-–\\s]{0,15}[\\u4e00-\\u9fff])\\s*(?:The\\s+|\\*\\*${enKeyword}|\\(\\*\\*${enKeyword}|繁體|簡體|Board)`, 'i');
+            const m1 = dText.match(p1);
+            if (m1) return m1[1].trim();
+
+            const headingMatches = [...dText.matchAll(/###\s+([^\n\[]{3,60})/g)];
+            for (const hm of headingMatches) {
+                const content = hm[1].replace(/^\【[^\】]*\】\s*/, '').replace(/^\[[^\]]*\]\s*/, '');
+                const zhPart = content.match(/^([\u4e00-\u9fff][^\s]*[\u4e00-\u9fff\uff1a：:]{0,1}[\u4e00-\u9fff]*)/);
+                if (zhPart && zhPart[1].length >= 2) return zhPart[1].trim();
+            }
+            const m3 = dText.match(/([\u4e00-\u9fff]{2,8}[\uff1a：:][^\n\[,，。．\s]{1,8}[\u4e00-\u9fff]{1,8})/);
+            if (m3) return m3[1].trim();
+            const m4 = dText.match(/[《]([\u4e00-\u9fff：:·\-–—\s]{2,15})[》]/);
+            if (m4) return m4[1].trim();
+            return null;
+        }
+
+        function setFetchStatus(msg, color) {
+            const el = document.getElementById('bgg-fetch-status');
+            if (el) { el.textContent = msg; el.style.color = color || 'var(--text-light)'; }
+        }
+
+        function updateSearchHint() {
+            const bggId  = document.getElementById('game-bgg-id').value.trim();
+            const nameEn = document.getElementById('game-name-en').value.trim();
+            const hint   = document.getElementById('bgg-search-hint');
+            if (!hint) return;
+            if (!bggId && !nameEn) { hint.style.display = 'none'; return; }
+
+            hint.style.display = 'block';
+            const q = nameEn ? `${nameEn} 中文名 桌遊` : `BGG ${bggId} 中文名 桌遊`;
+            document.getElementById('bgg-google-link').href =
+                `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+            document.getElementById('bgg-page-link').href = bggId
+                ? `https://boardgamegeek.com/boardgame/${bggId}/versions`
+                : '#';
+        }
+
+        // ── 快速登記相關函數 ──
+        function openQuickModal() {
+            document.getElementById('quick-form').reset();
+            document.getElementById('quick-image-preview').innerHTML = '🎲';
+            document.getElementById('quick-modal').classList.add('active');
+            // 短暫延遲後 focus，確保彈窗動畫結束
+            setTimeout(() => document.getElementById('quick-name')?.focus(), 100);
+        }
+
+        function closeQuickModal() {
+            document.getElementById('quick-modal').classList.remove('active');
+        }
+
+        function updateQuickImagePreview() {
+            const url = document.getElementById('quick-image-url').value.trim();
+            const preview = document.getElementById('quick-image-preview');
+            if (!preview) return;
+            if (url.startsWith('http')) {
+                preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='🎲'">`;
+            } else {
+                preview.innerHTML = '🎲';
+            }
+        }
+
+        async function saveQuickGame(event) {
+            event.preventDefault();
+
+            const rawName = document.getElementById('quick-name').value.trim();
+            if (!rawName) { alert('請填入遊戲名稱！'); return; }
+
+            // 解析玩家數（支援 "2-4" / "2~4" / "4" 格式）
+            const playersRaw = document.getElementById('quick-players').value.trim();
+            let minP = null, maxP = null;
+            if (playersRaw) {
+                const pm = playersRaw.match(/^(\d+)\s*[-~–]\s*(\d+)$/);
+                if (pm) { minP = parseInt(pm[1]); maxP = parseInt(pm[2]); }
+                else if (/^\d+$/.test(playersRaw)) { minP = maxP = parseInt(playersRaw); }
+            }
+
+            // 判斷輸入的是中文還是英文名稱
+            const hasChinese = /[\u4e00-\u9fff]/.test(rawName);
+            const publisher = document.getElementById('quick-publisher').value.trim();
+            const note = document.getElementById('quick-note').value.trim();
+
+            const gameData = {
+                id:          'game_' + Date.now(),
+                name_zh:     hasChinese ? rawName : '',
+                name_en:     hasChinese ? '' : rawName,
+                name_ja:     '',
+                year:        parseInt(document.getElementById('quick-year').value) || null,
+                min_players: minP,
+                max_players: maxP,
+                playing_time: null,
+                complexity:   null,
+                image_url:   document.getElementById('quick-image-url').value.trim() || '',
+                description: note ? `[${publisher ? publisher + '｜' : ''}${note}]` : (publisher ? `[出版社：${publisher}]` : ''),
+                source:      'manual',
+                bgg_id:      '',
+                created_at:  Date.now()
+            };
+
+            // 重複確認（中英文名比對，用当前快取的 allGames，若未載入則跳過）
+            const dups = allGames.filter(g =>
+                (gameData.name_zh && g.name_zh && g.name_zh.toLowerCase() === gameData.name_zh.toLowerCase()) ||
+                (gameData.name_en && g.name_en && g.name_en.toLowerCase() === gameData.name_en.toLowerCase())
+            );
+            if (dups.length > 0) {
+                const dupNames = dups.map(g => `「${g.name_zh || g.name_en}」`).join('、');
+                const ok = confirm(`⚠️ 資料庫已有相似名稱：${dupNames}\n確定仍要新增？`);
+                if (!ok) return;
+            }
+
+            try {
+                const btn = event.submitter || document.querySelector('#quick-form button[type="submit"]');
+                if (btn) { btn.disabled = true; btn.textContent = '⏳ 登記中...'; }
+
+                const res = await fetch('tables/game_database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(gameData)
+                });
+                if (!res.ok) throw new Error('新增失敗');
+
+                allGamesLoaded = false;
+                closeQuickModal();
+                loadGames(currentPage);
+
+                // 顯示成功提示（不用 alert，改用臨時 toast）
+                showToast(`✅ 已快速登記：${rawName}${publisher ? `（${publisher}）` : ''}`);
+
+            } catch (err) {
+                alert('快速登記失敗：' + err.message);
+            } finally {
+                const btn = document.querySelector('#quick-form button[type="submit"]');
+                if (btn) { btn.disabled = false; btn.textContent = '⚡ 快速登記'; }
+            }
+        }
+
+        // 簡易 Toast 通知
+        function showToast(msg) {
+            let toast = document.getElementById('admin-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'admin-toast';
+                toast.style.cssText = `
+                    position:fixed; bottom:8rem; right:2rem; z-index:9999;
+                    background:#333; color:#fff; padding:0.75rem 1.2rem;
+                    border-radius:0.6rem; font-size:0.95rem; box-shadow:0 4px 12px rgba(0,0,0,0.3);
+                    transition:opacity 0.4s; opacity:0; pointer-events:none;
+                `;
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+        }
+
+        // ── 點擊快速彈窗外部關閉 ──
+        document.getElementById('quick-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeQuickModal();
+        });
+
+        // 刪除遊戲
+        async function deleteGame(gameId, gameName) {
+            if (!confirm(`確定要刪除「${gameName}」嗎？\n\n注意：此操作無法復原！`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`tables/game_database/${gameId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('刪除失敗');
+                
+                alert('遊戲已刪除！');
+                await refreshSiteStats();
+                allGamesLoaded = false;
+                loadGames(currentPage);
+                
+            } catch (error) {
+                console.error('Error deleting game:', error);
+                alert('刪除遊戲時發生錯誤：' + error.message);
+            }
+        }
+
+        // 點擊彈窗外部關閉
+        document.getElementById('game-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // 初始化
+        loadGames(1);
+
+        // ════════════════════════════════════════════
+        // ── 重複遊戲偵測與處理 ──
+        // ════════════════════════════════════════════
+        async function showDuplicates() {
+            const panel = document.getElementById('duplicate-panel');
+            const list = document.getElementById('duplicate-list');
+            panel.style.display = 'block';
+            list.innerHTML = '<div style="color:var(--text-light);">⏳ 載入全部遊戲資料（可能需要數秒）...</div>';
+
+            await loadAllGamesForDupDetect();
+
+            list.innerHTML = '<div style="color:var(--text-light);">偵測中...</div>';
+
+            const byNameZh = new Map();
+            const byNameEn = new Map();
+            const byBggId = new Map();
+
+            allGames.forEach(g => {
+                if (g.name_zh) {
+                    if (!byNameZh.has(g.name_zh)) byNameZh.set(g.name_zh, []);
+                    byNameZh.get(g.name_zh).push(g);
+                }
+                if (g.name_en) {
+                    if (!byNameEn.has(g.name_en)) byNameEn.set(g.name_en, []);
+                    byNameEn.get(g.name_en).push(g);
+                }
+                if (g.bgg_id) {
+                    if (!byBggId.has(String(g.bgg_id))) byBggId.set(String(g.bgg_id), []);
+                    byBggId.get(String(g.bgg_id)).push(g);
+                }
+            });
+
+            // 收集重複群組
+            const groups = new Map(); // 用第一個 id 作為 key
+            const addGroup = (label, items) => {
+                const key = items.map(i => i.id).sort().join(',');
+                if (!groups.has(key)) groups.set(key, { label, items });
+            };
+
+            byNameZh.forEach((items, name) => { if (items.length > 1) addGroup(`中文名相同：${name}`, items); });
+            byNameEn.forEach((items, name) => { if (items.length > 1) addGroup(`英文名相同：${name}`, items); });
+            byBggId.forEach((items, id) => { if (items.length > 1) addGroup(`BGG ID 相同：${id}`, items); });
+
+            if (groups.size === 0) {
+                list.innerHTML = '<div style="color:var(--success-color);font-weight:600;">✅ 沒有發現重複遊戲！</div>';
+                return;
+            }
+
+            list.innerHTML = [...groups.values()].map(({ label, items }) => `
+                <div style="border:1px solid var(--border-color);border-radius:0.75rem;padding:1rem;margin-bottom:1rem;">
+                    <div style="font-weight:600;color:var(--accent-color);margin-bottom:0.75rem;">⚠️ ${label}</div>
+                    ${items.map(g => `
+                        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border-color);">
+                            ${g.image_url ? `<img src="${g.image_url}" style="width:40px;height:40px;object-fit:cover;border-radius:0.4rem;flex-shrink:0;" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;background:var(--bg-color);border-radius:0.4rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;">🎲</div>'}
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:600;">${g.name_zh || g.name_en || '（無名稱）'}</div>
+                                <div style="font-size:0.8rem;color:var(--text-light);">${g.name_en || ''} ${g.year ? `· ${g.year}年` : ''} ${g.bgg_id ? `· BGG#${g.bgg_id}` : ''} · ID:${g.id.slice(0,8)}...</div>
+                            </div>
+                            <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+                                <button onclick="mergeAndDelete('${items.find(i=>i.id!==g.id)?.id || ''}','${g.id}','${(g.name_zh||g.name_en||'').replace(/'/g,"\\'")}')"
+                                    style="padding:0.35rem 0.7rem;font-size:0.8rem;background:#f59e0b;color:white;border:none;border-radius:0.4rem;cursor:pointer;"
+                                    title="保留另一筆，將玩家資料轉移後刪除此筆">
+                                    🔀 合併刪除此筆
+                                </button>
+                                <button onclick="deleteGame('${g.id}')"
+                                    style="padding:0.35rem 0.7rem;font-size:0.8rem;background:#ef4444;color:white;border:none;border-radius:0.4rem;cursor:pointer;"
+                                    title="直接刪除此筆（不轉移玩家資料）">
+                                    🗑️ 直接刪除
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        async function mergeAndDelete(keepId, deleteId, deleteName) {
+            if (!keepId) { alert('⚠️ 找不到保留的遊戲'); return; }
+            await loadAllGamesForDupDetect();
+            const keepGame = allGames.find(g => g.id === keepId);
+            if (!keepGame) { alert('⚠️ 找不到保留的遊戲資料'); return; }
+            const keepName = keepGame.name_zh || keepGame.name_en;
+
+            if (!confirm(`確定要合併？\n🗑️ 刪除：${deleteName}\n✅ 保留：${keepName}\n\n玩家資料中的「${deleteName}」將自動更新為「${keepName}」`)) return;
+
+            try {
+                // 更新所有玩家資料
+                const fields = ['super_liked_games','liked_games','neutral_games','disliked_games','no_interest_games','wishlist'];
+                const countRes = await fetch('tables/users?limit=1');
+                const total = (await countRes.json()).total || 0;
+                let allUsers = [];
+                for (let i = 1; i <= Math.ceil(total/500); i++) {
+                    const res = await fetch(`tables/users?limit=500&page=${i}`);
+                    allUsers = allUsers.concat((await res.json()).data || []);
+                }
+                let updatedCount = 0;
+                for (const user of allUsers) {
+                    const patch = {};
+                    let changed = false;
+                    for (const field of fields) {
+                        const arr = user[field];
+                        if (Array.isArray(arr) && arr.includes(deleteName)) {
+                            patch[field] = arr.map(g => g === deleteName ? keepName : g);
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        await fetch(`tables/users/${user.id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) });
+                        updatedCount++;
+                    }
+                }
+
+                // 刪除重複條目
+                await fetch(`tables/game_database/${deleteId}`, { method:'DELETE' });
+                // 清除 GameNames 快取，讓下次開頁面能讀到最新遊戲庫
+                if (window.GameNames && GameNames.clearCache) GameNames.clearCache();
+                await refreshSiteStats();
+                alert(`✅ 合併完成！已更新 ${updatedCount} 位玩家資料，並刪除「${deleteName}」`);
+                allGamesLoaded = false;
+                await loadGames(currentPage);
+                showDuplicates();
+            } catch(e) {
+                alert('❌ 合併失敗：' + e.message);
+            }
+        }
+
+        // 一鍵批量合併所有 BGG ID 相同的重複遊戲
+        async function autoBatchMergeBggDuplicates() {
+            const progressEl = document.getElementById('auto-merge-progress');
+            const btn = document.getElementById('auto-merge-btn');
+
+            if (!confirm('⚠️ 確定要一鍵批量合併所有 BGG ID 相同的重複遊戲？\n\n規則：\n• 每組保留資料最完整的一筆（有中文名優先）\n• 刪除其他重複的\n• 玩家資料自動轉移\n\n此操作不可復原！')) return;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ 執行中...';
+            progressEl.style.display = 'block';
+            progressEl.innerHTML = '🔄 分析重複資料中...';
+
+            try {
+                // 重新載入最新資料
+                // 重新載入最新資料
+                allGamesLoaded = false;
+                await loadAllGamesForDupDetect(); // 必須重新全載以偵測重複
+
+                // 找出所有 BGG ID 重複的群組
+                const byBggId = new Map();
+                allGames.forEach(g => {
+                    if (!g.bgg_id) return;
+                    const key = String(g.bgg_id).trim();
+                    if (!key) return;
+                    if (!byBggId.has(key)) byBggId.set(key, []);
+                    byBggId.get(key).push(g);
+                });
+
+                const dupGroups = [...byBggId.values()].filter(arr => arr.length > 1);
+
+                if (dupGroups.length === 0) {
+                    progressEl.innerHTML = '✅ 沒有發現 BGG ID 重複的遊戲！';
+                    btn.disabled = false;
+                    btn.textContent = '🚀 一鍵批量合併所有 BGG ID 重複';
+                    return;
+                }
+
+                progressEl.innerHTML = `找到 ${dupGroups.length} 組重複（共需刪除 ${dupGroups.reduce((s,a)=>s+a.length-1,0)} 筆），開始合併...`;
+
+                // 載入所有玩家
+                const uCountRes = await fetch('tables/users?limit=1');
+                const uTotal = (await uCountRes.json()).total || 0;
+                let allUsers = [];
+                for (let i = 1; i <= Math.ceil(uTotal/500); i++) {
+                    const res = await fetch(`tables/users?limit=500&page=${i}`);
+                    allUsers = allUsers.concat((await res.json()).data || []);
+                }
+                const fields = ['super_liked_games','liked_games','neutral_games','disliked_games','no_interest_games','wishlist'];
+
+                let totalDeleted = 0;
+                let totalUserUpdated = 0;
+                let groupDone = 0;
+
+                for (const group of dupGroups) {
+                    // 選保留的：優先有 name_zh、其次 source==='BGG'、最後選第一筆
+                    const keepGame = group.slice().sort((a, b) => {
+                        if (a.name_zh && !b.name_zh) return -1;
+                        if (!a.name_zh && b.name_zh) return 1;
+                        if (a.source === 'BGG' && b.source !== 'BGG') return -1;
+                        if (a.source !== 'BGG' && b.source === 'BGG') return 1;
+                        return 0;
+                    })[0];
+                    const keepName = keepGame.name_zh || keepGame.name_en || '';
+                    const deleteGames = group.filter(g => g.id !== keepGame.id);
+
+                    // 先更新玩家資料（把所有要刪除的名稱換成保留名稱）
+                    for (const user of allUsers) {
+                        const patch = {};
+                        let changed = false;
+                        for (const field of fields) {
+                            const arr = user[field];
+                            if (!Array.isArray(arr)) continue;
+                            const newArr = arr.map(name => {
+                                const deletedGame = deleteGames.find(dg => (dg.name_zh === name || dg.name_en === name));
+                                return deletedGame ? keepName : name;
+                            });
+                            if (newArr.join(',') !== arr.join(',')) {
+                                patch[field] = newArr;
+                                changed = true;
+                            }
+                        }
+                        if (changed) {
+                            await fetch(`tables/users/${user.id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) });
+                            totalUserUpdated++;
+                        }
+                    }
+
+                    // 刪除多餘的
+                    for (const dg of deleteGames) {
+                        await fetch(`tables/game_database/${dg.id}`, { method:'DELETE' });
+                        totalDeleted++;
+                    }
+
+                    groupDone++;
+                    progressEl.innerHTML = `⏳ 進度：${groupDone}/${dupGroups.length} 組完成，已刪除 ${totalDeleted} 筆，更新 ${totalUserUpdated} 位玩家...`;
+                }
+
+                allGamesLoaded = false;
+                await loadGames(currentPage);
+                await refreshSiteStats();
+                progressEl.innerHTML = `✅ 批量合併完成！共處理 ${dupGroups.length} 組，刪除 ${totalDeleted} 筆重複，更新 ${totalUserUpdated} 位玩家資料。`;
+                allGamesLoaded = false;
+                showDuplicates(); // 重新掃描確認
+
+            } catch(e) {
+                progressEl.innerHTML = `❌ 合併失敗：${e.message}`;
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 一鍵批量合併所有 BGG ID 重複';
+            }
+        }
+    </script>
+</body>
+</html>

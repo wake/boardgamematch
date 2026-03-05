@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBTI × 桌遊配對 - 找到適合你的桌遊</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <!-- Google Sign-In SDK - 同步載入確保手機兼容 -->
+    <script src="https://accounts.google.com/gsi/client"></script>
+
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="active">回到首頁</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <!-- 頁面標題 -->
+        <div class="page-header">
+            <h1 class="page-title">MBTI × 桌遊配對</h1>
+            <p class="page-subtitle">根據你的人格類型，找到最適合你的桌遊體驗</p>
+        </div>
+
+        <!-- Google 登入 / 使用者資訊區塊 -->
+        <section style="margin-bottom: 3rem;">
+            <!-- Google 登入按鈕容器（未登入狀態） -->
+            <div id="google-signin-container" style="display: none;">
+                <div style="background: var(--card-bg); padding: 3rem 2rem; border-radius: 1rem; box-shadow: var(--shadow-lg); text-align: center; max-width: 500px; margin: 0 auto;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">🎮</div>
+                    <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--text-color);">開始你的桌遊探索之旅</h3>
+                    <p style="color: var(--text-light); margin-bottom: 2rem; line-height: 1.6;">
+                        使用 Google 帳號登入，立即探索適合你的桌遊，<br>並與其他玩家分享你的遊戲體驗
+                    </p>
+                    
+                    <!-- Google 登入按鈕（置中） -->
+                    <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                        <!-- 📱 手動渲染的 Google 登入按鈕容器 -->
+                        <div id="google-signin-button"></div>
+                    </div>
+                    
+                    <!-- 📱 手機無法登入的替代方案 -->
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-radius: 0.5rem; border: 1px solid #bae6fd;">
+                        <div style="font-size: 0.9rem; color: #0369a1; margin-bottom: 0.5rem; font-weight: 600;">
+                            📱 手機無法登入？
+                        </div>
+                        <div style="font-size: 0.85rem; color: #0c4a6e; line-height: 1.6;">
+                            <a href="explore.html" style="color: #0284c7; text-decoration: none; font-weight: 600; border-bottom: 2px solid #0284c7;">
+                                點此直接瀏覽數據分析
+                            </a>
+                            <span style="margin: 0 0.5rem;">或</span>
+                            <a href="recommend.html" style="color: #0284c7; text-decoration: none; font-weight: 600; border-bottom: 2px solid #0284c7;">
+                                桌遊探索
+                            </a>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">
+                            💡 提示：使用電腦瀏覽器可以完整體驗所有功能
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 已登入狀態顯示 -->
+            <div id="logged-in-container" style="display: none;">
+                <div style="background: var(--card-bg); padding: 1.5rem 2rem; border-radius: 1rem; box-shadow: var(--shadow-md); text-align: center; max-width: 500px; margin: 0 auto;">
+                    <!-- 頭像 + 暱稱 + MBTI + 等級 -->
+                    <div style="display: inline-flex; align-items: center; gap: 1rem; padding: 0.875rem 1.5rem; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 0.875rem; margin-bottom: 1.25rem; width: 100%; box-sizing: border-box;">
+                        <img id="user-avatar" src="" alt="頭像" style="width: 52px; height: 52px; border-radius: 50%; border: 3px solid white; flex-shrink: 0;">
+                        <div style="text-align: left; color: white; flex: 1; min-width: 0;">
+                            <div id="user-name" style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <span id="user-mbti" style="font-size: 0.85rem; opacity: 0.95;"></span>
+                                <span id="user-level-badge" style="font-size: 0.8rem; background: rgba(255,255,255,0.25); padding: 0.1rem 0.5rem; border-radius: 999px; font-weight: 600;"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 探索按鈕 + 登出 -->
+                    <a href="recommend.html" class="btn btn-primary" style="font-size: 1rem; padding: 0.875rem 2rem; width: 100%; box-sizing: border-box;">🎲 探索桌遊喜好</a>
+                    <a href="collection-poster.html" class="btn btn-primary" style="font-size: 1rem; padding: 0.875rem 2rem; width: 100%; box-sizing: border-box; margin-top: 0.75rem; background: linear-gradient(135deg, #0891b2, #0e7490);">🖼️ 桌遊封面牆</a>
+                    <a href="quiz.html" class="btn btn-primary" style="font-size: 1rem; padding: 0.875rem 2rem; width: 100%; box-sizing: border-box; margin-top: 0.75rem; background: linear-gradient(135deg, #f59e0b, #d97706);">🧠 桌遊問答</a>
+                    <a href="game-picker.html" class="btn btn-primary" style="font-size: 1rem; padding: 0.875rem 2rem; width: 100%; box-sizing: border-box; margin-top: 0.75rem; background: linear-gradient(135deg, #7c3aed, #4f46e5);">🎯 今晚玩什麼？</a>
+                    <button onclick="logout()" style="margin-top: 0.75rem; width: 100%; padding: 0.55rem; background: none; border: 1.5px solid var(--border-color); border-radius: 0.5rem; color: var(--text-light); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444';"
+                        onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-light)';">
+                        🚪 登出
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 狀態訊息 -->
+            <div id="status-message" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 0.5rem; background: #e7f3ff; color: #0066cc; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;"></div>
+        </section>
+
+        <!-- 統計數據區塊 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--text-color);">📊 總覽統計</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-users">-</div>
+                    <div class="stat-label">位玩家</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-games">-</div>
+                    <div class="stat-label">款桌遊</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="most-popular-type">-</div>
+                    <div class="stat-label">最多玩家類型</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MBTI 類型選擇 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--text-color);">🎯 16 種人格類型</h2>
+            <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                點擊任一類型查看該人格的桌遊偏好詳情
+            </p>
+            <div class="mbti-grid" id="mbti-preview">
+                <!-- 透過 JavaScript 動態生成 -->
+            </div>
+        </section>
+
+        <!-- 熱門桌遊排行 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--text-color);"><span style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';">🏆</span> 熱門桌遊排行</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                <div class="game-list">
+                    <h3 class="game-list-title"><span style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';">😍</span> 最受歡迎</h3>
+                    <div id="popular-games-list">
+                        <div class="simple-hourglass">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="game-list">
+                    <h3 class="game-list-title"><span style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';">⭐</span> 最受期待</h3>
+                    <div id="wishlist-games-list">
+                        <div class="simple-hourglass">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+    </div>
+
+    <!-- 頁尾 -->
+    <footer style="text-align: center; padding: 2rem; margin-top: 4rem; color: var(--text-light); border-top: 1px solid var(--border-color);">
+        <p>© 2025 MBTI
+            <a href="admin.html" id="secret-admin-link" tabindex="-1" aria-hidden="true" style="color:inherit;text-decoration:none;cursor:default;opacity:0;font-size:0.6em;user-select:none;">×</a>
+            桌遊配對</p>
+        <p style="font-size: 0.9rem; margin-top: 0.5rem;">根據 MBTI 人格類型，找到最適合你的桌遊體驗</p>
+    </footer>
+
+    <script src="js/api-base.js?v=20260302-clear"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    
+    <!-- safePatch 備援定義 -->
+    <script>
+        if (typeof safePatch === 'undefined') {
+            window.safePatch = async function(url, patchData, headers = {}) {
+                const g = await fetch(url, { headers });
+                const existing = g.ok ? await g.json() : {};
+                const sys = ['gs_project_id','gs_table_name','gs_created_at','gs_updated_at','deleted','_rid'];
+                const cleaned = Object.fromEntries(Object.entries(existing).filter(([k]) => !sys.includes(k)));
+                const merged = { ...cleaned, ...patchData };
+                const baseUrl = url.replace(/\/[^\/]+$/, '');
+                const r = await fetch(baseUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(merged) });
+                if (!r.ok) throw new Error(`POST 失敗 HTTP ${r.status}`);
+                return await r.json();
+            };
+        }
+    </script>
+
+    <!-- 內嵌 NicknameManager -->
+    <script>
+        const NicknameManager = {
+            ADJECTIVES: ['神秘的', '勇敢的', '聰明的', '友善的', '幽默的', '冷靜的', '熱情的', '謹慎的', 
+                        '大膽的', '溫柔的', '機智的', '沉穩的', '活潑的', '優雅的', '堅定的', '細心的',
+                        '開朗的', '靈巧的', '勤奮的', '樂觀的'],
+            
+            ANIMALS: ['狐狸', '老鷹', '獅子', '熊貓', '海豚', '老虎', '貓頭鷹', '企鵝', 
+                     '狼', '兔子', '鯊魚', '獵豹', '松鼠', '浣熊', '鸚鵡', '水獺',
+                     '熊', '鹿', '海獅', '蜂鳥'],
+            
+            generateRandomNickname() {
+                const adj = this.ADJECTIVES[Math.floor(Math.random() * this.ADJECTIVES.length)];
+                const animal = this.ANIMALS[Math.floor(Math.random() * this.ANIMALS.length)];
+                return `${adj}${animal}`;
+            },
+            
+            validateNickname(nickname) {
+                if (!nickname || nickname.trim() === '') {
+                    return { valid: false, message: '暱稱不能為空' };
+                }
+                if (nickname.length < 2 || nickname.length > 20) {
+                    return { valid: false, message: '暱稱長度必須在 2-20 個字元之間' };
+                }
+                const badWords = ['幹', 'fuck', '操', 'shit', '靠北'];
+                for (const word of badWords) {
+                    if (nickname.toLowerCase().includes(word)) {
+                        return { valid: false, message: '暱稱包含不適當內容' };
+                    }
+                }
+                return { valid: true };
+            },
+            
+            async showNicknameModal(user, isFirstTime = true) {
+                return new Promise((resolve) => {
+                    const modal = document.createElement('div');
+                    modal.style.cssText = `
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(0,0,0,0.5); display: flex; align-items: center;
+                        justify-content: center; z-index: 10000; backdrop-filter: blur(5px);
+                    `;
+                    
+                    const content = document.createElement('div');
+                    content.style.cssText = `
+                        background: white; padding: 2rem; border-radius: 1rem;
+                        max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                        animation: slideIn 0.3s ease-out;
+                    `;
+                    
+                    const randomNick = this.generateRandomNickname();
+                    
+                    content.innerHTML = `
+                        <style>
+                            @keyframes slideIn {
+                                from { transform: translateY(-30px); opacity: 0; }
+                                to { transform: translateY(0); opacity: 1; }
+                            }
+                        </style>
+                        <h2 style="margin-bottom: 1rem; color: #333; font-size: 1.8rem; text-align: center;">
+                            ${isFirstTime ? '🎉 歡迎！' : '✏️ 修改暱稱'}
+                        </h2>
+                        <p style="color: #666; margin-bottom: 1.5rem; text-align: center;">
+                            ${isFirstTime ? '請設定你的暱稱，或使用系統自動產生的暱稱' : '輸入新的暱稱或點擊「隨機產生」'}
+                        </p>
+                        <div style="margin-bottom: 1rem;">
+                            <input type="text" id="nickname-input" 
+                                   placeholder="輸入暱稱 (2-20字元)" 
+                                   value="${randomNick}"
+                                   style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #e5e7eb;
+                                          border-radius: 0.5rem; font-size: 1rem; transition: border-color 0.3s;">
+                        </div>
+                        <div id="nickname-error" style="color: #ef4444; margin-bottom: 1rem; display: none;"></div>
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                            <button id="random-btn" style="flex: 1; padding: 0.75rem; background: #f3f4f6;
+                                    border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;
+                                    transition: background 0.3s;">
+                                🎲 隨機產生暱稱
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            ${!isFirstTime ? `<button id="cancel-btn" class="btn btn-secondary" style="flex: 1;">取消</button>` : ''}
+                            <button id="save-btn" class="btn btn-primary" style="flex: 1;">
+                                ${isFirstTime ? '開始使用' : '儲存'}
+                            </button>
+                        </div>
+                    `;
+                    
+                    modal.appendChild(content);
+                    document.body.appendChild(modal);
+                    
+                    const input = document.getElementById('nickname-input');
+                    const errorDiv = document.getElementById('nickname-error');
+                    const randomBtn = document.getElementById('random-btn');
+                    const saveBtn = document.getElementById('save-btn');
+                    const cancelBtn = document.getElementById('cancel-btn');
+                    
+                    randomBtn.addEventListener('click', () => {
+                        input.value = this.generateRandomNickname();
+                        errorDiv.style.display = 'none';
+                    });
+                    
+                    saveBtn.addEventListener('click', () => {
+                        const nickname = input.value.trim();
+                        const validation = this.validateNickname(nickname);
+                        
+                        if (!validation.valid) {
+                            errorDiv.textContent = validation.message;
+                            errorDiv.style.display = 'block';
+                            return;
+                        }
+                        
+                        modal.remove();
+                        resolve(nickname);
+                    });
+                    
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            modal.remove();
+                            resolve(null);
+                        });
+                    }
+                    
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') saveBtn.click();
+                    });
+                    
+                    input.focus();
+                });
+            }
+        };
+    </script>
+    
+    <!-- 簡化版 Google Auth -->
+    <script>
+        async function handleGoogleSignIn(response) {
+            console.log('[Google OAuth] 收到登入回應');
+            
+            try {
+                const credential = response.credential;
+                const payload = parseJwt(credential);
+                
+                // 🔐 儲存 Google JWT（登入認證用）
+                localStorage.setItem('google_id_token', credential);
+                console.log('[Google OAuth] ✅ Google JWT 已儲存');
+                
+                console.log('[Google OAuth] 使用者資料:', payload);
+                
+                let nickname = null;
+                let isFirstLogin = false;
+                
+                // 🔧 1️⃣ 優先從資料庫讀取暱稱（確保跨裝置/瀏覽器一致）
+                let dbUser = null;
+                try {
+                    const allUsers = await GameMBTI.getAllUsers();
+                    dbUser = allUsers.find(u => u.google_id === payload.sub);
+                    
+                    if (dbUser) {
+                        // ⚠️ 若暱稱含有舊格式編號（#xxxx），視為需要重設
+                        if (dbUser.username && !dbUser.username.includes('#')) {
+                            nickname = dbUser.username;
+                            console.log('✅ 從資料庫讀取暱稱:', nickname);
+                        } else {
+                            console.log('⚠️ 資料庫暱稱含舊格式編號，需重設:', dbUser.username);
+                            dbUser = null; // 視為新使用者，強制重設
+                        }
+                    } else {
+                        console.log('ℹ️ 資料庫中無此使用者（新使用者）');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ 無法載入資料庫使用者:', error);
+                }
+                
+                // 🔧 2️⃣ 若資料庫沒有有效暱稱，且 localStorage 也沒有 → 顯示設定視窗
+                // ⚠️ 完全忽略 localStorage 的舊暱稱快取（避免重置後殘留問題）
+                if (!nickname) {
+                    console.log('📝 資料庫無有效暱稱，顯示設定視窗...');
+                }
+                
+                // 🔧 3️⃣ 如果都沒有，顯示暱稱設定視窗
+                if (!nickname) {
+                    console.log('📝 首次登入或重置後，設定暱稱...');
+                    nickname = await NicknameManager.showNicknameModal(payload, true);
+                    if (!nickname) {
+                        nickname = NicknameManager.generateRandomNickname();
+                    }
+                    isFirstLogin = true;
+                }
+                
+                // 🔧 4️⃣ 儲存暱稱到 localStorage（供當前 session 使用）
+                let nicknamesMap = JSON.parse(localStorage.getItem('userNicknames') || '{}');
+                nicknamesMap[payload.sub] = nickname;
+                localStorage.setItem('userNicknames', JSON.stringify(nicknamesMap));
+                
+                // 儲存使用者資料（包含暱稱）
+                const userWithNickname = {
+                    ...payload,
+                    nickname: nickname || payload.name
+                };
+                localStorage.setItem('googleUser', JSON.stringify(userWithNickname));
+
+                // 🔧 5️⃣ 寫入 / 更新 tables/users 資料庫（確保玩家計數正確）
+                try {
+                    if (dbUser) {
+                        // 已存在 → 更新 username / last_login
+                        await safePatch(`tables/users/${dbUser.id}`, {
+                            username: nickname || dbUser.username,
+                            email: payload.email,
+                            google_id: payload.sub,
+                            picture: payload.picture,
+                            last_login: Date.now()
+                        });
+                        // 同步最新 DB 資料到 currentUser localStorage
+                        const freshUser = { ...dbUser, username: nickname || dbUser.username, last_login: Date.now() };
+                        localStorage.setItem('currentUser', JSON.stringify(freshUser));
+                        console.log('✅ 資料庫使用者已更新');
+                    } else {
+                        // 新使用者 → 建立記錄
+                        const createResp = await fetch('tables/users', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                google_id: payload.sub,
+                                email: payload.email,
+                                username: nickname || payload.name,
+                                picture: payload.picture,
+                                mbti_type: '',
+                                super_liked_games: [],
+                                liked_games: [],
+                                neutral_games: [],
+                                disliked_games: [],
+                                no_interest_games: [],
+                                wishlist: [],
+                                pinned_games: [],
+                                daily_question_count: 0,
+                                last_question_date: null,
+                                last_login: Date.now()
+                            })
+                        });
+                        if (createResp.ok) {
+                            const newUser = await createResp.json();
+                            localStorage.setItem('currentUser', JSON.stringify(newUser));
+                            console.log('✅ 新使用者已寫入資料庫:', newUser.id);
+                        }
+                    }
+                } catch(dbErr) {
+                    console.warn('⚠️ 寫入資料庫失敗（不影響登入）:', dbErr);
+                }
+                
+                // 顯示使用者資訊
+                updateLoginUI(userWithNickname);
+                
+                // 🎯 首次登入提示
+                if (isFirstLogin) {
+                    setTimeout(() => {
+                        showStatus('💡 提示：你可以在「我的檔案」修改暱稱、頭貼和 MBTI！', false);
+                    }, 2000);
+                }
+                
+                // 顯示狀態訊息
+                showStatus('✅ 登入成功！歡迎 ' + (nickname || payload.name));
+
+                // 重新載入統計數字（讓玩家人數立即更新）
+                try {
+                    allUsers = await GameMBTI.getAllUsers();
+                    displayOverallStats();
+                } catch(e) { /* 不影響主流程 */ }
+                
+            } catch (error) {
+                console.error('[Google OAuth] 處理失敗:', error);
+                showStatus('❌ 登入失敗: ' + error.message, true);
+            }
+        }
+        
+        function updateLoginUI(user) {
+            const container = document.getElementById('logged-in-container');
+            const signinContainer = document.getElementById('google-signin-container');
+            const displayName = user.nickname || user.name;
+            
+            if (container && signinContainer) {
+                // 頭像：優先順序 DB avatar_url → localStorage → 預設
+                const dbAvatar = user.avatar_url || null;
+                const localAvatar = localStorage.getItem(`avatar_${user.sub || user.google_id}`);
+                const avatarSrc = dbAvatar || localAvatar || getDefaultAvatar(user);
+                document.getElementById('user-avatar').src = avatarSrc;
+                // 同步資料庫頭貼到 localStorage
+                if (dbAvatar && dbAvatar !== localAvatar) {
+                    localStorage.setItem(`avatar_${user.sub || user.google_id}`, dbAvatar);
+                }
+                
+                // 暱稱
+                document.getElementById('user-name').textContent = displayName;
+                
+                // MBTI：user 物件本身 > currentUser > 顯示尚未設定
+                const currentUser = GameMBTI.getCurrentUser();
+                const mbtiType = user.mbti_type || currentUser?.mbti_type || null;
+                const mbtiEl = document.getElementById('user-mbti');
+                const levelEl = document.getElementById('user-level-badge');
+
+                function showMBTI(type) {
+                    if (type) {
+                        const mbtiData = GameMBTI.MBTI_TYPES?.[type];
+                        mbtiEl.textContent = mbtiData ? `${type} · ${mbtiData.name}` : type;
+                    } else {
+                        mbtiEl.textContent = '尚未設定人格類型';
+                    }
+                }
+                showMBTI(mbtiType);
+
+                // 等級：優先 localStorage 快取 → 再背景查 DB
+                try {
+                    const cached = JSON.parse(localStorage.getItem('userStats_cache') || 'null');
+                    if (cached && cached.level) {
+                        levelEl.textContent = `Lv. ${cached.level}`;
+                    } else {
+                        levelEl.textContent = '';
+                    }
+                } catch(e) {
+                    levelEl.textContent = '';
+                }
+
+                // 背景從 DB 取最新 MBTI + 等級（不管快取）
+                const googleId = user.sub || user.google_id;
+                if (googleId) {
+                    GameMBTI.getAllUsers().then(users => {
+                        const dbUser = users.find(u => u.google_id === googleId);
+                        if (dbUser) {
+                            // 更新 MBTI
+                            showMBTI(dbUser.mbti_type || mbtiType);
+                            // 取等級
+                            return GameMBTI.getUserStats(dbUser.id).then(stats => {
+                                levelEl.textContent = `Lv. ${stats.level}`;
+                                // 同步回快取
+                                localStorage.setItem('userStats_cache', JSON.stringify({
+                                    user_id: dbUser.id,
+                                    total_xp: stats.total_xp,
+                                    level: stats.level,
+                                    cached_at: Date.now()
+                                }));
+                            });
+                        }
+                    }).catch(() => {
+                        if (!levelEl.textContent) levelEl.textContent = 'Lv. 1';
+                    });
+                }
+
+                signinContainer.style.display = 'none';
+                container.style.display = 'block';
+            }
+        }
+        
+        // 🎨 取得預設頭貼
+        function getDefaultAvatar(user) {
+            // 檢查使用者是否已選擇自訂頭貼
+            const customAvatar = localStorage.getItem(`avatar_${user.sub || user.google_id}`);
+            if (customAvatar) {
+                return customAvatar;
+            }
+            
+            // 使用預設頭貼（可愛的色彩圖案）
+            const defaultAvatars = [
+                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23667eea" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="40" text-anchor="middle" dominant-baseline="middle" fill="white"%3E🎮%3C/text%3E%3C/svg%3E',
+                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f093fb" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="40" text-anchor="middle" dominant-baseline="middle" fill="white"%3E🎲%3C/text%3E%3C/svg%3E',
+                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%234facfe" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="40" text-anchor="middle" dominant-baseline="middle" fill="white"%3E🃏%3C/text%3E%3C/svg%3E',
+                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%2343e97b" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="40" text-anchor="middle" dominant-baseline="middle" fill="white"%3E🎯%3C/text%3E%3C/svg%3E',
+                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23fa709a" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="40" text-anchor="middle" dominant-baseline="middle" fill="white"%3E🎪%3C/text%3E%3C/svg%3E',
+                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23a8edea" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="40" text-anchor="middle" dominant-baseline="middle" fill="white"%3E🎨%3C/text%3E%3C/svg%3E'
+            ];
+            
+            // 根據使用者 ID 選擇一個固定的頭貼（同一使用者總是看到相同頭貼）
+            const userId = user.sub || user.google_id || user.email || '';
+            const index = Math.abs(userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % defaultAvatars.length;
+            
+            return defaultAvatars[index];
+        }
+        
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+                    '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+                ).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (error) {
+                console.error('JWT 解析失敗:', error);
+                throw new Error('無效的登入憑證');
+            }
+        }
+        
+        function showStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status-message');
+            if (statusDiv) {
+                statusDiv.textContent = message;
+                statusDiv.style.display = 'block';
+                statusDiv.style.background = isError ? '#fee' : '#e7f3ff';
+                statusDiv.style.color = isError ? '#c00' : '#0066cc';
+                setTimeout(() => statusDiv.style.display = 'none', 5000);
+            }
+        }
+        
+        function logout() {
+            if (!confirm('確定要登出嗎？')) return;
+            
+            console.log('[Logout] 開始登出...');
+            
+            // 🔧 清除所有使用者相關資料（但保留 userNicknames）
+            localStorage.removeItem('googleUser');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('google_id_token'); // 🔐 清除 JWT token
+            
+            // 清除 Google 自動登入
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                google.accounts.id.disableAutoSelect();
+            }
+            
+            console.log('[Logout] ✅ 登出完成，重新載入頁面');
+            location.reload();
+        }
+        
+        // 全局變數
+        let allUsers = [];
+        
+        // 🔍 檢測是否在 WebView / App 內建瀏覽器中
+        function isInWebView() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            
+            // 檢測常見的 WebView 標識
+            const webViewPatterns = [
+                /WebView/i,
+                /wv/i,
+                /; wv\)/i,
+                /FB_IAB/i,        // Facebook App
+                /FBAN/i,          // Facebook App
+                /FBAV/i,          // Facebook App
+                /Instagram/i,     // Instagram App
+                /Line\//i,        // Line App
+                /MicroMessenger/i // WeChat
+            ];
+            
+            const isWebView = webViewPatterns.some(pattern => pattern.test(ua));
+            
+            console.log('[Browser Check] User Agent:', ua);
+            console.log('[Browser Check] Is WebView:', isWebView);
+            
+            return isWebView;
+        }
+        
+        // 📱 手動初始化 Google Identity Services（提高手機兼容性）
+        function initializeGoogleSignIn() {
+            console.log('[Google SignIn] 開始初始化...');
+            
+            // ⚠️ 檢查是否在 WebView 中
+            if (isInWebView()) {
+                console.warn('[Google SignIn] 偵測到 App 內建瀏覽器，顯示外部瀏覽器提示');
+                showWebViewWarning();
+                return;
+            }
+            
+            // 檢查 SDK 是否載入
+            if (typeof google === 'undefined' || !google.accounts) {
+                console.error('[Google SignIn] SDK 未載入');
+                showFallbackButton();
+                return;
+            }
+            
+            try {
+                // 初始化 Google Identity Services
+                google.accounts.id.initialize({
+                    client_id: '105319270176-djqr0n6r4l3mvmpalsqjn8kasqii9ukt.apps.googleusercontent.com',
+                    callback: handleGoogleSignIn,
+                    auto_select: false,
+                    cancel_on_tap_outside: false,
+                    use_fedcm_for_prompt: true  // 📱 使用 FedCM API 提高手機兼容性
+                });
+                
+                // 手動渲染按鈕
+                const buttonContainer = document.getElementById('google-signin-button');
+                if (buttonContainer) {
+                    google.accounts.id.renderButton(
+                        buttonContainer,
+                        {
+                            type: 'standard',
+                            theme: 'filled_blue',
+                            size: 'large',
+                            text: 'signin_with',
+                            shape: 'rectangular',
+                            logo_alignment: 'left',
+                            width: 300  // 📱 固定寬度提高手機顯示
+                        }
+                    );
+                    console.log('[Google SignIn] ✅ 按鈕渲染成功');
+                }
+                
+                // 啟用 One Tap（可選）
+                // google.accounts.id.prompt();
+                
+            } catch (error) {
+                console.error('[Google SignIn] 初始化失敗:', error);
+                showFallbackButton();
+            }
+        }
+        
+        // 📱 顯示 WebView 警告（需要在外部瀏覽器開啟）
+        function showWebViewWarning() {
+            const buttonContainer = document.getElementById('google-signin-button');
+            if (buttonContainer) {
+                const currentUrl = window.location.href;
+                buttonContainer.innerHTML = `
+                    <div style="text-align: center; padding: 1.5rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🌐</div>
+                        <div style="font-size: 1rem; color: #e11d48; font-weight: 600; margin-bottom: 1rem;">
+                            ⚠️ 目前無法在此環境中登入
+                        </div>
+                        <div style="font-size: 0.9rem; color: #64748b; line-height: 1.6; margin-bottom: 1.5rem;">
+                            您正在使用 <strong>App 內建瀏覽器</strong>，<br>
+                            Google 登入功能受到限制。
+                        </div>
+                        
+                        <!-- 複製網址按鈕 -->
+                        <button onclick="copyUrlAndPrompt()" 
+                                style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                                       color: white; 
+                                       border: none; 
+                                       padding: 12px 24px; 
+                                       border-radius: 8px; 
+                                       font-size: 15px; 
+                                       font-weight: 600; 
+                                       cursor: pointer;
+                                       box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                                       margin-bottom: 0.75rem;
+                                       width: 100%;
+                                       max-width: 300px;">
+                            📋 複製網址 → 使用瀏覽器開啟
+                        </button>
+                        
+                        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.75rem;">
+                            建議使用：Chrome、Safari、Edge 等瀏覽器
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // 複製網址並提示使用者
+        function copyUrlAndPrompt() {
+            const url = window.location.href;
+            
+            // 嘗試複製到剪貼簿
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('✅ 網址已複製！\n\n' + 
+                          '請按照以下步驟操作：\n' +
+                          '1️⃣ 開啟 Chrome 或 Safari 瀏覽器\n' +
+                          '2️⃣ 在網址列貼上網址\n' +
+                          '3️⃣ 即可正常登入\n\n' +
+                          '網址：\n' + url);
+                }).catch(() => {
+                    showUrlDialog(url);
+                });
+            } else {
+                // 不支援 clipboard API，顯示對話框
+                showUrlDialog(url);
+            }
+        }
+        
+        // 顯示網址對話框（備用方案）
+        function showUrlDialog(url) {
+            const message = '請複製以下網址，在瀏覽器中開啟：\n\n' + url;
+            
+            // 使用 prompt 讓使用者可以選取複製
+            prompt('📋 請複製此網址（長按選取）：', url);
+        }
+        
+        // 顯示備用按鈕
+        function showFallbackButton() {
+            const buttonContainer = document.getElementById('google-signin-button');
+            if (buttonContainer) {
+                buttonContainer.innerHTML = `
+                    <button onclick="manualGoogleSignIn()" 
+                            style="background: #4285f4; 
+                                   color: white; 
+                                   border: none; 
+                                   padding: 12px 24px; 
+                                   border-radius: 4px; 
+                                   font-size: 16px; 
+                                   font-weight: 500; 
+                                   cursor: pointer;
+                                   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                   min-width: 200px;">
+                        🔐 使用 Google 登入
+                    </button>
+                `;
+            }
+        }
+        
+        // 手動觸發 Google 登入
+        function manualGoogleSignIn() {
+            if (typeof google !== 'undefined' && google.accounts) {
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        alert('無法顯示 Google 登入視窗\n\n' + 
+                              '可能原因：\n' +
+                              '1. 瀏覽器設定阻擋彈出視窗\n' +
+                              '2. 需要允許第三方 Cookie\n' +
+                              '3. 已經登入過了\n\n' +
+                              '建議：使用電腦瀏覽器');
+                    }
+                });
+            } else {
+                alert('Google 登入系統無法使用\n請重新整理頁面或稍後再試');
+            }
+        }
+        
+        // 頁面載入時檢查登入狀態並初始化
+        window.addEventListener('load', () => {
+            const savedUser = localStorage.getItem('googleUser');
+            if (savedUser) {
+                try {
+                    const user = JSON.parse(savedUser);
+                    updateLoginUI(user);
+                } catch (error) {
+                    console.error('解析使用者資料失敗:', error);
+                }
+            } else {
+                document.getElementById('google-signin-container').style.display = 'block';
+                
+                // 📱 初始化 Google 登入按鈕（確保 SDK 已載入）
+                if (typeof google !== 'undefined' && google.accounts) {
+                    initializeGoogleSignIn();
+                } else {
+                    // SDK 未載入，等待後再試
+                    console.warn('[Google SignIn] SDK 尚未載入，等待中...');
+                    setTimeout(() => {
+                        if (typeof google !== 'undefined' && google.accounts) {
+                            initializeGoogleSignIn();
+                        } else {
+                            console.error('[Google SignIn] SDK 載入失敗');
+                            showFallbackButton();
+                        }
+                    }, 1000);
+                }
+            }
+            
+            // 載入所有資料
+            loadAllData();
+        });
+        
+        // 載入所有資料
+        async function loadAllData() {
+            try {
+                // 主頁只需要 mbti_type 統計，不需要載入完整遊戲資料庫
+                allUsers = await GameMBTI.getAllUsers();
+                displayOverallStats();
+                displayMBTIGrid();
+                displayGlobalGames();
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        // 顯示總覽統計
+        function displayOverallStats() {
+            const stats = GameMBTI.calculateStats(allUsers);
+            
+            document.getElementById('total-users').textContent = stats.totalUsers;
+            
+            // 從 site_stats 快速取得總遊戲數
+            getSiteStats().then(s => {
+                document.getElementById('total-games').textContent = s.total_games || 0;
+            });
+            
+            // 最多玩家類型
+            const mostPopular = Object.entries(stats.mbtiDistribution)
+                .sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('most-popular-type').textContent = 
+                mostPopular ? mostPopular[0] : '-';
+        }
+        
+        // 顯示 MBTI 網格
+        function displayMBTIGrid() {
+            const container = document.getElementById('mbti-preview');
+            if (!container) return;
+            
+            const grouped = GameMBTI.groupUsersByMBTI(allUsers);
+            
+            container.innerHTML = Object.entries(GameMBTI.MBTI_TYPES).map(([type, info]) => {
+                const count = grouped[type].length;
+                
+                return `
+                    <div class="mbti-card" style="--mbti-gradient: ${info.color};" 
+                         onclick="location.href='explore.html#${type}'">
+                        <h3 class="mbti-type">${type}</h3>
+                        <p class="mbti-name">${info.name}</p>
+                        <p class="mbti-description">${info.description}</p>
+                        <div class="mbti-count">
+                            👥 ${count} 位玩家
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 顯示全站遊戲排行
+        function displayGlobalGames() {
+            const stats = GameMBTI.calculateStats(allUsers);
+            
+            const popularContainer = document.getElementById('popular-games-list');
+            if (stats.mostPopularGames.length === 0) {
+                popularContainer.innerHTML = '<div class="empty-state"><p>尚無資料</p></div>';
+            } else {
+                popularContainer.innerHTML = stats.mostPopularGames.slice(0, 10).map((item, index) => `
+                    <div class="game-item">
+                        <span class="game-name">${index + 1}. ${GameNames.formatInline(item.game)}</span>
+                        <span class="game-votes">${item.count} 票</span>
+                    </div>
+                `).join('');
+            }
+            
+            // 最受期待（來自 wishlist）
+            const wishlistContainer = document.getElementById('wishlist-games-list');
+            if (wishlistContainer) {
+                const wishlistCounts = {};
+                allUsers.forEach(u => {
+                    (u.wishlist || []).forEach(g => {
+                        wishlistCounts[g] = (wishlistCounts[g] || 0) + 1;
+                    });
+                });
+                const wishlistRanking = Object.entries(wishlistCounts)
+                    .map(([game, count]) => ({ game, count }))
+                    .sort((a, b) => b.count - a.count);
+                
+                if (wishlistRanking.length === 0) {
+                    wishlistContainer.innerHTML = '<div class="empty-state"><p>尚無資料</p></div>';
+                } else {
+                    wishlistContainer.innerHTML = wishlistRanking.slice(0, 10).map((item, index) => `
+                        <div class="game-item">
+                            <span class="game-name">${index + 1}. ${GameNames.formatInline(item.game)}</span>
+                            <span class="game-votes">⭐ ${item.count}</span>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

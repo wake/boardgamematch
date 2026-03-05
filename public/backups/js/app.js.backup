@@ -1,0 +1,882 @@
+// MBTI 類型數據
+const MBTI_TYPES = {
+    'INTJ': {
+        name: '建築師',
+        description: '富有想像力和戰略性的思考者，一切皆在計劃之中。',
+        color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    },
+    'INTP': {
+        name: '邏輯學家',
+        description: '具有創新精神的發明家，對知識有著不可遏止的渴望。',
+        color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+    },
+    'ENTJ': {
+        name: '指揮官',
+        description: '大膽、富有想像力且意志強大的領導者。',
+        color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+    },
+    'ENTP': {
+        name: '辯論家',
+        description: '聰明好奇的思考者，無法抗拒智力上的挑戰。',
+        color: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+    },
+    'INFJ': {
+        name: '提倡者',
+        description: '安靜而神秘，鼓舞人心且不知疲倦的理想主義者。',
+        color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+    },
+    'INFP': {
+        name: '調停者',
+        description: '詩意、善良的利他主義者，總是熱情地為正義事業而努力。',
+        color: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+    },
+    'ENFJ': {
+        name: '主人公',
+        description: '富有魅力且鼓舞人心的領導者，能夠使聽眾著迷。',
+        color: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+    },
+    'ENFP': {
+        name: '競選者',
+        description: '熱情、有創造力且社交能力強的自由精神。',
+        color: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
+    },
+    'ISTJ': {
+        name: '物流師',
+        description: '實際且注重事實的個人，可靠性不容置疑。',
+        color: 'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)'
+    },
+    'ISFJ': {
+        name: '守衛者',
+        description: '非常專注且溫暖的守護者，時刻準備著保護所愛之人。',
+        color: 'linear-gradient(135deg, #fdcbf1 0%, #e6dee9 100%)'
+    },
+    'ESTJ': {
+        name: '總經理',
+        description: '出色的管理者，在管理事務或人員方面無與倫比。',
+        color: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)'
+    },
+    'ESFJ': {
+        name: '執政官',
+        description: '極有同情心、受歡迎且關懷他人的人。',
+        color: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+    },
+    'ISTP': {
+        name: '鑑賞家',
+        description: '大膽且實際的實驗者，擅長使用各種工具。',
+        color: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)'
+    },
+    'ISFP': {
+        name: '探險家',
+        description: '靈活且有魅力的藝術家，時刻準備著探索和體驗新事物。',
+        color: 'linear-gradient(135deg, #fbc7d4 0%, #9796f0 100%)'
+    },
+    'ESTP': {
+        name: '企業家',
+        description: '聰明、精力充沛且非常敏銳的人，真正享受生活的刺激。',
+        color: 'linear-gradient(135deg, #fad0c4 0%, #ffd1ff 100%)'
+    },
+    'ESFP': {
+        name: '表演者',
+        description: '自發性、精力充沛且熱情的表演者，生活在他們周圍從不沈悶。',
+        color: 'linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%)'
+    }
+};
+
+// API 基礎 URL
+const API_BASE = 'tables/users';
+
+// 載入中狀態
+function showLoading(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>載入中...</p>
+            </div>
+        `;
+    }
+}
+
+// 顯示錯誤訊息
+function showError(elementId, message) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.innerHTML = `
+            <div class="alert alert-error">
+                <strong>錯誤：</strong> ${message}
+            </div>
+        `;
+    }
+}
+
+// 顯示成功訊息
+function showSuccess(elementId, message) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.innerHTML = `
+            <div class="alert alert-success">
+                <strong>成功！</strong> ${message}
+            </div>
+        `;
+    }
+}
+
+// 取得所有使用者資料
+async function getAllUsers() {
+    try {
+        const response = await fetch(`${API_BASE}?limit=1000`);
+        if (!response.ok) throw new Error('無法載入使用者資料');
+        const data = await response.json();
+        return data.data || [];
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        return [];
+    }
+}
+
+// 取得單一使用者資料
+async function getUserById(userId) {
+    try {
+        const response = await fetch(`${API_BASE}/${userId}`);
+        if (!response.ok) throw new Error('無法載入使用者資料');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        return null;
+    }
+}
+
+// 新增使用者
+async function createUser(userData) {
+    try {
+        const response = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+        });
+        if (!response.ok) throw new Error('無法新增使用者');
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating user:', error);
+        throw error;
+    }
+}
+
+// 更新使用者
+async function updateUser(userId, userData) {
+    try {
+        const response = await fetch(`${API_BASE}/${userId}`, {
+            method: 'PATCH',  // 使用 PATCH 而非 PUT，只更新指定欄位
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+        });
+        if (!response.ok) throw new Error('無法更新使用者');
+        const updatedUser = await response.json();
+        
+        // 更新 localStorage 中的當前使用者
+        const currentUser = getCurrentUser();
+        if (currentUser && currentUser.id === userId) {
+            setCurrentUser(updatedUser);
+        }
+        
+        return updatedUser;
+    } catch (error) {
+        console.error('Error updating user:', error);
+        throw error;
+    }
+}
+
+// 刪除使用者
+async function deleteUser(userId) {
+    try {
+        const response = await fetch(`${API_BASE}/${userId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('無法刪除使用者');
+        return true;
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        throw error;
+    }
+}
+
+// 按 MBTI 類型分組使用者
+function groupUsersByMBTI(users) {
+    const grouped = {};
+    
+    // 初始化所有 MBTI 類型
+    Object.keys(MBTI_TYPES).forEach(type => {
+        grouped[type] = [];
+    });
+    
+    // 分組使用者
+    users.forEach(user => {
+        if (user.mbti_type && grouped[user.mbti_type]) {
+            grouped[user.mbti_type].push(user);
+        }
+    });
+    
+    return grouped;
+}
+
+// 計算各 MBTI 類型的熱門遊戲
+function getPopularGamesByMBTI(users, mbtiType) {
+    const typeUsers = users.filter(u => u.mbti_type === mbtiType);
+    const gameCount = {};
+    
+    typeUsers.forEach(user => {
+        if (user.liked_games && Array.isArray(user.liked_games)) {
+            user.liked_games.forEach(game => {
+                gameCount[game] = (gameCount[game] || 0) + 1;
+            });
+        }
+    });
+    
+    // 轉換為陣列並排序
+    return Object.entries(gameCount)
+        .map(([game, count]) => ({ game, count }))
+        .sort((a, b) => b.count - a.count);
+}
+
+// 計算各 MBTI 類型最不受歡迎的遊戲
+function getDislikedGamesByMBTI(users, mbtiType) {
+    const typeUsers = users.filter(u => u.mbti_type === mbtiType);
+    const gameCount = {};
+    
+    typeUsers.forEach(user => {
+        if (user.disliked_games && Array.isArray(user.disliked_games)) {
+            user.disliked_games.forEach(game => {
+                gameCount[game] = (gameCount[game] || 0) + 1;
+            });
+        }
+    });
+    
+    return Object.entries(gameCount)
+        .map(([game, count]) => ({ game, count }))
+        .sort((a, b) => b.count - a.count);
+}
+
+// 計算整體統計數據
+function calculateStats(users) {
+    const stats = {
+        totalUsers: users.length,
+        mbtiDistribution: {},
+        mostPopularGames: {},
+        mostDislikedGames: {}
+    };
+    
+    // MBTI 分佈
+    users.forEach(user => {
+        if (user.mbti_type) {
+            stats.mbtiDistribution[user.mbti_type] = 
+                (stats.mbtiDistribution[user.mbti_type] || 0) + 1;
+        }
+    });
+    
+    // 整體熱門遊戲
+    const allLikedGames = {};
+    const allDislikedGames = {};
+    
+    users.forEach(user => {
+        if (user.liked_games && Array.isArray(user.liked_games)) {
+            user.liked_games.forEach(game => {
+                allLikedGames[game] = (allLikedGames[game] || 0) + 1;
+            });
+        }
+        if (user.disliked_games && Array.isArray(user.disliked_games)) {
+            user.disliked_games.forEach(game => {
+                allDislikedGames[game] = (allDislikedGames[game] || 0) + 1;
+            });
+        }
+    });
+    
+    stats.mostPopularGames = Object.entries(allLikedGames)
+        .map(([game, count]) => ({ game, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    
+    stats.mostDislikedGames = Object.entries(allDislikedGames)
+        .map(([game, count]) => ({ game, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    
+    return stats;
+}
+
+// Local Storage 操作
+function saveToLocalStorage(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (error) {
+        console.error('Error saving to localStorage:', error);
+        return false;
+    }
+}
+
+function getFromLocalStorage(key) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : null;
+    } catch (error) {
+        console.error('Error reading from localStorage:', error);
+        return null;
+    }
+}
+
+function removeFromLocalStorage(key) {
+    try {
+        localStorage.removeItem(key);
+        return true;
+    } catch (error) {
+        console.error('Error removing from localStorage:', error);
+        return false;
+    }
+}
+
+// 取得當前使用者
+function getCurrentUser() {
+    return getFromLocalStorage('currentUser');
+}
+
+// 設定當前使用者
+function setCurrentUser(user) {
+    return saveToLocalStorage('currentUser', user);
+}
+
+// 清除當前使用者
+function clearCurrentUser() {
+    return removeFromLocalStorage('currentUser');
+}
+
+// 格式化日期
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-TW', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// ====================================
+// Gamification API Functions
+// ====================================
+
+// 獲取使用者統計資料
+async function getUserStats(userId) {
+    try {
+        const response = await fetch(`tables/user_stats?search=${userId}&limit=1`);
+        const result = await response.json();
+        if (result.data && result.data.length > 0) {
+            return result.data[0];
+        }
+        // 如果沒有統計資料，建立初始資料
+        return await createUserStats(userId);
+    } catch (error) {
+        console.error('Error fetching user stats:', error);
+        throw error;
+    }
+}
+
+// 建立使用者統計資料
+async function createUserStats(userId) {
+    try {
+        const response = await fetch('tables/user_stats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                total_xp: 100, // 註冊獎勵
+                level: 1,
+                games_added: 0,
+                votes_count: 0,
+                daily_streak: 0,
+                max_streak: 0,
+                last_login: Date.now(),
+                daily_quest_completed: []
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating user stats:', error);
+        throw error;
+    }
+}
+
+// 更新使用者統計資料
+async function updateUserStats(userId, updates) {
+    try {
+        const stats = await getUserStats(userId);
+        const response = await fetch(`tables/user_stats/${stats.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...updates,
+                updated_at: Date.now()
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error updating user stats:', error);
+        throw error;
+    }
+}
+
+// 計算等級（根據 XP）
+function calculateLevel(xp) {
+    if (xp < 100) return 1;
+    if (xp < 300) return 2;
+    if (xp < 600) return 3;
+    if (xp < 1000) return 4;
+    if (xp < 1500) return 5;
+    if (xp < 2100) return 6;
+    if (xp < 2800) return 7;
+    if (xp < 3600) return 8;
+    if (xp < 4500) return 9;
+    if (xp < 5500) return 10;
+    if (xp < 6600) return 11;
+    if (xp < 7800) return 12;
+    if (xp < 9100) return 13;
+    if (xp < 10500) return 14;
+    if (xp < 12000) return 15;
+    if (xp < 14000) return 16;
+    if (xp < 16000) return 17;
+    if (xp < 18500) return 18;
+    if (xp < 21000) return 19;
+    return 20;
+}
+
+// 獲取當前等級所需 XP
+function getLevelXP(level) {
+    const xpMap = {
+        1: 0, 2: 100, 3: 300, 4: 600, 5: 1000, 6: 1500, 7: 2100, 8: 2800,
+        9: 3600, 10: 4500, 11: 5500, 12: 6600, 13: 7800, 14: 9100, 15: 10500,
+        16: 12000, 17: 14000, 18: 16000, 19: 18500, 20: 21000, 21: 25000
+    };
+    return xpMap[level] || 0;
+}
+
+// 增加 XP
+async function addXP(userId, amount, reason = '') {
+    try {
+        const stats = await getUserStats(userId);
+        const newXP = stats.total_xp + amount;
+        const oldLevel = calculateLevel(stats.total_xp);
+        const newLevel = calculateLevel(newXP);
+        
+        const updates = {
+            total_xp: newXP,
+            level: newLevel
+        };
+        
+        await updateUserStats(userId, updates);
+        
+        // 檢查是否升級
+        const leveledUp = newLevel > oldLevel;
+        
+        return {
+            success: true,
+            xpGained: amount,
+            totalXP: newXP,
+            oldLevel,
+            newLevel,
+            leveledUp,
+            reason
+        };
+    } catch (error) {
+        console.error('Error adding XP:', error);
+        throw error;
+    }
+}
+
+// 獲取使用者已解鎖的成就
+async function getUserAchievements(userId) {
+    try {
+        const stats = await getUserStats(userId);
+        return stats.unlocked_badges || [];
+    } catch (error) {
+        console.error('Error fetching user achievements:', error);
+        return [];
+    }
+}
+
+// 獲取所有成就定義
+async function getAllAchievements() {
+    try {
+        const response = await fetch('tables/achievements');
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error('Error fetching achievements:', error);
+        return [];
+    }
+}
+
+// 檢查並解鎖成就
+async function checkAndUnlockAchievements(userId) {
+    try {
+        const stats = await getUserStats(userId);
+        const user = await getUserById(userId);
+        const allAchievements = await getAllAchievements();
+        const unlockedIds = stats.unlocked_badges || [];
+        const newUnlocks = [];
+        
+        for (const achievement of allAchievements) {
+            // 如果已經解鎖，跳過
+            if (unlockedIds.includes(achievement.id)) continue;
+            
+            // 檢查解鎖條件
+            let unlocked = false;
+            if (achievement.unlock_type === 'games_count') {
+                // 計算使用者新增的遊戲數量（喜歡 + 不喜歡）
+                const gamesAdded = (user.liked_games || []).length + (user.disliked_games || []).length;
+                unlocked = gamesAdded >= achievement.unlock_value;
+            } else if (achievement.unlock_type === 'votes_count') {
+                // 使用 total_contributions 作為投票數
+                const votesCount = stats.total_contributions || 0;
+                unlocked = votesCount >= achievement.unlock_value;
+            } else if (achievement.unlock_type === 'streak_days') {
+                const streakDays = stats.streak_days || 0;
+                unlocked = streakDays >= achievement.unlock_value;
+            }
+            
+            if (unlocked) {
+                newUnlocks.push(achievement);
+                unlockedIds.push(achievement.id);
+            }
+        }
+        
+        // 更新解鎖清單
+        if (newUnlocks.length > 0) {
+            await updateUserStats(userId, {
+                unlocked_badges: unlockedIds
+            });
+        }
+        
+        return newUnlocks;
+    } catch (error) {
+        console.error('Error checking achievements:', error);
+        return [];
+    }
+}
+
+// 獲取每日任務
+async function getDailyQuests() {
+    try {
+        const response = await fetch('tables/daily_quests');
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error('Error fetching daily quests:', error);
+        return [];
+    }
+}
+
+// 顯示 XP 獲得動畫
+function showXPAnimation(amount, element) {
+    const xpElement = document.createElement('div');
+    xpElement.className = 'xp-gain';
+    xpElement.textContent = `+${amount} XP`;
+    xpElement.style.position = 'absolute';
+    xpElement.style.top = '50%';
+    xpElement.style.left = '50%';
+    xpElement.style.transform = 'translate(-50%, -50%)';
+    xpElement.style.zIndex = '1000';
+    xpElement.style.transition = 'all 0.6s ease-out';
+    xpElement.style.animation = 'fadeInUp 0.6s ease-out';
+    
+    const container = element || document.body;
+    container.style.position = 'relative';
+    container.appendChild(xpElement);
+    
+    // 縮短動畫時間從 2000ms → 800ms
+    setTimeout(() => {
+        xpElement.style.opacity = '0';
+        xpElement.style.transform = 'translate(-50%, -70%)';
+    }, 200);
+    
+    setTimeout(() => {
+        xpElement.remove();
+    }, 800);
+}
+
+// 顯示升級提示
+function showLevelUpNotification(newLevel) {
+    const notification = document.createElement('div');
+    notification.className = 'level-up-notification';
+    notification.innerHTML = `
+        <div class="level-up-content">
+            <div class="level-up-icon">🎉</div>
+            <h2>恭喜升級！</h2>
+            <p>你已經達到 <strong>等級 ${newLevel}</strong></p>
+            <p>繼續努力，解鎖更多成就！</p>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
+
+// 顯示成就解鎖提示
+function showAchievementUnlocked(achievement) {
+    const notification = document.createElement('div');
+    notification.className = 'achievement-notification';
+    notification.innerHTML = `
+        <div class="achievement-content">
+            <div class="achievement-icon">${achievement.icon}</div>
+            <div class="achievement-details">
+                <h3>🎊 成就解鎖！</h3>
+                <p><strong>${achievement.name_zh}</strong></p>
+                <p style="font-size: 0.9rem; opacity: 0.8;">${achievement.description}</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 500);
+    }, 4000);
+}
+
+// ====================================
+// Game Recommendation Functions
+// ====================================
+
+// 獲取隨機遊戲推薦（優化版：使用快取）
+let gamesCacheTimestamp = 0;
+let gamesCache = null;
+const CACHE_DURATION = 60000; // 快取 1 分鐘
+
+async function getRandomGame(userId) {
+    try {
+        // 使用快取的遊戲列表（1 分鐘內有效）
+        const now = Date.now();
+        if (!gamesCache || (now - gamesCacheTimestamp) > CACHE_DURATION) {
+            // 獲取遊戲資料庫
+            const response = await fetch('tables/game_database?limit=1000');
+            const result = await response.json();
+            gamesCache = result.data || [];
+            gamesCacheTimestamp = now;
+            
+            if (gamesCache.length === 0) {
+                console.warn('遊戲資料庫為空，使用使用者已新增的遊戲');
+                // 如果資料庫為空，從使用者已新增的遊戲中選擇
+                const allUsers = await getAllUsers();
+                const userGames = new Set();
+                allUsers.forEach(user => {
+                    (user.liked_games || []).forEach(g => userGames.add(g));
+                    (user.disliked_games || []).forEach(g => userGames.add(g));
+                });
+                gamesCache = Array.from(userGames).map(name => ({
+                    name_zh: name,
+                    name_en: name,
+                    image_url: '🎲'
+                }));
+            }
+        }
+        
+        const allGames = gamesCache;
+        
+        // 從 localStorage 取得當前使用者資料（更快）
+        let answeredGames = [];
+        if (userId) {
+            const user = getCurrentUser(); // 使用 localStorage，不呼叫 API
+            if (user) {
+                answeredGames = [
+                    ...(user.liked_games || []),
+                    ...(user.disliked_games || []),
+                    ...(user.wishlist || [])
+                ];
+            }
+        }
+        
+        // 過濾掉已經回答過的遊戲
+        const availableGames = allGames.filter(game => 
+            !answeredGames.includes(game.name_zh)
+        );
+        
+        if (availableGames.length === 0) {
+            return null; // 所有遊戲都已回答
+        }
+        
+        // 隨機選擇一款遊戲
+        const randomIndex = Math.floor(Math.random() * availableGames.length);
+        return availableGames[randomIndex];
+        
+    } catch (error) {
+        console.error('Error getting random game:', error);
+        return null;
+    }
+}
+
+// 記錄遊戲回答（極速版 - 移除成就檢查）
+async function recordGameAnswer(userId, gameName, answerType) {
+    try {
+        // 從 localStorage 取得使用者（不呼叫 API）
+        const user = getCurrentUser();
+        if (!user) throw new Error('找不到使用者');
+        
+        let updates = {};
+        let xpAmount = 0;
+        let reason = '';
+        
+        if (answerType === 'like') {
+            const likedGames = user.liked_games || [];
+            if (!likedGames.includes(gameName)) {
+                likedGames.push(gameName);
+                updates.liked_games = likedGames;
+            }
+            xpAmount = 10;
+            reason = '喜歡遊戲推薦';
+        } else if (answerType === 'dislike') {
+            const dislikedGames = user.disliked_games || [];
+            if (!dislikedGames.includes(gameName)) {
+                dislikedGames.push(gameName);
+                updates.disliked_games = dislikedGames;
+            }
+            xpAmount = 10;
+            reason = '不喜歡遊戲推薦';
+        } else if (answerType === 'unknown') {
+            const wishlist = user.wishlist || [];
+            if (!wishlist.includes(gameName)) {
+                wishlist.push(gameName);
+                updates.wishlist = wishlist;
+            }
+            xpAmount = 5;
+            reason = '標記未玩過遊戲';
+        }
+        
+        // 1. 更新使用者資料（唯一的阻塞操作）
+        await updateUser(userId, updates);
+        
+        // 2. 🎯 取得並更新每日計數（必須等待）
+        const stats = await getUserStats(userId);
+        const today = new Date().toDateString();
+        const lastAnswer = stats.last_question_date ? new Date(stats.last_question_date).toDateString() : '';
+        
+        const dailyCount = (today === lastAnswer) ? (stats.daily_question_count || 0) + 1 : 1;
+        
+        // 3. 背景執行：更新統計和 XP（不等待）
+        Promise.all([
+            addXP(userId, xpAmount, reason),
+            updateUserStats(userId, {
+                daily_question_count: dailyCount,
+                last_question_date: Date.now()
+            })
+        ]).catch(err => console.error('背景更新失敗:', err));
+        
+        // 4. 立即更新 localStorage
+        user.liked_games = updates.liked_games || user.liked_games;
+        user.disliked_games = updates.disliked_games || user.disliked_games;
+        user.wishlist = updates.wishlist || user.wishlist;
+        setCurrentUser(user);
+        
+        // 5. 返回正確的 dailyCount
+        return {
+            success: true,
+            xpGained: xpAmount,
+            totalXP: 0,
+            leveledUp: false,
+            newLevel: 0,
+            dailyCount: dailyCount  // 🎯 返回實際計數
+        };
+        
+    } catch (error) {
+        console.error('Error recording answer:', error);
+        throw error;
+    }
+}
+
+// 獲取連續回答次數
+async function getAnswerStreak(userId) {
+    try {
+        const stats = await getUserStats(userId);
+        const today = new Date().toDateString();
+        const lastAnswer = stats.last_question_date ? new Date(stats.last_question_date).toDateString() : '';
+        
+        if (today === lastAnswer) {
+            return stats.daily_question_count || 0;
+        }
+        return 0;
+    } catch (error) {
+        console.error('Error getting answer streak:', error);
+        return 0;
+    }
+}
+
+// 更新待玩清單
+async function updateWishlist(userId, gameName, action = 'add') {
+    try {
+        const user = await getUserById(userId);
+        if (!user) throw new Error('找不到使用者');
+        
+        const wishlist = user.wishlist || [];
+        
+        if (action === 'add' && !wishlist.includes(gameName)) {
+            wishlist.push(gameName);
+        } else if (action === 'remove') {
+            const index = wishlist.indexOf(gameName);
+            if (index > -1) {
+                wishlist.splice(index, 1);
+            }
+        }
+        
+        await updateUser(userId, { wishlist });
+        return wishlist;
+        
+    } catch (error) {
+        console.error('Error updating wishlist:', error);
+        throw error;
+    }
+}
+
+// 匯出函數供全域使用
+window.GameMBTI = {
+    MBTI_TYPES,
+    getAllUsers,
+    getUserById,
+    createUser,
+    updateUser,
+    deleteUser,
+    groupUsersByMBTI,
+    getPopularGamesByMBTI,
+    getDislikedGamesByMBTI,
+    calculateStats,
+    getCurrentUser,
+    setCurrentUser,
+    clearCurrentUser,
+    saveToLocalStorage,
+    getFromLocalStorage,
+    removeFromLocalStorage,
+    formatDate,
+    showLoading,
+    showError,
+    showSuccess,
+    // Gamification functions
+    getUserStats,
+    createUserStats,
+    updateUserStats,
+    calculateLevel,
+    getLevelXP,
+    addXP,
+    getUserAchievements,
+    getAllAchievements,
+    checkAndUnlockAchievements,
+    getDailyQuests,
+    showXPAnimation,
+    showLevelUpNotification,
+    showAchievementUnlocked,
+    // Game recommendation functions
+    getRandomGame,
+    recordGameAnswer,
+    getAnswerStreak,
+    updateWishlist
+};

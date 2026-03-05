@@ -1,0 +1,195 @@
+/* 進階沙漏動畫 - 真實的沙子流動效果 */
+
+.hourglass-advanced {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.hourglass-container {
+    position: relative;
+    font-size: 3rem;
+    display: inline-block;
+}
+
+.hourglass-base {
+    position: relative;
+    z-index: 1;
+}
+
+/* 沙粒流動效果層 */
+.sand-stream {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 0;
+    pointer-events: none;
+}
+
+/* 單個沙粒 */
+.sand-particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #f4a460;
+    border-radius: 50%;
+    left: 50%;
+    opacity: 0;
+    animation: particle-fall var(--delay, 2s) linear infinite;
+    animation-delay: var(--offset, 0s);
+}
+
+@keyframes particle-fall {
+    0% {
+        transform: translate(-50%, -15px);
+        opacity: 0;
+    }
+    5% {
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, 15px);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, 20px);
+        opacity: 0;
+    }
+}
+
+/* 創建多個沙粒 */
+.sand-particle:nth-child(1) {
+    --offset: 0s;
+    left: 48%;
+}
+
+.sand-particle:nth-child(2) {
+    --offset: 0.3s;
+    left: 50%;
+}
+
+.sand-particle:nth-child(3) {
+    --offset: 0.6s;
+    left: 52%;
+}
+
+.sand-particle:nth-child(4) {
+    --offset: 0.9s;
+    left: 49%;
+}
+
+.sand-particle:nth-child(5) {
+    --offset: 1.2s;
+    left: 51%;
+}
+
+.sand-particle:nth-child(6) {
+    --offset: 1.5s;
+    left: 50%;
+}
+
+/* 連續沙流效果 */
+.sand-flow {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 0;
+    background: linear-gradient(to bottom,
+        rgba(244, 164, 96, 0) 0%,
+        rgba(244, 164, 96, 0.8) 20%,
+        rgba(244, 164, 96, 0.6) 50%,
+        rgba(244, 164, 96, 0.3) 80%,
+        rgba(244, 164, 96, 0) 100%
+    );
+    animation: flow-continuous 2s ease-in-out infinite;
+}
+
+@keyframes flow-continuous {
+    0%, 10% {
+        height: 0;
+        opacity: 0;
+    }
+    20% {
+        height: 18px;
+        opacity: 1;
+    }
+    80% {
+        height: 18px;
+        opacity: 1;
+    }
+    90%, 100% {
+        height: 0;
+        opacity: 0;
+    }
+}
+
+/* 沙漏輕微搖晃（每 4 秒翻轉） */
+.hourglass-container.with-flip {
+    animation: hourglass-flip-shake 4s ease-in-out infinite;
+}
+
+@keyframes hourglass-flip-shake {
+    0%, 47% {
+        transform: rotate(0deg);
+    }
+    50%, 97% {
+        transform: rotate(180deg);
+    }
+    100% {
+        transform: rotate(180deg);
+    }
+}
+
+/* 文字脈衝 */
+.hourglass-text {
+    color: var(--text-light, #888);
+    font-size: 0.95rem;
+    animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* 尺寸變化 */
+.hourglass-advanced.small .hourglass-container {
+    font-size: 1.5rem;
+}
+
+.hourglass-advanced.small .sand-particle {
+    width: 1.5px;
+    height: 1.5px;
+}
+
+.hourglass-advanced.small .sand-flow {
+    width: 1.5px;
+}
+
+.hourglass-advanced.large .hourglass-container {
+    font-size: 4rem;
+}
+
+.hourglass-advanced.large .sand-particle {
+    width: 3px;
+    height: 3px;
+}
+
+.hourglass-advanced.large .sand-flow {
+    width: 3px;
+}
+
+/* 純圖示模式 */
+.hourglass-advanced.icon-only .hourglass-text {
+    display: none;
+}

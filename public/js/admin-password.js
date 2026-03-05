@@ -1,0 +1,339 @@
+/**
+ * 後台密碼驗證系統
+ * 功能：保護所有 admin 頁面，需要密碼才能訪問
+ */
+
+// ========== 配置 ==========
+const ADMIN_CONFIG = {
+    // 管理員密碼（SHA-256 雜湊值）
+    // 預設密碼：admin123
+    // 如需更改密碼，請使用線上 SHA-256 工具生成新的雜湊值
+    PASSWORD_HASH: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+    
+    // 驗證狀態儲存時間（毫秒）- 預設 4 小時
+    SESSION_DURATION: 4 * 60 * 60 * 1000,
+    
+    // localStorage 金鑰
+    STORAGE_KEY: 'admin_auth_token',
+    STORAGE_TIME_KEY: 'admin_auth_time'
+};
+
+// ========== SHA-256 雜湊函數 ==========
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
+
+// ========== 驗證狀態管理 ==========
+function saveAuthToken() {
+    localStorage.setItem(ADMIN_CONFIG.STORAGE_KEY, 'verified');
+    localStorage.setItem(ADMIN_CONFIG.STORAGE_TIME_KEY, Date.now().toString());
+}
+
+function clearAuthToken() {
+    localStorage.removeItem(ADMIN_CONFIG.STORAGE_KEY);
+    localStorage.removeItem(ADMIN_CONFIG.STORAGE_TIME_KEY);
+}
+
+function isAuthTokenValid() {
+    const token = localStorage.getItem(ADMIN_CONFIG.STORAGE_KEY);
+    const time = localStorage.getItem(ADMIN_CONFIG.STORAGE_TIME_KEY);
+    
+    if (token !== 'verified' || !time) {
+        return false;
+    }
+    
+    const authTime = parseInt(time, 10);
+    const now = Date.now();
+    
+    // 檢查是否過期
+    if (now - authTime > ADMIN_CONFIG.SESSION_DURATION) {
+        clearAuthToken();
+        return false;
+    }
+    
+    return true;
+}
+
+// ========== 密碼驗證 ==========
+async function verifyPassword(password) {
+    const hash = await hashPassword(password);
+    return hash === ADMIN_CONFIG.PASSWORD_HASH;
+}
+
+// ========== UI 函數 ==========
+function showPasswordPrompt() {
+    // 建立遮罩層
+    const overlay = document.createElement('div');
+    overlay.id = 'admin-password-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        backdrop-filter: blur(5px);
+    `;
+    
+    // 建立密碼輸入框
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        padding: 3rem;
+        border-radius: 1rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 400px;
+        width: 90%;
+        animation: slideDown 0.3s ease-out;
+    `;
+    
+    modal.innerHTML = `
+        <style>
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-50px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+                20%, 40%, 60%, 80% { transform: translateX(10px); }
+            }
+            
+            .admin-password-input {
+                width: 100%;
+                padding: 1rem;
+                border: 2px solid #e5e7eb;
+                border-radius: 0.5rem;
+                font-size: 1rem;
+                transition: all 0.3s ease;
+                box-sizing: border-box;
+            }
+            
+            .admin-password-input:focus {
+                outline: none;
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+            
+            .admin-password-btn {
+                width: 100%;
+                padding: 1rem;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 0.5rem;
+                font-size: 1rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            
+            .admin-password-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            }
+            
+            .admin-password-btn:active {
+                transform: translateY(0);
+            }
+            
+            .error-shake {
+                animation: shake 0.5s ease-in-out;
+            }
+        </style>
+        
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
+            <h2 style="margin: 0; color: #1f2937; font-size: 1.5rem; margin-bottom: 0.5rem;">管理後台驗證</h2>
+            <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">請輸入管理員密碼以繼續</p>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <input 
+                type="password" 
+                id="admin-password-input" 
+                class="admin-password-input"
+                placeholder="請輸入密碼"
+                autocomplete="off"
+            >
+            <div id="password-error" style="color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem; display: none;">
+                ❌ 密碼錯誤，請重試
+            </div>
+        </div>
+        
+        <button id="admin-password-submit" class="admin-password-btn">
+            🔓 驗證並進入
+        </button>
+        
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; text-align: center;">
+            <p style="margin: 0; color: #9ca3af; font-size: 0.85rem;">
+                💡 提示：預設密碼為 <code style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">admin123</code>
+            </p>
+            <p style="margin: 0.5rem 0 0 0; color: #9ca3af; font-size: 0.85rem;">
+                驗證狀態將保持 4 小時
+            </p>
+        </div>
+        
+        <div style="margin-top: 1rem; text-align: center;">
+            <a href="index.html" style="color: #6b7280; text-decoration: none; font-size: 0.9rem;">
+                ← 返回首頁
+            </a>
+        </div>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // 焦點到輸入框
+    const input = document.getElementById('admin-password-input');
+    const submitBtn = document.getElementById('admin-password-submit');
+    const errorMsg = document.getElementById('password-error');
+    
+    setTimeout(() => input.focus(), 100);
+    
+    // 處理提交
+    async function handleSubmit() {
+        const password = input.value.trim();
+        
+        if (!password) {
+            input.classList.add('error-shake');
+            errorMsg.textContent = '❌ 請輸入密碼';
+            errorMsg.style.display = 'block';
+            setTimeout(() => input.classList.remove('error-shake'), 500);
+            return;
+        }
+        
+        // 顯示載入狀態
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ 驗證中...';
+        
+        // 驗證密碼
+        const isValid = await verifyPassword(password);
+        
+        if (isValid) {
+            // 驗證成功
+            saveAuthToken();
+            submitBtn.textContent = '✅ 驗證成功！';
+            submitBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            
+            // 顯示成功訊息後移除遮罩
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => {
+                    overlay.remove();
+                    // 觸發自訂事件，通知頁面已驗證
+                    document.dispatchEvent(new Event('adminAuthenticated'));
+                }, 300);
+            }, 500);
+        } else {
+            // 驗證失敗
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🔓 驗證並進入';
+            input.value = '';
+            input.classList.add('error-shake');
+            errorMsg.textContent = '❌ 密碼錯誤，請重試';
+            errorMsg.style.display = 'block';
+            
+            setTimeout(() => {
+                input.classList.remove('error-shake');
+                input.focus();
+            }, 500);
+        }
+    }
+    
+    // Enter 鍵提交
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSubmit();
+        }
+    });
+    
+    // 按鈕提交
+    submitBtn.addEventListener('click', handleSubmit);
+}
+
+function addLogoutButton() {
+    // 尋找導覽列
+    const navbar = document.querySelector('.navbar-menu');
+    if (!navbar) return;
+    
+    // 檢查是否已經有登出按鈕
+    if (document.getElementById('admin-logout-btn')) return;
+    
+    // 建立登出按鈕
+    const logoutItem = document.createElement('li');
+    logoutItem.innerHTML = `
+        <a href="#" id="admin-logout-btn">
+            登出後台
+        </a>
+    `;
+    
+    navbar.appendChild(logoutItem);
+    
+    // 處理登出
+    document.getElementById('admin-logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        if (confirm('確定要登出管理後台嗎？\n下次訪問時需要重新輸入密碼。')) {
+            clearAuthToken();
+            window.location.href = 'index.html';
+        }
+    });
+}
+
+// ========== 主要驗證函數 ==========
+function checkAdminAuth() {
+    // 檢查當前頁面是否為 admin 頁面
+    const isAdminPage = window.location.pathname.includes('admin');
+    
+    if (!isAdminPage) {
+        return; // 不是 admin 頁面，不需要驗證
+    }
+    
+    // 檢查驗證狀態
+    if (isAuthTokenValid()) {
+        // 已驗證，加入登出按鈕
+        addLogoutButton();
+        return;
+    }
+    
+    // 未驗證，顯示密碼輸入框
+    showPasswordPrompt();
+}
+
+// ========== 自動執行 ==========
+// 當 DOM 載入完成時執行驗證
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkAdminAuth);
+} else {
+    checkAdminAuth();
+}
+
+// ========== 匯出函數（供其他腳本使用）==========
+window.AdminAuth = {
+    check: checkAdminAuth,
+    isValid: isAuthTokenValid,
+    logout: clearAuthToken,
+    updateSessionTime: () => {
+        if (isAuthTokenValid()) {
+            saveAuthToken(); // 更新時間戳記
+        }
+    }
+};

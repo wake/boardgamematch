@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>編輯我的桌遊 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <span>🎲</span>
+                MBTI × 桌遊配對
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">編輯我的桌遊清單</h1>
+            <p class="page-subtitle">新增或移除你的桌遊喜好</p>
+        </div>
+
+        <!-- 表單容器 -->
+        <div class="form-container">
+            <form id="edit-form">
+                <!-- 喜歡的桌遊 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        我喜歡的桌遊 <span style="color: var(--primary-color);">(至少 3 個)</span>
+                    </label>
+                    
+                    <!-- 現有的遊戲 -->
+                    <div id="current-liked-games" class="game-tags-container" style="margin-bottom: 1rem;">
+                        <div class="simple-hourglass small">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 新增遊戲 -->
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input 
+                            type="text" 
+                            id="new-liked-game" 
+                            class="form-input" 
+                            placeholder="輸入要新增的桌遊名稱..."
+                            style="flex: 1;"
+                        >
+                        <button 
+                            type="button" 
+                            class="btn btn-secondary"
+                            onclick="addLikedGame()"
+                        >
+                            ➕ 新增
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 普普的桌遊 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        我較普通的桌遊 <span style="color: #64748b;">（中立評價）</span>
+                    </label>
+                    
+                    <!-- 現有的遊戲 -->
+                    <div id="current-neutral-games" class="game-tags-container" style="margin-bottom: 1rem;">
+                        <div class="simple-hourglass small">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 新增遊戲 -->
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input 
+                            type="text" 
+                            id="new-neutral-game" 
+                            class="form-input" 
+                            placeholder="輸入要新增的桌遊名稱..."
+                            style="flex: 1;"
+                        >
+                        <button 
+                            type="button" 
+                            class="btn btn-secondary"
+                            onclick="addNeutralGame()"
+                        >
+                            ➕ 新增
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 不喜歡的桌遊 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        我不喜歡的桌遊 <span style="color: var(--accent-color);">(至少 2 個)</span>
+                    </label>
+                    
+                    <!-- 現有的遊戲 -->
+                    <div id="current-disliked-games" class="game-tags-container" style="margin-bottom: 1rem;">
+                        <div class="simple-hourglass small">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 新增遊戲 -->
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input 
+                            type="text" 
+                            id="new-disliked-game" 
+                            class="form-input" 
+                            placeholder="輸入要新增的桌遊名稱..."
+                            style="flex: 1;"
+                        >
+                        <button 
+                            type="button" 
+                            class="btn btn-secondary"
+                            onclick="addDislikedGame()"
+                        >
+                            ➕ 新增
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 訊息顯示區 -->
+                <div id="message-container"></div>
+
+                <!-- 提交按鈕 -->
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        💾 儲存變更
+                    </button>
+                    <a href="profile.html" class="btn btn-secondary">
+                        取消
+                    </a>
+                </div>
+            </form>
+
+            <!-- 提示區塊 -->
+            <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-color); border-radius: 0.5rem; border-left: 4px solid var(--primary-color);">
+                <h4 style="margin-bottom: 0.5rem; color: var(--text-color);">💡 小提示</h4>
+                <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-light);">
+                    <li>點擊遊戲標籤上的 × 即可移除該遊戲</li>
+                    <li>新增遊戲後會立即出現在上方列表</li>
+                    <li>請確保至少保留 3 款喜歡的遊戲和 2 款不喜歡的遊戲</li>
+                    <li>更新後的資料會影響推薦系統的準確度</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer style="text-align: center; padding: 2rem; margin-top: 4rem; color: var(--text-light); border-top: 1px solid var(--border-color);">
+        <p>© 2025 MBTI × 桌遊配對</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentUser = null;
+        let likedGames = [];
+        let neutralGames = [];
+        let dislikedGames = [];
+
+        // 載入使用者資料
+        async function loadUserData() {
+            currentUser = GameMBTI.getCurrentUser();
+            
+            if (!currentUser) {
+                alert('請先填寫您的桌遊喜好！');
+                window.location.href = 'submit.html';
+                return;
+            }
+
+            // 從資料庫獲取最新資料
+            try {
+                const freshData = await GameMBTI.getUserById(currentUser.id);
+                if (freshData) {
+                    currentUser = freshData;
+                    GameMBTI.setCurrentUser(freshData);
+                }
+            } catch (error) {
+                console.error('Error fetching fresh data:', error);
+            }
+
+            likedGames    = currentUser.liked_games    ? [...currentUser.liked_games]    : [];
+            neutralGames  = currentUser.neutral_games  ? [...currentUser.neutral_games]  : [];
+            dislikedGames = currentUser.disliked_games ? [...currentUser.disliked_games] : [];
+
+            displayGames();
+        }
+
+        // 顯示遊戲列表
+        function displayGames() {
+            displayLikedGames();
+            displayNeutralGames();
+            displayDislikedGames();
+        }
+
+        // 顯示喜歡的遊戲
+        function displayLikedGames() {
+            const container = document.getElementById('current-liked-games');
+            
+            if (likedGames.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-light);">尚無遊戲</p>';
+                return;
+            }
+
+            container.innerHTML = likedGames.map(game => `
+                <div class="game-tag">
+                    ${game}
+                    <button type="button" onclick="removeLikedGame('${game.replace(/'/g, "\\'")}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        // 顯示普普的遊戲
+        function displayNeutralGames() {
+            const container = document.getElementById('current-neutral-games');
+            
+            if (neutralGames.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-light);">尚無遊戲</p>';
+                return;
+            }
+
+            container.innerHTML = neutralGames.map(game => `
+                <div class="game-tag" style="background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);">
+                    ${game}
+                    <button type="button" onclick="removeNeutralGame('${game.replace(/'/g, "\\'")}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        // 顯示不喜歡的遊戲
+        function displayDislikedGames() {
+            const container = document.getElementById('current-disliked-games');
+            
+            if (dislikedGames.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-light);">尚無遊戲</p>';
+                return;
+            }
+
+            container.innerHTML = dislikedGames.map(game => `
+                <div class="game-tag disliked">
+                    ${game}
+                    <button type="button" onclick="removeDislikedGame('${game.replace(/'/g, "\\'")}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        // 新增喜歡的遊戲
+        function addLikedGame() {
+            const input = document.getElementById('new-liked-game');
+            const gameName = input.value.trim();
+
+            if (!gameName) { alert('請輸入遊戲名稱！'); return; }
+            if (likedGames.includes(gameName)) { alert('這款遊戲已經在喜歡的列表中了！'); return; }
+            if (neutralGames.includes(gameName)) { alert('這款遊戲在普普的列表中，請先移除！'); return; }
+            if (dislikedGames.includes(gameName)) { alert('這款遊戲在不喜歡的列表中，請先移除！'); return; }
+            likedGames.push(gameName);
+            input.value = '';
+            displayLikedGames();
+        }
+
+        // 新增普普的遊戲
+        function addNeutralGame() {
+            const input = document.getElementById('new-neutral-game');
+            const gameName = input.value.trim();
+
+            if (!gameName) { alert('請輸入遊戲名稱！'); return; }
+            if (neutralGames.includes(gameName)) { alert('這款遊戲已經在普普的列表中了！'); return; }
+            if (likedGames.includes(gameName)) { alert('這款遊戲在喜歡的列表中，請先移除！'); return; }
+            if (dislikedGames.includes(gameName)) { alert('這款遊戲在不喜歡的列表中，請先移除！'); return; }
+            neutralGames.push(gameName);
+            input.value = '';
+            displayNeutralGames();
+        }
+
+        // 新增不喜歡的遊戲
+        function addDislikedGame() {
+            const input = document.getElementById('new-disliked-game');
+            const gameName = input.value.trim();
+
+            if (!gameName) { alert('請輸入遊戲名稱！'); return; }
+            if (dislikedGames.includes(gameName)) { alert('這款遊戲已經在不喜歡的列表中了！'); return; }
+            if (neutralGames.includes(gameName)) { alert('這款遊戲在普普的列表中，請先移除！'); return; }
+            if (likedGames.includes(gameName)) { alert('這款遊戲在喜歡的列表中，請先移除！'); return; }
+            dislikedGames.push(gameName);
+            input.value = '';
+            displayDislikedGames();
+        }
+
+        // 移除喜歡的遊戲
+        function removeLikedGame(gameName) {
+            likedGames = likedGames.filter(g => g !== gameName);
+            displayLikedGames();
+        }
+
+        // 移除普普的遊戲
+        function removeNeutralGame(gameName) {
+            neutralGames = neutralGames.filter(g => g !== gameName);
+            displayNeutralGames();
+        }
+
+        // 移除不喜歡的遊戲
+        function removeDislikedGame(gameName) {
+            dislikedGames = dislikedGames.filter(g => g !== gameName);
+            displayDislikedGames();
+        }
+
+        // Enter 鍵新增
+        document.getElementById('new-liked-game')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addLikedGame();
+            }
+        });
+
+        document.getElementById('new-disliked-game')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addDislikedGame();
+            }
+        });
+
+        // 表單提交
+        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const messageContainer = document.getElementById('message-container');
+
+            // 驗證
+            if (likedGames.length < 3) {
+                messageContainer.innerHTML = '<div class="alert alert-error">請至少保留 3 款喜歡的遊戲！</div>';
+                return;
+            }
+
+            if (dislikedGames.length < 2) {
+                messageContainer.innerHTML = '<div class="alert alert-error">請至少保留 2 款不喜歡的遊戲！</div>';
+                return;
+            }
+
+            try {
+                // 只送需要更新的欄位（避免帶入系統欄位導致 API 500）
+                const updatedUser = {
+                    liked_games: likedGames,
+                    neutral_games: neutralGames,
+                    disliked_games: dislikedGames
+                };
+
+                await GameMBTI.updateUser(currentUser.id, updatedUser);
+                GameMBTI.setCurrentUser({ ...currentUser, ...updatedUser });
+
+                messageContainer.innerHTML = '<div class="alert alert-success">儲存成功！即將返回個人檔案...</div>';
+                
+                setTimeout(() => {
+                    window.location.href = 'profile.html';
+                }, 1500);
+
+            } catch (error) {
+                console.error('Error saving:', error);
+                messageContainer.innerHTML = '<div class="alert alert-error">儲存失敗，請稍後再試。</div>';
+            }
+        });
+
+        // 頁面載入時執行
+        document.addEventListener('DOMContentLoaded', loadUserData);
+    </script>
+</body>
+</html>

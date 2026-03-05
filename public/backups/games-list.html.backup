@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲清單 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/gamification.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <span>🎲</span>
+                MBTI × 桌遊配對
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <!-- 載入中狀態 -->
+        <div id="loading-state" style="text-align: center; padding: 4rem 2rem;">
+            <div class="simple-hourglass large">
+                <span class="hourglass-icon-simple combined">⏳</span>
+                <span class="hourglass-text-simple">正在載入遊戲清單...</span>
+            </div>
+        </div>
+        
+        <!-- 未登入狀態 -->
+        <div id="not-logged-in" style="display: none;">
+            <div class="empty-state" style="padding: 4rem 2rem;">
+                <div class="empty-state-icon">🎲</div>
+                <h2 class="empty-state-text">你還沒有分享你的桌遊喜好</h2>
+                <p style="color: var(--text-light); margin-bottom: 2rem;">
+                    立即分享你喜歡的桌遊，探索與你相似的玩家群體！
+                </p>
+                <a href="submit.html" class="btn btn-primary" style="font-size: 1.1rem;">
+                    🎲 開始分享
+                </a>
+            </div>
+        </div>
+
+        <!-- 遊戲清單內容 -->
+        <div id="games-content" style="display: none;">
+            <!-- 頁面標題 -->
+            <div class="page-header">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1 class="page-title" id="list-title">遊戲清單</h1>
+                        <p class="page-subtitle" id="list-subtitle">載入中...</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="profile.html" class="btn btn-secondary">
+                            ← 返回檔案
+                        </a>
+                        <a href="edit-games-drag.html" class="btn btn-primary" id="edit-btn">
+                            ✏️ 編輯清單
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 遊戲清單卡片 -->
+            <section>
+                <div style="background: var(--card-bg); padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-md);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 id="list-header" style="font-size: 1.5rem; margin: 0;">📋 遊戲清單</h2>
+                        <span id="list-count" style="color: var(--text-light);">共 0 款</span>
+                    </div>
+                    
+                    <!-- 遊戲列表 -->
+                    <div id="games-list">
+                        <div class="simple-hourglass">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 快速統計 -->
+            <section style="margin-top: 2rem;">
+                <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; box-shadow: var(--shadow-md);">
+                    <h3 style="font-size: 1.2rem; margin-bottom: 1rem;">📊 統計資訊</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                        <div style="text-align: center; padding: 1rem; background: var(--bg-color); border-radius: 0.5rem;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">😍</div>
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color);" id="stat-liked">0</div>
+                            <div style="font-size: 0.9rem; color: var(--text-light);">喜歡的遊戲</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: var(--bg-color); border-radius: 0.5rem;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">😕</div>
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-color);" id="stat-disliked">0</div>
+                            <div style="font-size: 0.9rem; color: var(--text-light);">不喜歡的遊戲</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: var(--bg-color); border-radius: 0.5rem;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--secondary-color);" id="stat-wishlist">0</div>
+                            <div style="font-size: 0.9rem; color: var(--text-light);">待玩清單</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer style="text-align: center; padding: 2rem; margin-top: 4rem; color: var(--text-light); border-top: 1px solid var(--border-color);">
+        <p>© 2025 MBTI × 桌遊配對</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+<script src="js/navbar-auth.js"></script>
+    <script>
+        let currentUser = null;
+        let listType = 'liked'; // 'liked', 'disliked', 'wishlist'
+
+        // 頁面載入
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadPage();
+        });
+
+        async function loadPage() {
+            try {
+                // 獲取 URL 參數
+                const params = new URLSearchParams(window.location.search);
+                listType = params.get('type') || 'liked';
+                
+                // 載入使用者資料
+                currentUser = GameMBTI.getCurrentUser();
+                
+                if (!currentUser) {
+                    showNotLoggedIn();
+                    return;
+                }
+                
+                // 從 API 重新載入最新資料
+                const freshData = await GameMBTI.getUserById(currentUser.id);
+                if (freshData) {
+                    currentUser = freshData;
+                    GameMBTI.setCurrentUser(freshData);
+                }
+                
+                // 顯示內容
+                showGamesContent();
+                displayGamesList();
+                displayStats();
+                
+            } catch (error) {
+                console.error('❌ 載入頁面錯誤:', error);
+                document.getElementById('loading-state').innerHTML = `
+                    <div style="text-align: center; padding: 4rem 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                        <h2 style="color: var(--text-color); margin-bottom: 0.5rem;">載入失敗</h2>
+                        <p style="color: var(--text-light); margin-bottom: 1rem;">發生錯誤：${error.message}</p>
+                        <a href="profile.html" class="btn btn-secondary">← 返回檔案</a>
+                    </div>
+                `;
+            }
+        }
+
+        function showNotLoggedIn() {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('not-logged-in').style.display = 'block';
+            document.getElementById('games-content').style.display = 'none';
+        }
+
+        function showGamesContent() {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('not-logged-in').style.display = 'none';
+            document.getElementById('games-content').style.display = 'block';
+        }
+
+        function displayGamesList() {
+            let games = [];
+            let title = '';
+            let subtitle = '';
+            let header = '';
+            
+            // 根據類型設定資料
+            if (listType === 'liked') {
+                games = currentUser.liked_games || [];
+                title = '我喜歡的桌遊';
+                subtitle = `共 ${games.length} 款遊戲`;
+                header = '喜歡的遊戲';
+            } else if (listType === 'disliked') {
+                games = currentUser.disliked_games || [];
+                title = '我不喜歡的桌遊';
+                subtitle = `共 ${games.length} 款遊戲`;
+                header = '不喜歡的遊戲';
+            } else if (listType === 'wishlist') {
+                games = currentUser.wishlist || [];
+                title = '我的願望清單';
+                subtitle = `共 ${games.length} 款遊戲`;
+                header = '願望清單';
+            }
+            
+            // 🎯 使用 innerHTML 確保 emoji 顯示
+            const titleElement = document.getElementById('list-title');
+            const headerElement = document.getElementById('list-header');
+            
+            if (titleElement) titleElement.innerHTML = title;
+            if (headerElement) headerElement.innerHTML = header;
+            
+            document.getElementById('list-subtitle').textContent = subtitle;
+            document.getElementById('list-count').textContent = `共 ${games.length} 款`;
+            
+            // 顯示遊戲列表
+            const container = document.getElementById('games-list');
+            
+            if (games.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>尚未新增任何遊戲</p>
+                        <a href="edit-games-drag.html" class="btn btn-primary" style="margin-top: 1rem;">
+                            ➕ 新增遊戲
+                        </a>
+                    </div>
+                `;
+            } else {
+                // 🎯 改為標籤式顯示，根據遊戲名稱長度自動調整
+                let tagClass = 'game-tag';
+                let tagStyle = '';
+                
+                if (listType === 'liked') {
+                    // 使用預設的漸層色（藍綠色）
+                } else if (listType === 'disliked') {
+                    tagClass = 'game-tag disliked';
+                } else if (listType === 'wishlist') {
+                    tagStyle = 'style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);"';
+                }
+                
+                container.innerHTML = '<div class="game-tags-container">' + games.map(game => `
+                    <div class="${tagClass}" ${tagStyle}>${game}</div>
+                `).join('') + '</div>';
+            }
+        }
+
+        function displayStats() {
+            // 更新統計數據
+            document.getElementById('stat-liked').textContent = (currentUser.liked_games || []).length;
+            document.getElementById('stat-disliked').textContent = (currentUser.disliked_games || []).length;
+            document.getElementById('stat-wishlist').textContent = (currentUser.wishlist || []).length;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桌遊問答管理 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 60%, #a855f7 100%);
+            color: white; padding: 2rem; margin-bottom: 2rem; border-radius: 1rem;
+        }
+        .admin-header h2 {
+            margin: 0 0 0.5rem;
+            color: white;
+            background: none;
+            -webkit-text-fill-color: white;
+        }
+        .admin-header p { margin: 0; opacity: 0.9; color: white; }
+        .admin-header .back-btn {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.35rem 1rem;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1.5px solid rgba(255,255,255,0.6);
+            border-radius: 2rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .admin-header .back-btn:hover { background: rgba(255,255,255,0.35); }
+        .stab-btn {
+            padding: 0.45rem 1rem; border: 2px solid var(--border-color);
+            border-radius: 2rem; background: none; font-size: 0.9rem;
+            font-weight: 600; cursor: pointer; color: var(--text-light); transition: all 0.2s;
+        }
+        .stab-btn.active { background: var(--primary-color); border-color: var(--primary-color); color: white; }
+        .card { background: var(--card-bg); border-radius: 1rem; padding: 1.5rem; box-shadow: var(--shadow-md); margin-bottom: 1.25rem; }
+        .badge-status {
+            display: inline-block; padding: 0.2rem 0.6rem; border-radius: 1rem;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .badge-status.approved { background: #d1fae5; color: #065f46; }
+        .badge-status.pending  { background: #fef3c7; color: #92400e; }
+        .badge-status.rejected { background: #fee2e2; color: #991b1b; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+        .modal.active { display:flex; }
+        .modal-content { background:var(--card-bg); border-radius:1rem; padding:2rem; max-width:620px; width:90%; max-height:90vh; overflow-y:auto; }
+        .form-group { margin-bottom:1.1rem; }
+        .form-group label { display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.9rem; }
+        .form-group input, .form-group textarea, .form-group select {
+            width:100%; padding:0.65rem 0.9rem; border:1px solid var(--border-color);
+            border-radius:0.5rem; font-size:0.95rem; box-sizing:border-box;
+            background:var(--card-bg); color:var(--text-color);
+        }
+        .form-group textarea { resize:vertical; min-height:70px; }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+        .btn-save { width:100%; padding:1rem; background:linear-gradient(135deg,#f59e0b,#ef4444); color:white; border:none; border-radius:0.5rem; font-size:1rem; font-weight:600; cursor:pointer; }
+        .question-item {
+            background:var(--card-bg); border-radius:0.75rem; padding:1rem 1.25rem;
+            box-shadow:var(--shadow-sm); margin-bottom:0.75rem;
+            border-left: 4px solid var(--border-color);
+        }
+        .question-item.pending  { border-left-color: #f59e0b; }
+        .question-item.approved { border-left-color: #10b981; }
+        .question-item.rejected { border-left-color: #ef4444; }
+        .q-options { display:grid; grid-template-columns:1fr 1fr; gap:0.3rem; margin:0.5rem 0; font-size:0.82rem; }
+        .q-opt { padding:0.25rem 0.5rem; border-radius:0.4rem; background:var(--bg-light); }
+        .q-opt.correct { background:#d1fae5; color:#065f46; font-weight:700; }
+        .action-row { display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap; }
+    </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="js/admin-auth.js?v=20240222-fix"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="admin-header">
+            <h2>🧠 桌遊問答管理</h2>
+            <p>管理問答清單與題目，審核玩家投稿</p>
+            <a href="admin.html" class="back-btn">← 返回管理後台</a>
+        </div>
+
+        <!-- Tab -->
+        <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+            <button class="stab-btn active" id="tab-collections" onclick="switchTab('collections')">📚 題目清單</button>
+            <button class="stab-btn" id="tab-questions"   onclick="switchTab('questions')">❓ 題目管理</button>
+            <button class="stab-btn" id="tab-pending"     onclick="switchTab('pending')">
+                ⏳ 待審核
+                <span id="pending-badge" style="display:none;background:#ef4444;color:white;border-radius:1rem;padding:0 0.4rem;font-size:0.72rem;margin-left:0.25rem;"></span>
+            </button>
+            <button class="stab-btn" id="tab-stats" onclick="switchTab('stats')">📊 統計</button>
+        </div>
+
+        <!-- ══ 清單管理 ══ -->
+        <div id="panel-collections">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <h3 style="margin:0;">📚 題目清單</h3>
+                <button class="btn btn-primary" onclick="openCollectionModal()">+ 新增清單</button>
+            </div>
+            <div id="collection-list"><p style="color:var(--text-light);">載入中...</p></div>
+        </div>
+
+        <!-- ══ 題目管理 ══ -->
+        <div id="panel-questions" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+                <h3 style="margin:0;">❓ 題目管理</h3>
+                <div style="display:flex;gap:0.75rem;align-items:center;">
+                    <select id="q-filter-col" onchange="loadQuestions()" style="padding:0.5rem;border:1px solid var(--border-color);border-radius:0.5rem;font-size:0.9rem;">
+                        <option value="">全部清單</option>
+                    </select>
+                    <select id="q-filter-status" onchange="loadQuestions()" style="padding:0.5rem;border:1px solid var(--border-color);border-radius:0.5rem;font-size:0.9rem;">
+                        <option value="">全部狀態</option>
+                        <option value="approved">已通過</option>
+                        <option value="pending">待審核</option>
+                        <option value="rejected">已拒絕</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="openQuestionModal()">+ 新增題目</button>
+                </div>
+            </div>
+            <div id="question-list"><p style="color:var(--text-light);">載入中...</p></div>
+        </div>
+
+        <!-- ══ 待審核 ══ -->
+        <div id="panel-pending" style="display:none;">
+            <h3 style="margin:0 0 1rem;">⏳ 玩家投稿待審核</h3>
+            <div id="pending-list"><p style="color:var(--text-light);">載入中...</p></div>
+        </div>
+
+        <!-- ══ 統計 ══ -->
+        <div id="panel-stats" style="display:none;">
+            <h3 style="margin:0 0 1rem;">📊 整體統計</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem;" id="stats-grid">
+                <p style="color:var(--text-light);">載入中...</p>
+            </div>
+            <div id="stats-detail"></div>
+        </div>
+    </div>
+
+    <!-- ══ 清單 Modal ══ -->
+    <div class="modal" id="collection-modal">
+        <div class="modal-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+                <h2 id="col-modal-title" style="margin:0;">新增題目清單</h2>
+                <button onclick="closeCollectionModal()" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:var(--text-light);">✕</button>
+            </div>
+            <form id="collection-form" onsubmit="saveCollection(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>標題 *</label>
+                        <input id="col-title" placeholder="桌遊規則基礎考" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Emoji 圖示</label>
+                        <input id="col-icon" placeholder="🧠" maxlength="4">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>說明</label>
+                    <textarea id="col-desc" placeholder="測試你對桌遊規則的了解程度！"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>每題秒數</label>
+                        <input id="col-time" type="number" value="20" min="5" max="120">
+                    </div>
+                    <div class="form-group">
+                        <label>排序</label>
+                        <input id="col-sort" type="number" value="1" min="1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>標籤（逗號分隔）</label>
+                    <input id="col-tags" placeholder="新手, 規則考驗">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="col-active" checked>
+                        上架（玩家可見）
+                    </label>
+                </div>
+                <input type="hidden" id="col-id">
+                <button type="submit" class="btn-save">💾 儲存清單</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══ 題目 Modal ══ -->
+    <div class="modal" id="question-modal">
+        <div class="modal-content" style="max-width:680px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+                <h2 id="q-modal-title" style="margin:0;">新增題目</h2>
+                <button onclick="closeQuestionModal()" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:var(--text-light);">✕</button>
+            </div>
+            <form id="question-form" onsubmit="saveQuestion(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>所屬清單 *</label>
+                        <select id="q-collection" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>狀態</label>
+                        <select id="q-status">
+                            <option value="approved">已通過</option>
+                            <option value="pending">待審核</option>
+                            <option value="rejected">已拒絕</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>題目內容 *</label>
+                    <textarea id="q-question" placeholder="下列哪款遊戲屬於推引遊戲？" required maxlength="300"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>四個選項 *</label>
+                    <div style="display:grid;gap:0.5rem;">
+                        <div style="display:flex;gap:0.5rem;align-items:center;"><span style="font-weight:700;width:22px;">A</span><input id="q-opt-0" placeholder="選項 A" required maxlength="100"></div>
+                        <div style="display:flex;gap:0.5rem;align-items:center;"><span style="font-weight:700;width:22px;">B</span><input id="q-opt-1" placeholder="選項 B" required maxlength="100"></div>
+                        <div style="display:flex;gap:0.5rem;align-items:center;"><span style="font-weight:700;width:22px;">C</span><input id="q-opt-2" placeholder="選項 C" required maxlength="100"></div>
+                        <div style="display:flex;gap:0.5rem;align-items:center;"><span style="font-weight:700;width:22px;">D</span><input id="q-opt-3" placeholder="選項 D" required maxlength="100"></div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>正確答案 *</label>
+                        <select id="q-answer" required>
+                            <option value="0">A</option>
+                            <option value="1">B</option>
+                            <option value="2">C</option>
+                            <option value="3">D</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>此題秒數（0=沿用清單）</label>
+                        <input id="q-time" type="number" value="0" min="0" max="120">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>解析說明（選填）</label>
+                    <textarea id="q-explanation" placeholder="幫助玩家理解答案的說明..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>圖片 URL（選填）</label>
+                    <input id="q-image" placeholder="https://...">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>排序</label>
+                        <input id="q-sort" type="number" value="1">
+                    </div>
+                </div>
+                <input type="hidden" id="q-id">
+                <button type="submit" class="btn-save">💾 儲存題目</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/show-admin-link.js?v=20240222-fix"></script>
+    <script src="js/admin-navbar-cleanup.js"></script>
+    <script>
+    let allCollections = [];
+    let allQuestions   = [];
+    let editingColId   = null;
+    let editingQId     = null;
+
+    // 超級管理員守衛
+    document.addEventListener('adminAuthenticated', (e) => {
+        const role = e.detail?.role || window.AdminAuth?.getCurrentAdmin()?.role;
+        if (!role) {
+            document.querySelector('.container').innerHTML = `
+                <div style="text-align:center;padding:5rem 2rem;">
+                    <div style="font-size:4rem;margin-bottom:1rem;">🚫</div>
+                    <h2>權限不足</h2><p style="color:var(--text-light);">此頁面僅限管理員訪問</p>
+                    <a href="admin.html" class="btn btn-secondary">← 返回後台</a>
+                </div>`;
+        }
+    });
+
+    // ── Tab ──
+    const TABS = ['collections','questions','pending','stats'];
+    function switchTab(name) {
+        TABS.forEach(t => {
+            document.getElementById(`panel-${t}`).style.display = t===name ? 'block' : 'none';
+            document.getElementById(`tab-${t}`).classList.toggle('active', t===name);
+        });
+        if (name==='collections') loadCollectionList();
+        if (name==='questions')   { loadCollectionOptions(); loadQuestions(); }
+        if (name==='pending')     loadPending();
+        if (name==='stats')       loadStats();
+    }
+
+    // ── 初始化 ──
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadMasterData();
+        loadCollectionList();
+        checkPendingCount();
+    });
+
+    async function loadMasterData() {
+        const [cRes, qRes] = await Promise.all([
+            fetch('tables/quiz_collections?limit=200'),
+            fetch('tables/quiz_questions?limit=500')
+        ]);
+        allCollections = (await cRes.json()).data || [];
+        allQuestions   = (await qRes.json()).data || [];
+    }
+
+    async function checkPendingCount() {
+        const cnt = allQuestions.filter(q => q.status === 'pending').length;
+        const badge = document.getElementById('pending-badge');
+        if (cnt > 0) { badge.textContent = cnt; badge.style.display = 'inline'; }
+        else { badge.style.display = 'none'; }
+    }
+
+    // ════════════════════════════════════════
+    //  清單管理
+    // ════════════════════════════════════════
+    function loadCollectionList() {
+        const el = document.getElementById('collection-list');
+        const cols = [...allCollections].sort((a,b) => (a.sort_order||0)-(b.sort_order||0));
+        if (cols.length === 0) {
+            el.innerHTML = '<p style="color:var(--text-light);">還沒有清單，點上方「+ 新增清單」建立</p>';
+            return;
+        }
+        el.innerHTML = cols.map(c => {
+            const qCnt = allQuestions.filter(q=>q.collection_id===c.id&&q.status==='approved').length;
+            const pCnt = allQuestions.filter(q=>q.collection_id===c.id&&q.status==='pending').length;
+            return `
+            <div class="card" style="display:flex;align-items:center;gap:1rem;">
+                <div style="font-size:2.2rem;">${c.icon||'🧠'}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-size:1rem;">${c.title}</div>
+                    <div style="font-size:0.82rem;color:var(--text-light);">${c.description||''}</div>
+                    <div style="font-size:0.78rem;margin-top:0.3rem;">
+                        ✅ ${qCnt} 題已上架
+                        ${pCnt > 0 ? `・⏳ ${pCnt} 題待審核` : ''}
+                        ・⏱️ ${c.time_limit||20}s/題
+                        ・${c.is_active!==false ? '<span style="color:#10b981;">上架中</span>' : '<span style="color:#9ca3af;">已下架</span>'}
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+                    <button onclick="editCollection('${c.id}')" class="btn btn-secondary" style="padding:0.4rem 0.8rem;font-size:0.85rem;">✏️ 編輯</button>
+                    <button onclick="toggleCollectionActive('${c.id}',${c.is_active!==false})" class="btn btn-secondary" style="padding:0.4rem 0.8rem;font-size:0.85rem;">${c.is_active!==false ? '⏸️ 下架' : '▶️ 上架'}</button>
+                    <button onclick="deleteCollection('${c.id}','${c.title.replace(/'/g,"&apos;")}')" style="padding:0.4rem 0.8rem;font-size:0.85rem;border:1px solid #ef4444;color:#ef4444;border-radius:0.5rem;background:none;cursor:pointer;">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function openCollectionModal(id = null) {
+        editingColId = id;
+        document.getElementById('col-modal-title').textContent = id ? '編輯清單' : '新增清單';
+        document.getElementById('collection-form').reset();
+        document.getElementById('col-id').value = '';
+        if (id) {
+            const c = allCollections.find(x=>x.id===id);
+            if (c) {
+                document.getElementById('col-id').value    = c.id;
+                document.getElementById('col-title').value = c.title;
+                document.getElementById('col-icon').value  = c.icon||'';
+                document.getElementById('col-desc').value  = c.description||'';
+                document.getElementById('col-time').value  = c.time_limit||20;
+                document.getElementById('col-sort').value  = c.sort_order||1;
+                document.getElementById('col-tags').value  = (c.tags||[]).join(', ');
+                document.getElementById('col-active').checked = c.is_active!==false;
+            }
+        }
+        document.getElementById('collection-modal').classList.add('active');
+    }
+
+    function closeCollectionModal() {
+        document.getElementById('collection-modal').classList.remove('active');
+    }
+
+    function editCollection(id) { openCollectionModal(id); }
+
+    async function saveCollection(event) {
+        event.preventDefault();
+        const id = document.getElementById('col-id').value;
+        const tags = document.getElementById('col-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+        const payload = {
+            title:      document.getElementById('col-title').value.trim(),
+            icon:       document.getElementById('col-icon').value.trim() || '🧠',
+            description:document.getElementById('col-desc').value.trim(),
+            time_limit: parseInt(document.getElementById('col-time').value) || 20,
+            sort_order: parseInt(document.getElementById('col-sort').value) || 1,
+            tags,
+            is_active:  document.getElementById('col-active').checked,
+        };
+        try {
+            if (id) {
+                await fetch(`tables/quiz_collections/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                alert('✅ 清單更新成功！');
+            } else {
+                payload.created_at = Date.now();
+                await fetch('tables/quiz_collections', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                alert('✅ 清單新增成功！');
+            }
+            closeCollectionModal();
+            await loadMasterData();
+            loadCollectionList();
+        } catch(e) { alert('儲存失敗：'+e.message); }
+    }
+
+    async function toggleCollectionActive(id, currentActive) {
+        await fetch(`tables/quiz_collections/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({is_active:!currentActive}) });
+        await loadMasterData(); loadCollectionList();
+    }
+
+    async function deleteCollection(id, title) {
+        if (!confirm(`確定刪除清單「${title}」？\n注意：清單內的題目不會自動刪除。`)) return;
+        await fetch(`tables/quiz_collections/${id}`, { method:'DELETE' });
+        await loadMasterData(); loadCollectionList();
+    }
+
+    // ════════════════════════════════════════
+    //  題目管理
+    // ════════════════════════════════════════
+    function loadCollectionOptions() {
+        const sels = [document.getElementById('q-filter-col'), document.getElementById('q-collection')];
+        sels.forEach(sel => {
+            if (!sel) return;
+            const cur = sel.value;
+            const opts = allCollections.map(c=>`<option value="${c.id}">${c.icon||'🧠'} ${c.title}</option>`).join('');
+            if (sel.id==='q-filter-col') sel.innerHTML = '<option value="">全部清單</option>' + opts;
+            else sel.innerHTML = opts;
+            if (cur) sel.value = cur;
+        });
+    }
+
+    function loadQuestions() {
+        const el     = document.getElementById('question-list');
+        const colFilter    = document.getElementById('q-filter-col')?.value || '';
+        const statusFilter = document.getElementById('q-filter-status')?.value || '';
+        let qs = [...allQuestions].filter(q => {
+            if (colFilter    && q.collection_id !== colFilter)    return false;
+            if (statusFilter && q.status !== statusFilter)        return false;
+            return true;
+        }).sort((a,b) => (a.sort_order||0)-(b.sort_order||0));
+
+        if (qs.length === 0) { el.innerHTML = '<p style="color:var(--text-light);">沒有符合條件的題目</p>'; return; }
+
+        const LABELS = ['A','B','C','D'];
+        el.innerHTML = qs.map(q => {
+            const col = allCollections.find(c=>c.id===q.collection_id);
+            return `
+            <div class="question-item ${q.status}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.75rem;">
+                    <div style="flex:1;">
+                        <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.3rem;">${col?.title||'—'}</div>
+                        <div style="font-weight:600;font-size:0.92rem;">${q.question}</div>
+                    </div>
+                    <span class="badge-status ${q.status}">${q.status==='approved'?'已通過':q.status==='pending'?'待審核':'已拒絕'}</span>
+                </div>
+                <div class="q-options">
+                    ${(q.options||[]).map((opt,i)=>`<div class="q-opt ${i===q.answer_index?'correct':''}">${LABELS[i]}. ${opt}</div>`).join('')}
+                </div>
+                ${q.explanation ? `<div style="font-size:0.8rem;color:var(--text-light);margin-top:0.3rem;">💡 ${q.explanation}</div>` : ''}
+                <div class="action-row">
+                    <button onclick="editQuestion('${q.id}')" class="btn btn-secondary" style="padding:0.35rem 0.75rem;font-size:0.82rem;">✏️ 編輯</button>
+                    ${q.status!=='approved' ? `<button onclick="approveQuestion('${q.id}')" style="padding:0.35rem 0.75rem;font-size:0.82rem;border:none;background:#10b981;color:white;border-radius:0.4rem;cursor:pointer;">✅ 通過</button>` : ''}
+                    ${q.status!=='rejected' ? `<button onclick="rejectQuestion('${q.id}')"  style="padding:0.35rem 0.75rem;font-size:0.82rem;border:none;background:#ef4444;color:white;border-radius:0.4rem;cursor:pointer;">❌ 拒絕</button>` : ''}
+                    <button onclick="deleteQuestion('${q.id}')" style="padding:0.35rem 0.75rem;font-size:0.82rem;border:1px solid #ef4444;color:#ef4444;border-radius:0.4rem;background:none;cursor:pointer;">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function openQuestionModal(id = null) {
+        editingQId = id;
+        document.getElementById('q-modal-title').textContent = id ? '編輯題目' : '新增題目';
+        document.getElementById('question-form').reset();
+        document.getElementById('q-id').value = '';
+        loadCollectionOptions();
+        if (id) {
+            const q = allQuestions.find(x=>x.id===id);
+            if (q) {
+                document.getElementById('q-id').value          = q.id;
+                document.getElementById('q-collection').value  = q.collection_id;
+                document.getElementById('q-question').value    = q.question;
+                (q.options||[]).forEach((opt,i) => { document.getElementById(`q-opt-${i}`).value = opt; });
+                document.getElementById('q-answer').value      = q.answer_index;
+                document.getElementById('q-status').value      = q.status || 'approved';
+                document.getElementById('q-time').value        = q.time_limit || 0;
+                document.getElementById('q-explanation').value = q.explanation || '';
+                document.getElementById('q-image').value       = q.image_url || '';
+                document.getElementById('q-sort').value        = q.sort_order || 1;
+            }
+        }
+        document.getElementById('question-modal').classList.add('active');
+    }
+
+    function closeQuestionModal() {
+        document.getElementById('question-modal').classList.remove('active');
+    }
+
+    function editQuestion(id) { openQuestionModal(id); }
+
+    async function saveQuestion(event) {
+        event.preventDefault();
+        const id = document.getElementById('q-id').value;
+        const payload = {
+            collection_id: document.getElementById('q-collection').value,
+            question:      document.getElementById('q-question').value.trim(),
+            options: [
+                document.getElementById('q-opt-0').value.trim(),
+                document.getElementById('q-opt-1').value.trim(),
+                document.getElementById('q-opt-2').value.trim(),
+                document.getElementById('q-opt-3').value.trim(),
+            ],
+            answer_index:  parseInt(document.getElementById('q-answer').value),
+            status:        document.getElementById('q-status').value,
+            time_limit:    parseInt(document.getElementById('q-time').value) || 0,
+            explanation:   document.getElementById('q-explanation').value.trim(),
+            image_url:     document.getElementById('q-image').value.trim(),
+            sort_order:    parseInt(document.getElementById('q-sort').value) || 1,
+        };
+        try {
+            if (id) {
+                await fetch(`tables/quiz_questions/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                alert('✅ 題目更新成功！');
+            } else {
+                payload.created_at  = Date.now();
+                payload.submitted_by = 'admin';
+                await fetch('tables/quiz_questions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                alert('✅ 題目新增成功！');
+            }
+            closeQuestionModal();
+            await loadMasterData();
+            loadQuestions();
+            checkPendingCount();
+        } catch(e) { alert('儲存失敗：'+e.message); }
+    }
+
+    async function approveQuestion(id) {
+        await fetch(`tables/quiz_questions/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'approved'}) });
+        await loadMasterData(); loadQuestions(); checkPendingCount();
+    }
+    async function rejectQuestion(id) {
+        if (!confirm('確定要拒絕此題目？')) return;
+        await fetch(`tables/quiz_questions/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'rejected'}) });
+        await loadMasterData(); loadQuestions(); checkPendingCount();
+    }
+    async function deleteQuestion(id) {
+        if (!confirm('確定要刪除此題目？')) return;
+        await fetch(`tables/quiz_questions/${id}`, { method:'DELETE' });
+        await loadMasterData(); loadQuestions(); checkPendingCount();
+    }
+
+    // ════════════════════════════════════════
+    //  待審核
+    // ════════════════════════════════════════
+    async function loadPending() {
+        const el = document.getElementById('pending-list');
+        const pending = allQuestions.filter(q=>q.status==='pending');
+        if (pending.length === 0) {
+            el.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-light);">🎉 沒有待審核的題目！</div>';
+            return;
+        }
+        // 取得投稿者資料
+        const uRes  = await fetch('tables/users?limit=500');
+        const users = (await uRes.json()).data || [];
+        const uMap  = {}; users.forEach(u => { uMap[u.id] = u; });
+        const LABELS = ['A','B','C','D'];
+        el.innerHTML = pending.map(q => {
+            const col  = allCollections.find(c=>c.id===q.collection_id);
+            const user = uMap[q.submitted_by] || {};
+            return `
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                    <span style="font-size:0.8rem;color:var(--text-light);">清單：${col?.title||'—'} ・ 投稿者：${user.nickname||user.username||q.submitted_by?.slice(0,8)||'—'}</span>
+                    <span class="badge-status pending">待審核</span>
+                </div>
+                <div style="font-weight:600;margin-bottom:0.75rem;">${q.question}</div>
+                <div class="q-options">
+                    ${(q.options||[]).map((opt,i)=>`<div class="q-opt ${i===q.answer_index?'correct':''}">${LABELS[i]}. ${opt}</div>`).join('')}
+                </div>
+                ${q.explanation ? `<div style="font-size:0.82rem;color:var(--text-light);margin:0.5rem 0;">💡 ${q.explanation}</div>` : ''}
+                <div class="action-row">
+                    <button onclick="approveFromPending('${q.id}')" style="padding:0.5rem 1.25rem;border:none;background:#10b981;color:white;border-radius:0.5rem;cursor:pointer;font-weight:600;">✅ 通過</button>
+                    <button onclick="editQuestion('${q.id}');document.getElementById('question-modal').classList.add('active');" class="btn btn-secondary" style="padding:0.5rem 1rem;">✏️ 修改後通過</button>
+                    <button onclick="rejectFromPending('${q.id}')" style="padding:0.5rem 1.25rem;border:none;background:#ef4444;color:white;border-radius:0.5rem;cursor:pointer;font-weight:600;">❌ 拒絕</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    async function approveFromPending(id) {
+        await fetch(`tables/quiz_questions/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'approved'}) });
+        await loadMasterData(); loadPending(); checkPendingCount();
+    }
+    async function rejectFromPending(id) {
+        if (!confirm('確定要拒絕此題目？')) return;
+        await fetch(`tables/quiz_questions/${id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'rejected'}) });
+        await loadMasterData(); loadPending(); checkPendingCount();
+    }
+
+    // ════════════════════════════════════════
+    //  統計
+    // ════════════════════════════════════════
+    async function loadStats() {
+        const sg = document.getElementById('stats-grid');
+        const sd = document.getElementById('stats-detail');
+        const aRes   = await fetch('tables/quiz_attempts?limit=500');
+        const attempts = (await aRes.json()).data || [];
+        const completed = attempts.filter(a=>a.completed);
+        const totalPlays  = completed.length;
+        const uniqueUsers = new Set(completed.map(a=>a.user_id)).size;
+        const avgScore    = totalPlays > 0 ? (completed.reduce((s,a)=>s+(a.score/(a.total||1)),0)/totalPlays*100).toFixed(1) : 0;
+
+        sg.innerHTML = [
+            { val: allCollections.length,                     lbl: '題目清單',  color: '#667eea' },
+            { val: allQuestions.filter(q=>q.status==='approved').length, lbl: '已上架題目', color: '#10b981' },
+            { val: allQuestions.filter(q=>q.status==='pending').length,  lbl: '待審核',    color: '#f59e0b' },
+            { val: totalPlays,                                lbl: '總作答次數', color: '#3b82f6' },
+            { val: uniqueUsers,                               lbl: '參與玩家',   color: '#8b5cf6' },
+            { val: `${avgScore}%`,                            lbl: '平均正確率', color: '#ef4444' },
+        ].map(s => `
+            <div style="background:var(--card-bg);border-radius:0.75rem;padding:1.25rem;text-align:center;box-shadow:var(--shadow-sm);">
+                <div style="font-size:1.8rem;font-weight:700;color:${s.color};">${s.val}</div>
+                <div style="font-size:0.8rem;color:var(--text-light);margin-top:0.2rem;">${s.lbl}</div>
+            </div>`).join('');
+
+        // 每個清單的統計
+        sd.innerHTML = '<h3 style="margin:1rem 0 0.75rem;">各清單詳細</h3>' + allCollections.map(c => {
+            const ca = completed.filter(a=>a.collection_id===c.id);
+            const qc = allQuestions.filter(q=>q.collection_id===c.id&&q.status==='approved').length;
+            const avg = ca.length > 0 ? (ca.reduce((s,a)=>s+(a.score/(a.total||1)),0)/ca.length*100).toFixed(1) : '—';
+            return `
+            <div style="background:var(--card-bg);border-radius:0.75rem;padding:1rem 1.25rem;box-shadow:var(--shadow-sm);margin-bottom:0.75rem;display:flex;align-items:center;gap:1rem;">
+                <div style="font-size:1.8rem;">${c.icon||'🧠'}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:600;">${c.title}</div>
+                    <div style="font-size:0.8rem;color:var(--text-light);">題目 ${qc} 題 ・ 作答 ${ca.length} 次 ・ 平均正確率 ${avg}${avg!=='—'?'%':''}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // Modal 外點關閉
+    ['collection-modal','question-modal'].forEach(id => {
+        document.getElementById(id).addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
+    });
+    </script>
+</body>
+</html>

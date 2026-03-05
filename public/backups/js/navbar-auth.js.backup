@@ -1,0 +1,129 @@
+/**
+ * 導覽列使用者資訊顯示
+ * 在導覽列顯示使用者頭像與登出按鈕
+ */
+
+const NavbarAuth = {
+    /**
+     * 初始化導覽列認證顯示
+     */
+    init() {
+        console.log('[NavbarAuth] 初始化導覽列');
+        
+        // 在導覽列右側加入使用者資訊
+        const navbar = document.querySelector('.navbar-menu');
+        if (!navbar) {
+            console.warn('[NavbarAuth] 找不到導覽列');
+            return;
+        }
+        
+        // 建立使用者資訊區域
+        const userInfoHTML = `
+            <li id="navbar-user-info" style="margin-left: auto; display: none;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem;">
+                    <img id="navbar-user-avatar" src="" alt="頭像" 
+                         style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--primary-color); cursor: pointer;"
+                         onclick="window.location.href='profile.html'"
+                         title="查看我的檔案">
+                    <span id="navbar-user-name" style="color: var(--text-color); cursor: pointer;"
+                          onclick="window.location.href='profile.html'"></span>
+                    <button id="navbar-logout-btn" 
+                            style="padding: 0.4rem 0.8rem; background: var(--danger-color); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; transition: all 0.3s ease;"
+                            onclick="NavbarAuth.logout()"
+                            onmouseover="this.style.opacity='0.8'"
+                            onmouseout="this.style.opacity='1'">
+                        登出
+                    </button>
+                </div>
+            </li>
+        `;
+        
+        navbar.insertAdjacentHTML('beforeend', userInfoHTML);
+        
+        // 更新使用者資訊
+        this.updateUserInfo();
+    },
+
+    /**
+     * 更新使用者資訊顯示
+     */
+    updateUserInfo() {
+        // 取得當前使用者
+        let currentUser = null;
+        
+        if (typeof GoogleAuth !== 'undefined') {
+            currentUser = GoogleAuth.getCurrentUser();
+        } else if (typeof GameMBTI !== 'undefined') {
+            currentUser = GameMBTI.getCurrentUser();
+        } else {
+            // fallback
+            const userStr = localStorage.getItem('currentUser');
+            if (userStr) {
+                try {
+                    currentUser = JSON.parse(userStr);
+                } catch (e) {
+                    console.error('[NavbarAuth] 解析使用者資料失敗:', e);
+                }
+            }
+        }
+        
+        const userInfoEl = document.getElementById('navbar-user-info');
+        const avatarEl = document.getElementById('navbar-user-avatar');
+        const nameEl = document.getElementById('navbar-user-name');
+        
+        if (currentUser && userInfoEl) {
+            // 顯示使用者資訊
+            userInfoEl.style.display = 'block';
+            
+            if (avatarEl && currentUser.picture) {
+                avatarEl.src = currentUser.picture;
+            }
+            
+            if (nameEl && currentUser.username) {
+                nameEl.textContent = currentUser.username;
+            }
+        } else if (userInfoEl) {
+            // 隱藏使用者資訊
+            userInfoEl.style.display = 'none';
+        }
+    },
+
+    /**
+     * 登出
+     */
+    logout() {
+        if (!confirm('確定要登出嗎？')) {
+            return;
+        }
+        
+        console.log('[NavbarAuth] 使用者登出');
+        
+        // 清除 localStorage
+        localStorage.removeItem('currentUser');
+        
+        // Google Sign-Out
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+            google.accounts.id.disableAutoSelect();
+        }
+        
+        // 如果有 GoogleAuth，使用它的登出
+        if (typeof GoogleAuth !== 'undefined' && GoogleAuth.logout) {
+            GoogleAuth.logout();
+        } else {
+            // 否則直接重新載入頁面
+            window.location.href = 'index.html';
+        }
+    }
+};
+
+// 頁面載入時初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        NavbarAuth.init();
+    });
+} else {
+    NavbarAuth.init();
+}
+
+// 匯出給其他模組使用
+window.NavbarAuth = NavbarAuth;

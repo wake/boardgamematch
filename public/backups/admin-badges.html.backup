@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>徽章管理 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 1rem;
+        }
+        
+        .badge-list {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .badge-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        
+        .badge-icon-large {
+            font-size: 4rem;
+            text-align: center;
+        }
+        
+        .badge-info {
+            flex: 1;
+        }
+        
+        .badge-info h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-color);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .badge-rarity {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .badge-rarity.common { background: #95a5a6; color: white; }
+        .badge-rarity.rare { background: #3498db; color: white; }
+        .badge-rarity.epic { background: #9b59b6; color: white; }
+        .badge-rarity.legendary { background: #f39c12; color: white; }
+        .badge-rarity.mythic { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+        
+        .badge-info p {
+            margin: 0.5rem 0;
+            color: var(--text-light);
+        }
+        
+        .badge-condition {
+            display: inline-block;
+            background: var(--bg-light);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        
+        .badge-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-icon {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-edit {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .add-badge-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+        }
+        
+        .add-badge-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .btn-save {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+    <!-- 管理後台密碼驗證 -->
+    <script src="js/admin-password.js"></script>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <span>🎲</span>
+                MBTI × 桌遊配對
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+                <li><a href="admin.html" class="active">管理後台</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 頁首 -->
+        <div class="admin-header">
+            <h2 style="margin: 0 0 0.5rem 0;">🏆 成就徽章管理</h2>
+            <p style="margin: 0; opacity: 0.9;">管理所有成就徽章的設定與解鎖條件</p>
+        </div>
+
+        <!-- 統計資訊 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--primary-color);" id="total-badges">-</div>
+                <div style="color: var(--text-light);">總徽章數</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #f39c12;" id="legendary-count">-</div>
+                <div style="color: var(--text-light);">傳說徽章</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #9b59b6;" id="epic-count">-</div>
+                <div style="color: var(--text-light);">史詩徽章</div>
+            </div>
+        </div>
+
+        <!-- 徽章列表 -->
+        <div class="badge-list" id="badge-list">
+            <!-- 動態插入 -->
+        </div>
+    </div>
+
+    <!-- 新增/編輯徽章彈窗 -->
+    <div class="modal" id="badge-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">新增徽章</h2>
+                <button class="close-btn" onclick="closeModal()">✕</button>
+            </div>
+            
+            <form id="badge-form" onsubmit="saveBadge(event)">
+                <div class="form-group">
+                    <label>徽章圖示 Emoji</label>
+                    <input type="text" id="badge-icon" placeholder="🎮" maxlength="2" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>中文名稱</label>
+                        <input type="text" id="badge-name-zh" placeholder="桌遊入門" required>
+                    </div>
+                    <div class="form-group">
+                        <label>英文名稱</label>
+                        <input type="text" id="badge-name-en" placeholder="Beginner" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="badge-description" placeholder="新增 3 款桌遊" required></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>稀有度</label>
+                        <select id="badge-rarity" required>
+                            <option value="common">普通 (Common)</option>
+                            <option value="rare">稀有 (Rare)</option>
+                            <option value="epic">史詩 (Epic)</option>
+                            <option value="legendary">傳說 (Legendary)</option>
+                            <option value="mythic">神話 (Mythic)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>解鎖類型</label>
+                        <select id="badge-unlock-type" required>
+                            <option value="games_count">遊戲數量</option>
+                            <option value="votes_count">投票次數</option>
+                            <option value="streak_days">連續登入</option>
+                            <option value="special">特殊條件</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>解鎖數值</label>
+                    <input type="number" id="badge-unlock-value" placeholder="3" min="1" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="badge-is-limited">
+                        限定徽章（活動限定）
+                    </label>
+                </div>
+                
+                <input type="hidden" id="badge-id">
+                
+                <button type="submit" class="btn-save">儲存徽章</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 新增按鈕 -->
+    <button class="add-badge-btn" onclick="openModal()" title="新增徽章">+</button>
+
+    <script src="js/app.js"></script>
+<script src="js/navbar-auth.js"></script>
+    <script>
+        let currentEditingId = null;
+
+        // 載入徽章列表
+        async function loadBadges() {
+            try {
+                const badges = await GameMBTI.getAllAchievements();
+                
+                // 更新統計
+                document.getElementById('total-badges').textContent = badges.length;
+                document.getElementById('legendary-count').textContent = badges.filter(b => b.rarity === 'legendary').length;
+                document.getElementById('epic-count').textContent = badges.filter(b => b.rarity === 'epic').length;
+                
+                // 渲染列表
+                const container = document.getElementById('badge-list');
+                container.innerHTML = badges.map(badge => `
+                    <div class="badge-card">
+                        <div class="badge-icon-large">${badge.icon}</div>
+                        <div class="badge-info">
+                            <h3>
+                                ${badge.name_zh}
+                                <span class="badge-rarity ${badge.rarity}">${getRarityName(badge.rarity)}</span>
+                                ${badge.is_limited ? '<span style="background: #e74c3c; color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.85rem;">限定</span>' : ''}
+                            </h3>
+                            <p>${badge.description}</p>
+                            <span class="badge-condition">
+                                ${getConditionText(badge.unlock_type, badge.unlock_value)}
+                            </span>
+                        </div>
+                        <div class="badge-actions">
+                            <button class="btn-icon btn-edit" onclick="editBadge('${badge.id}')" title="編輯">✏️</button>
+                            <button class="btn-icon btn-delete" onclick="deleteBadge('${badge.id}', '${badge.name_zh}')" title="刪除">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading badges:', error);
+                alert('載入徽章時發生錯誤');
+            }
+        }
+
+        // 獲取稀有度名稱
+        function getRarityName(rarity) {
+            const names = {
+                'common': '普通',
+                'rare': '稀有',
+                'epic': '史詩',
+                'legendary': '傳說',
+                'mythic': '神話'
+            };
+            return names[rarity] || rarity;
+        }
+
+        // 獲取條件文字
+        function getConditionText(type, value) {
+            const texts = {
+                'games_count': `新增 ${value} 款遊戲`,
+                'votes_count': `投票 ${value} 次`,
+                'streak_days': `連續登入 ${value} 天`,
+                'special': '特殊條件'
+            };
+            return texts[type] || `${value}`;
+        }
+
+        // 開啟彈窗
+        function openModal(badgeId = null) {
+            currentEditingId = badgeId;
+            document.getElementById('modal-title').textContent = badgeId ? '編輯徽章' : '新增徽章';
+            
+            if (badgeId) {
+                loadBadgeData(badgeId);
+            } else {
+                document.getElementById('badge-form').reset();
+                document.getElementById('badge-id').value = '';
+            }
+            
+            document.getElementById('badge-modal').classList.add('active');
+        }
+
+        // 關閉彈窗
+        function closeModal() {
+            document.getElementById('badge-modal').classList.remove('active');
+            currentEditingId = null;
+        }
+
+        // 載入徽章資料
+        async function loadBadgeData(badgeId) {
+            try {
+                const badges = await GameMBTI.getAllAchievements();
+                const badge = badges.find(b => b.id === badgeId);
+                
+                if (badge) {
+                    document.getElementById('badge-id').value = badge.id;
+                    document.getElementById('badge-icon').value = badge.icon;
+                    document.getElementById('badge-name-zh').value = badge.name_zh;
+                    document.getElementById('badge-name-en').value = badge.name_en;
+                    document.getElementById('badge-description').value = badge.description;
+                    document.getElementById('badge-rarity').value = badge.rarity;
+                    document.getElementById('badge-unlock-type').value = badge.unlock_type;
+                    document.getElementById('badge-unlock-value').value = badge.unlock_value;
+                    document.getElementById('badge-is-limited').checked = badge.is_limited || false;
+                }
+            } catch (error) {
+                console.error('Error loading badge data:', error);
+            }
+        }
+
+        // 編輯徽章
+        function editBadge(badgeId) {
+            openModal(badgeId);
+        }
+
+        // 儲存徽章
+        async function saveBadge(event) {
+            event.preventDefault();
+            
+            const badgeId = document.getElementById('badge-id').value;
+            const badgeData = {
+                icon: document.getElementById('badge-icon').value,
+                name_zh: document.getElementById('badge-name-zh').value,
+                name_en: document.getElementById('badge-name-en').value,
+                description: document.getElementById('badge-description').value,
+                rarity: document.getElementById('badge-rarity').value,
+                unlock_type: document.getElementById('badge-unlock-type').value,
+                unlock_value: parseInt(document.getElementById('badge-unlock-value').value),
+                is_limited: document.getElementById('badge-is-limited').checked
+            };
+            
+            try {
+                if (badgeId) {
+                    // 更新
+                    const response = await fetch(`tables/achievements/${badgeId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(badgeData)
+                    });
+                    
+                    if (!response.ok) throw new Error('更新失敗');
+                    alert('徽章更新成功！');
+                } else {
+                    // 新增
+                    badgeData.id = 'badge_' + Date.now();
+                    badgeData.created_at = Date.now();
+                    
+                    const response = await fetch('tables/achievements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(badgeData)
+                    });
+                    
+                    if (!response.ok) throw new Error('新增失敗');
+                    alert('徽章新增成功！');
+                }
+                
+                closeModal();
+                loadBadges();
+                
+            } catch (error) {
+                console.error('Error saving badge:', error);
+                alert('儲存徽章時發生錯誤：' + error.message);
+            }
+        }
+
+        // 刪除徽章
+        async function deleteBadge(badgeId, badgeName) {
+            if (!confirm(`確定要刪除「${badgeName}」徽章嗎？\n\n注意：此操作無法復原！`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`tables/achievements/${badgeId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('刪除失敗');
+                
+                alert('徽章已刪除！');
+                loadBadges();
+                
+            } catch (error) {
+                console.error('Error deleting badge:', error);
+                alert('刪除徽章時發生錯誤：' + error.message);
+            }
+        }
+
+        // 點擊彈窗外部關閉
+        document.getElementById('badge-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // 初始化
+        loadBadges();
+    </script>
+</body>
+</html>

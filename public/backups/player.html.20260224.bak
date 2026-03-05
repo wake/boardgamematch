@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>玩家檔案 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/gamification.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        /* 玩家檔案頁面樣式 */
+        .player-hero {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 2rem;
+        }
+        .player-hero-banner {
+            height: 8px;
+            border-radius: 1rem 1rem 0 0;
+        }
+        .player-hero-body {
+            padding: 2rem;
+        }
+        .player-avatar-wrap {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 3px solid var(--primary-color);
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+        .player-avatar-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        /* 遊戲清單網格 */
+        .game-list-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        @media (max-width: 900px) {
+            .game-list-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .game-list {
+            background: var(--card-bg);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-md);
+        }
+        .game-list-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        /* 遊戲標籤 */
+        .game-tag {
+            display: inline-flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 0 !important;
+            text-align: center !important;
+        }
+        .game-tag .gn-tag-zh {
+            display: block !important;
+            font-size: 0.88em !important;
+            font-weight: 600 !important;
+            line-height: 1.3 !important;
+            text-align: center !important;
+        }
+        .game-tag .gn-tag-en {
+            display: block !important;
+            font-size: 0.72em !important;
+            font-weight: 400 !important;
+            opacity: 0.82 !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+        }
+        /* 味覺重疊區 */
+        .overlap-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+        }
+        /* 共同遊戲 tag */
+        .common-game-tag {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.4rem 0.75rem;
+            background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.1) 100%);
+            border: 1px solid rgba(34,197,94,0.3);
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            gap: 0;
+        }
+        /* 社群連結 */
+        .social-link-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-color);
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        /* 品味條 */
+        .similarity-bar-wrap {
+            background: var(--border-color);
+            height: 10px;
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        .similarity-bar-fill {
+            height: 100%;
+            border-radius: 1rem;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transition: width 0.8s ease;
+        }
+        /* 空狀態 */
+        .list-empty {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 1.5rem 0;
+        }
+        /* 手機版 */
+        @media (max-width: 600px) {
+            .player-hero-body {
+                padding: 1.25rem;
+            }
+        }
+        /* ── 評價 Overlay ── */
+        .rating-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.82); z-index: 8000;
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 1.5rem 1rem; gap: 1rem;
+        }
+        .rating-overlay.open { display: flex; }
+        .ro-header { width:100%; max-width:480px; display:flex; justify-content:space-between; align-items:flex-start; }
+        .ro-close-btn {
+            background: rgba(255,255,255,0.15); border:none; color:#fff;
+            width:2.4rem; height:2.4rem; border-radius:50%; font-size:1.1rem;
+            cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+            transition: background 0.15s;
+        }
+        .ro-close-btn:hover { background: rgba(255,255,255,0.25); }
+        .ro-card-area {
+            position:relative; width:100%; max-width:480px;
+            min-height:320px; display:flex; align-items:center; justify-content:center;
+        }
+        /* 遊戲卡（與 recommend.html 完全一致） */
+        .ro-game-card {
+            background: #faf9f6; border-radius:1.25rem; overflow:hidden;
+            width:100%; max-width:450px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            position:absolute; border:2px solid #e8e6e1;
+            transition: transform 0.18s ease, opacity 0.18s ease;
+            will-change: transform, opacity;
+        }
+        .ro-game-card.current { transform:scale(1) translateY(0);    opacity:1; pointer-events:auto;  z-index:1; }
+        .ro-game-card.next    { transform:scale(0.93) translateY(10px); opacity:0; pointer-events:none; z-index:0; }
+        @keyframes roSwipeRight { to { transform:translateX(140%) rotate(15deg);  opacity:0; } }
+        @keyframes roSwipeLeft  { to { transform:translateX(-140%) rotate(-15deg); opacity:0; } }
+        @keyframes roSwipeUp    { to { transform:translateY(-120%) scale(0.8);    opacity:0; } }
+        @keyframes roCardIn     { from { transform:scale(0.93) translateY(10px); opacity:0; } to { transform:scale(1) translateY(0); opacity:1; } }
+        .ro-game-card.swipe-right { animation:roSwipeRight 0.22s ease-in  forwards; pointer-events:none; }
+        .ro-game-card.swipe-left  { animation:roSwipeLeft  0.22s ease-in  forwards; pointer-events:none; }
+        .ro-game-card.swipe-up    { animation:roSwipeUp    0.22s ease-in  forwards; pointer-events:none; }
+        .ro-game-card.card-enter  { animation:roCardIn     0.22s ease-out forwards; }
+        .ro-card-cover { position:relative; width:calc(100% - 1.5rem); margin:0.75rem auto 0; height:200px; overflow:hidden; border-radius:0.9rem; }
+        .ro-cover-bg   { position:absolute; inset:-10px; background-size:cover; background-position:center; filter:blur(14px) brightness(0.55); transform:scale(1.08); }
+        .ro-cover-img  { position:relative; z-index:1; width:100%; height:100%; object-fit:contain; padding:10px; box-sizing:border-box; }
+        .ro-card-body    { padding:1.25rem 1.5rem 1.5rem; }
+        .ro-card-body-nc { padding:1.5rem; }
+        .ro-game-name    { text-align:center; margin-bottom:1.5rem; min-height:3rem; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.3rem; }
+        .ro-game-name .gn-zh { font-size:1.6rem; font-weight:700; line-height:1.2; }
+        .ro-game-name .gn-en { font-size:1rem; color:#888; font-weight:400; }
+        /* 評分按鈕（與 recommend.html 完全一致） */
+        .ro-rating-buttons { display:flex; justify-content:center; gap:0.75rem; }
+        .ro-btn {
+            padding:0.6rem 1.25rem; font-size:1.35rem;
+            border:none; border-radius:0.5rem; cursor:pointer;
+            background:var(--bg-color); box-shadow:0 2px 4px rgba(0,0,0,0.08);
+            transition: all 0.2s ease;
+        }
+        .ro-btn:hover  { transform:translateY(-2px); box-shadow:0 4px 8px rgba(0,0,0,0.12); }
+        .ro-btn:active { transform:translateY(0); }
+        .ro-done-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:8001; align-items:center; justify-content:center; padding:1rem; }
+        .ro-done-overlay.open { display:flex; }
+        /* 主題清單卡片（與 my-collections.html 一致）*/
+        .pc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+        .pc-card {
+            background: var(--bg-color);
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            transition: all 0.2s ease;
+        }
+        .pc-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        .pc-card-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 0.35rem;
+            color: var(--text-color);
+        }
+        .pc-card-desc {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+        .pc-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.28rem;
+            margin-bottom: 0.5rem;
+        }
+        .pc-tag {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 0.18rem 0.55rem;
+            font-size: 0.76rem;
+            color: var(--text-color);
+        }
+        .pc-tag.extra { opacity: 0.6; font-style: italic; }
+        .pc-count {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-top: 0.3rem;
+        }
+        /* 未找到玩家 */
+        .not-found-wrap {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 載入中 -->
+        <div id="loading-state" style="text-align:center; padding:4rem 2rem;">
+            <div class="simple-hourglass large">
+                <span class="hourglass-icon-simple combined">⏳</span>
+                <span class="hourglass-text-simple">載入玩家資料中...</span>
+            </div>
+        </div>
+
+        <!-- 找不到玩家 -->
+        <div id="not-found-state" style="display:none;">
+            <div class="not-found-wrap">
+                <div style="font-size:4rem; margin-bottom:1rem;">🔍</div>
+                <h2 style="margin-bottom:0.75rem;">找不到這位玩家</h2>
+                <p style="color:var(--text-light); margin-bottom:2rem;">該玩家可能不存在或已刪除帳號</p>
+                <a href="explore.html" class="btn btn-primary">← 回到玩家列表</a>
+            </div>
+        </div>
+
+        <!-- 玩家資料 -->
+        <div id="player-content" style="display:none;">
+
+            <!-- 麵包屑 -->
+            <div style="margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:var(--text-light);">
+                <a href="explore.html" style="color:var(--primary-color); text-decoration:none;">👥 玩家列表</a>
+                <span>›</span>
+                <span id="breadcrumb-name">玩家</span>
+            </div>
+
+            <!-- 玩家英雄區 -->
+            <div class="player-hero">
+                <div class="player-hero-banner" id="hero-banner"></div>
+                <div class="player-hero-body">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+                        <!-- 左側：頭像 + 基本資訊 -->
+                        <div style="display:flex; align-items:center; gap:1.25rem; flex:1; min-width:240px;">
+                            <div class="player-avatar-wrap" id="player-avatar-wrap">
+                                <span id="player-avatar-emoji">👤</span>
+                            </div>
+                            <div>
+                                <h1 style="font-size:1.8rem; margin-bottom:0.4rem;" id="player-name">-</h1>
+                                <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; margin-bottom:0.5rem;">
+                                    <span id="player-mbti-badge" style="background:linear-gradient(135deg,var(--primary-color),var(--secondary-color));color:white;padding:0.3rem 0.9rem;border-radius:2rem;font-weight:600;font-size:0.95rem;">-</span>
+                                    <span id="player-mbti-name" style="color:var(--text-light); font-size:0.95rem;">-</span>
+                                    <span id="player-level-badge" class="level-badge">Lv. 1</span>
+                                </div>
+                                <div style="color:var(--text-light); font-size:0.85rem;" id="player-joined">加入於 -</div>
+                                <!-- 社群連結 -->
+                                <div id="player-social-inline" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 右側：與我的相似度（登入才顯示） -->
+                        <div id="similarity-section" style="display:none; min-width:200px; text-align:center; background:var(--bg-color); border-radius:0.75rem; padding:1.25rem;">
+                            <div style="font-size:2rem; font-weight:bold; color:var(--primary-color);" id="similarity-score">-</div>
+                            <div style="font-size:0.85rem; color:var(--text-light); margin-bottom:0.5rem;">與你的品味相似度</div>
+                            <div class="similarity-bar-wrap">
+                                <div class="similarity-bar-fill" id="similarity-bar" style="width:0%"></div>
+                            </div>
+                            <div style="font-size:0.8rem; color:var(--text-light); margin-top:0.5rem;">
+                                共識 <span id="sim-agreement">0</span> | 分歧 <span id="sim-disagreement">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- XP 進度條 -->
+                    <div style="margin-top:1.5rem;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.88rem; color:var(--text-light); margin-bottom:0.4rem;">
+                            <span>經驗值</span>
+                            <span id="player-xp-text" style="color:var(--primary-color); font-weight:600;">0 XP</span>
+                        </div>
+                        <div style="background:var(--border-color); height:8px; border-radius:1rem; overflow:hidden;">
+                            <div id="player-xp-bar" style="background:linear-gradient(90deg,var(--primary-color),var(--secondary-color));height:100%;width:0%;transition:width 0.8s ease;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 個人簡介 -->
+                    <div id="player-bio-section" style="display:none; margin-top:1.25rem;">
+                        <p id="player-bio-text" style="color:var(--text-color); font-size:0.95rem; line-height:1.6; padding:0.6rem 0.8rem; background:var(--bg-color); border-radius:0.5rem; border-left:3px solid var(--primary-color); margin:0;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 品味重疊（登入才顯示） -->
+            <div id="overlap-section" style="display:none;" class="overlap-card">
+                <h2 style="font-size:1.4rem; margin-bottom:1rem;">🤝 你們都喜歡的遊戲</h2>
+                <div id="common-games-list" class="game-tags-container"></div>
+            </div>
+
+            <!-- 遊戲清單 -->
+            <section>
+                <div class="game-list-grid">
+                    <!-- 喜歡的桌遊 -->
+                    <div class="game-list">
+                        <h2 class="game-list-title">😍 喜歡的桌遊</h2>
+                        <div id="player-liked-games">
+                            <div class="simple-hourglass">
+                                <span class="hourglass-icon-simple combined">⏳</span>
+                                <span class="hourglass-text-simple">載入中...</span>
+                            </div>
+                        </div>
+                        <div id="player-liked-more" style="text-align:right; margin-top:0.5rem;"></div>
+                    </div>
+
+                    <!-- 不喜歡的桌遊 -->
+                    <div class="game-list">
+                        <h2 class="game-list-title">😕 不喜歡的桌遊</h2>
+                        <div id="player-disliked-games">
+                            <div class="simple-hourglass">
+                                <span class="hourglass-icon-simple combined">⏳</span>
+                                <span class="hourglass-text-simple">載入中...</span>
+                            </div>
+                        </div>
+                        <div id="player-disliked-more" style="text-align:right; margin-top:0.5rem;"></div>
+                    </div>
+
+                    <!-- 待玩清單 -->
+                    <div class="game-list">
+                        <h2 class="game-list-title">📋 待玩清單</h2>
+                        <div id="player-wishlist">
+                            <div class="simple-hourglass">
+                                <span class="hourglass-icon-simple combined">⏳</span>
+                                <span class="hourglass-text-simple">載入中...</span>
+                            </div>
+                        </div>
+                        <div id="player-wishlist-more" style="text-align:right; margin-top:0.5rem;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 主題清單（公開才顯示） -->
+            <section id="player-collections-section" style="display:none; margin-bottom:2rem;">
+                <div style="background:var(--card-bg); border-radius:1rem; padding:1.5rem 2rem; box-shadow:var(--shadow-md);">
+                    <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:0.4rem;">📚 主題清單</h2>
+                    <p style="color:var(--text-light); font-size:0.85rem; margin-bottom:1.25rem;">點「開始評價」可對清單內的遊戲一一按讚或倒讚</p>
+                    <div id="player-collections-grid" class="pc-grid"></div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- ══ 刷卡評價 Overlay ══════════════════════════════════════════ -->
+    <div id="rating-overlay" class="rating-overlay">
+
+        <!-- 標頭列 -->
+        <div class="ro-header">
+            <div>
+                <div id="ro-title"    style="color:#fff; font-size:1.05rem; font-weight:700; margin-bottom:0.2rem;"></div>
+                <div id="ro-progress" style="color:rgba(255,255,255,0.6); font-size:0.85rem;"></div>
+            </div>
+            <button class="ro-close-btn" onclick="closeRatingOverlay()">✕</button>
+        </div>
+
+        <!-- 卡片堆疊區 -->
+        <div class="ro-card-area" id="ro-card-area">
+            <!-- 卡片由 JS 動態插入 -->
+        </div>
+
+        <!-- 底部提示 -->
+        <div style="color:rgba(255,255,255,0.45); font-size:0.78rem;">已評價過的遊戲會自動跳過</div>
+    </div>
+
+    <!-- 評價完成彈窗 -->
+    <div id="rating-done-overlay" class="ro-done-overlay">
+        <div style="background:var(--card-bg); border-radius:1.25rem; padding:2.5rem 2rem;
+                    max-width:380px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+            <div style="font-size:3rem; margin-bottom:0.75rem;">🎉</div>
+            <h3 style="font-size:1.3rem; margin-bottom:0.5rem;">評價完成！</h3>
+            <p id="rd-summary" style="color:var(--text-light); font-size:0.9rem; margin-bottom:1.5rem;"></p>
+            <button onclick="closeRatingDone()" class="btn btn-primary" style="width:100%;">確認</button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script>
+    // ===== 玩家公開檔案頁 =====
+
+    const MBTI_INFO = {
+        'INTJ': { name: '建築師', color: '#667eea' },
+        'INTP': { name: '邏輯學家', color: '#f093fb' },
+        'ENTJ': { name: '指揮官', color: '#4facfe' },
+        'ENTP': { name: '辯論家', color: '#43e97b' },
+        'INFJ': { name: '提倡者', color: '#fa709a' },
+        'INFP': { name: '調停者', color: '#a8edea' },
+        'ENFJ': { name: '主人公', color: '#ffecd2' },
+        'ENFP': { name: '競選者', color: '#ff9a9e' },
+        'ISTJ': { name: '物流師', color: '#fbc2eb' },
+        'ISFJ': { name: '守護者', color: '#fdcbf1' },
+        'ESTJ': { name: '總經理', color: '#a1c4fd' },
+        'ESFJ': { name: '執政官', color: '#ffecd2' },
+        'ISTP': { name: '鑑賞家', color: '#d299c2' },
+        'ISFP': { name: '探險家', color: '#fbc7d4' },
+        'ESTP': { name: '企業家', color: '#fad0c4' },
+        'ESFP': { name: '表演者', color: '#ffeaa7' }
+    };
+
+    const SOCIAL_ICONS = {
+        discord: '💬', line: '📱', instagram: '📷',
+        facebook: '📘', telegram: '✈️', threads: '🧵'
+    };
+    const SOCIAL_LABELS = {
+        discord: 'Discord', line: 'LINE', instagram: 'Instagram',
+        facebook: 'Facebook', telegram: 'Telegram', threads: 'Threads'
+    };
+
+    const MAX_DISPLAY = 8;
+
+    let targetUser = null;
+    let currentUser = null;
+
+    // 從 URL 取得玩家 ID
+    function getPlayerIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('id');
+    }
+
+    // 取得當前登入使用者（與 profile.html / my-collections.html 相同邏輯）
+    async function loadCurrentUser() {
+        // 1. currentUser JSON object
+        try {
+            const u = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            if (u?.id) {
+                const r = await fetch(`tables/users/${u.id}`);
+                if (r.ok) return await r.json();
+            }
+        } catch(e) {}
+
+        // 2. googleUser → 查 DB by google_id
+        try {
+            const g = JSON.parse(localStorage.getItem('googleUser') || 'null');
+            if (g?.sub) {
+                const r = await fetch('tables/users?limit=500');
+                if (r.ok) {
+                    const d = await r.json();
+                    const found = (d.data || []).find(u => u.google_id === g.sub);
+                    if (found) {
+                        const r2 = await fetch(`tables/users/${found.id}`);
+                        if (r2.ok) return await r2.json();
+                    }
+                }
+            }
+        } catch(e) {}
+
+        return null;
+    }
+
+    // 取得目標玩家資料
+    async function loadTargetUser(playerId) {
+        const res = await fetch(`tables/users/${playerId}`);
+        if (!res.ok) throw new Error('找不到玩家');
+        return await res.json();
+    }
+
+    // 計算相似度
+    function calcSimilarity(userA, userB) {
+        const likedA = new Set(userA.liked_games || []);
+        const likedB = new Set(userB.liked_games || []);
+        const dislikedA = new Set(userA.disliked_games || []);
+        const dislikedB = new Set(userB.disliked_games || []);
+
+        let agreement = 0, disagreement = 0;
+
+        likedA.forEach(g => {
+            if (likedB.has(g)) agreement++;
+            else if (dislikedB.has(g)) disagreement++;
+        });
+        dislikedA.forEach(g => {
+            if (dislikedB.has(g)) agreement++;
+            else if (likedB.has(g)) disagreement++;
+        });
+
+        const total = agreement + disagreement;
+        const score = total > 0 ? Math.round(((agreement - disagreement) / total) * 100) : 0;
+        return { score, agreement, disagreement };
+    }
+
+    // 渲染遊戲清單
+    function renderGameList(games, containerId, moreId, type) {
+        const container = document.getElementById(containerId);
+        const moreEl = document.getElementById(moreId);
+        if (!container) return;
+
+        if (!games || games.length === 0) {
+            container.innerHTML = `<div class="list-empty">尚未新增任何遊戲</div>`;
+            moreEl.innerHTML = '';
+            return;
+        }
+
+        const display = games.slice(0, MAX_DISPLAY);
+        let tagClass = 'game-tag';
+        let tagStyle = '';
+        if (type === 'disliked') tagStyle = 'background:linear-gradient(135deg,#9ca3af 0%,#6b7280 100%);opacity:0.75;';
+        if (type === 'wishlist') tagStyle = 'background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);';
+
+        const html = '<div class="game-tags-container">' +
+            display.map(g => `<div class="${tagClass}" style="${tagStyle}">${(typeof GameNames !== 'undefined' && GameNames.formatTag) ? GameNames.formatTag(g) : g}</div>`).join('') +
+            '</div>';
+        container.innerHTML = html;
+
+        if (games.length > MAX_DISPLAY) {
+            moreEl.innerHTML = `<a href="games-list.html?user=${encodeURIComponent(targetUser.id)}&type=${type}" 
+                style="font-size:0.85rem; color:var(--primary-color); text-decoration:none; cursor:pointer;">
+                查看完整清單 (${games.length} 款) →</a>`;
+        } else {
+            moreEl.innerHTML = '';
+        }
+    }
+
+    // 渲染共同遊戲
+    function renderCommonGames(commonGames) {
+        const container = document.getElementById('common-games-list');
+        if (!container) return;
+        if (commonGames.length === 0) {
+            container.innerHTML = '<div class="list-empty">你們還沒有共同喜歡的遊戲</div>';
+            return;
+        }
+        container.innerHTML = commonGames.map(g => {
+            const formatted = (typeof GameNames !== 'undefined' && GameNames.formatTag) ? GameNames.formatTag(g) : g;
+            return `<div class="common-game-tag">🎲 ${formatted}</div>`;
+        }).join(' ');
+    }
+
+    // 主渲染函式
+    async function render() {
+        const playerId = getPlayerIdFromUrl();
+        if (!playerId) {
+            showNotFound();
+            return;
+        }
+
+        try {
+            // 平行載入
+            [targetUser, currentUser] = await Promise.all([
+                loadTargetUser(playerId),
+                loadCurrentUser()
+            ]);
+        } catch (e) {
+            showNotFound();
+            return;
+        }
+
+        // 更新 title
+        const name = targetUser.username || '匿名玩家';
+        document.title = `${name} 的檔案 - MBTI × 桌遊配對`;
+        document.getElementById('breadcrumb-name').textContent = name;
+        document.getElementById('player-name').textContent = name;
+
+        // 頭像
+        const avatarWrap = document.getElementById('player-avatar-wrap');
+        if (targetUser.avatar_url) {
+            avatarWrap.innerHTML = `<img src="${targetUser.avatar_url}" alt="${name}">`;
+        } else {
+            avatarWrap.innerHTML = `<span style="font-size:2.5rem;">👤</span>`;
+        }
+
+        // MBTI
+        const mbti = targetUser.mbti_type || '未設定';
+        const mbtiInfo = MBTI_INFO[mbti] || { name: '未知', color: '#8b6f47' };
+        document.getElementById('hero-banner').style.background =
+            `linear-gradient(90deg, ${mbtiInfo.color}, var(--secondary-color))`;
+        document.getElementById('player-mbti-badge').textContent = mbti;
+        document.getElementById('player-mbti-name').textContent = mbtiInfo.name;
+
+        // 等級
+        const level = targetUser.level || 1;
+        document.getElementById('player-level-badge').textContent = `Lv. ${level}`;
+
+        // XP
+        const xp = targetUser.xp || 0;
+        const xpToNext = level * 100;
+        const xpProgress = Math.min(100, (xp % xpToNext) / xpToNext * 100);
+        document.getElementById('player-xp-text').textContent = `${xp} XP`;
+        document.getElementById('player-xp-bar').style.width = `${xpProgress}%`;
+
+        // 加入日期
+        if (targetUser.created_at) {
+            const d = new Date(targetUser.created_at);
+            document.getElementById('player-joined').textContent =
+                `加入於 ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
+        }
+
+        // 社群連結
+        const socialLinks = targetUser.social_links || {};
+        const inlineEl = document.getElementById('player-social-inline');
+        let socialHtml = '';
+        for (const [platform, value] of Object.entries(socialLinks)) {
+            if (value && value.trim()) {
+                socialHtml += `<span title="${SOCIAL_LABELS[platform] || platform}: ${value}" 
+                    style="cursor:default; font-size:1.2rem;">${SOCIAL_ICONS[platform] || '🔗'}</span>`;
+            }
+        }
+        inlineEl.innerHTML = socialHtml;
+
+        // 個人簡介
+        if (targetUser.bio && targetUser.bio.trim()) {
+            document.getElementById('player-bio-section').style.display = 'block';
+            document.getElementById('player-bio-text').textContent = targetUser.bio;
+        }
+
+        // 相似度（需登入且非本人）
+        if (currentUser && currentUser.id !== targetUser.id) {
+            const sim = calcSimilarity(currentUser, targetUser);
+            document.getElementById('similarity-section').style.display = 'block';
+            const scoreEl = document.getElementById('similarity-score');
+            scoreEl.textContent = `${sim.score >= 0 ? '+' : ''}${sim.score}`;
+            scoreEl.style.color = sim.score >= 0 ? 'var(--primary-color)' : '#ef4444';
+            document.getElementById('similarity-bar').style.width =
+                `${Math.max(0, Math.min(100, 50 + sim.score / 2))}%`;
+            document.getElementById('sim-agreement').textContent = sim.agreement;
+            document.getElementById('sim-disagreement').textContent = sim.disagreement;
+
+            // 共同喜愛
+            const commonGames = (currentUser.liked_games || []).filter(g =>
+                (targetUser.liked_games || []).includes(g)
+            );
+            if (commonGames.length > 0) {
+                document.getElementById('overlap-section').style.display = 'block';
+                renderCommonGames(commonGames);
+            }
+        }
+
+        // 遊戲清單
+        renderGameList(targetUser.liked_games, 'player-liked-games', 'player-liked-more', 'liked');
+        renderGameList(targetUser.disliked_games, 'player-disliked-games', 'player-disliked-more', 'disliked');
+        renderGameList(targetUser.wishlist, 'player-wishlist', 'player-wishlist-more', 'wishlist');
+
+        // 主題清單（從 user_collections 查詢，只顯示公開的）
+        loadPlayerCollections(targetUser.id);
+
+        // 顯示內容
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('player-content').style.display = 'block';
+    }
+
+    async function loadPlayerCollections(userId) {
+        try {
+            const r = await fetch('tables/user_collections?limit=200');
+            if (!r.ok) return;
+            const d = await r.json();
+            const cols = (d.data || [])
+                .filter(c => c.created_by === userId && c.is_public)
+                .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+            if (cols.length === 0) return;
+
+            document.getElementById('player-collections-section').style.display = 'block';
+            const grid = document.getElementById('player-collections-grid');
+            grid.className = 'pc-grid';
+            grid.innerHTML = cols.map(c => renderCollectionCard(c)).join('');
+        } catch(e) { /* silent */ }
+    }
+
+    function renderCollectionCard(c) {
+        const games = c.games || [];
+        const MAX = 6;
+        const visTags = games.slice(0, MAX);
+        const extraCount = games.length - visTags.length;
+        const tagsHtml = visTags.map(g =>
+            `<span class="pc-tag">${escHtml(g)}</span>`
+        ).join('') + (extraCount > 0 ? `<span class="pc-tag extra">+${extraCount} 款</span>` : '');
+
+        // 投票統計
+        let statsHtml = '';
+        if (c.play_count > 0) {
+            statsHtml = `<span class="pc-count">👥 ${c.play_count} 人評過</span>`;
+        }
+
+        // 判斷是否登入且可評價
+        const canRate = !!currentUser;
+        const isSelf  = currentUser && currentUser.id === (targetUser && targetUser.id);
+
+        // 計算此玩家已評過清單中幾款遊戲
+        let rateBtn;
+        if (!canRate) {
+            rateBtn = `<div style="font-size:0.78rem; color:var(--text-light); margin-top:0.65rem; text-align:center;">登入後可評價</div>`;
+        } else if (isSelf) {
+            rateBtn = `<div style="font-size:0.78rem; color:var(--text-light); margin-top:0.65rem; text-align:center;">自己的清單</div>`;
+        } else {
+            // 計算還有幾款未評
+            const alreadyRated = new Set([
+                ...(currentUser.liked_games    || []),
+                ...(currentUser.disliked_games || []),
+                ...(currentUser.wishlist        || [])
+            ]);
+            const unrated = games.filter(g => !alreadyRated.has(g));
+            if (unrated.length === 0 && games.length > 0) {
+                // 全部評完
+                rateBtn = `<div style="font-size:0.82rem; color:var(--primary-color); font-weight:600;
+                    margin-top:0.65rem; text-align:center;">✅ 已全部評價</div>`;
+            } else {
+                const label = unrated.length < games.length
+                    ? `🎮 繼續評價（剩 ${unrated.length} 款）`
+                    : `🎮 開始評價`;
+                rateBtn = `<button class="btn btn-primary" onclick="startCollectionRating('${c.id}')"
+                    style="font-size:0.8rem; padding:0.35rem 0.9rem; margin-top:0.65rem; width:100%;">
+                    ${label}
+                   </button>`;
+            }
+        }
+
+        return `
+        <div class="pc-card" id="pc-card-${c.id}">
+            <div class="pc-card-title">${escHtml(c.title)}</div>
+            ${c.description ? `<div class="pc-card-desc">${escHtml(c.description)}</div>` : ''}
+            <div class="pc-tags">${tagsHtml || '<span style="color:var(--border-color);font-size:0.8rem;">（清單為空）</span>'}</div>
+            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-top:0.3rem;">
+                <span class="pc-count">🎲 ${games.length} 款</span>
+                ${statsHtml}
+            </div>
+            ${rateBtn}
+        </div>`;
+    }
+
+    // ══ 刷卡評價邏輯 ════════════════════════════════════════════════
+    let ratingState = {
+        collection: null,   // 整份清單物件
+        queue: [],          // 待評價的遊戲名稱陣列
+        currentIdx: 0,      // 目前進度
+        results: { like: 0, dislike: 0, wishlist: 0 }
+    };
+    let isRating = false;   // 防止動畫期間重複點擊
+
+    async function startCollectionRating(collectionId) {
+        if (!currentUser) { alert('請先登入才能評價'); return; }
+
+        // 取得最新清單資料
+        let col;
+        try {
+            const r = await fetch(`tables/user_collections/${collectionId}`);
+            if (!r.ok) throw new Error();
+            col = await r.json();
+        } catch(e) {
+            showToastPC('❌ 無法載入清單，請稍後再試', true); return;
+        }
+
+        if (!col.games || col.games.length === 0) {
+            showToastPC('這份清單目前沒有遊戲'); return;
+        }
+
+        // 取得該使用者已評價過的紀錄（過濾重複）
+        const alreadyRated = new Set([
+            ...(currentUser.liked_games    || []),
+            ...(currentUser.disliked_games || []),
+            ...(currentUser.wishlist       || [])
+        ]);
+
+        // 還沒評價的遊戲才進佇列
+        const queue = col.games.filter(g => !alreadyRated.has(g));
+        if (queue.length === 0) {
+            showToastPC('✅ 你已評價過這份清單的所有遊戲！'); return;
+        }
+
+        ratingState = {
+            collection: col,
+            queue,
+            currentIdx: 0,
+            results: { like: 0, dislike: 0, wishlist: 0 }
+        };
+
+        showRatingOverlay();
+    }
+
+    async function showRatingOverlay() {
+        document.getElementById('rating-overlay').classList.add('open');
+        updateRatingHeader();
+        // 確保 GameNames 載入完畢（有圖片才顯示）
+        if (window.GameNames) await GameNames.load();
+        buildCurrentCard();
+        preloadNextCard();
+    }
+
+    function updateRatingHeader() {
+        const { collection, queue, currentIdx } = ratingState;
+        document.getElementById('ro-title').textContent    = `📚 ${collection.title}`;
+        document.getElementById('ro-progress').textContent = `${currentIdx + 1} / ${queue.length} 款`;
+    }
+
+    // 建立單張遊戲卡片 DOM（與 recommend.html buildGameCard 完全一致）
+    function buildRoCard(gameName, classes = []) {
+        const card = document.createElement('div');
+        card.className = ['ro-game-card', ...classes].join(' ');
+
+        const imageUrl = window.GameNames ? GameNames.getImageUrl(gameName) : null;
+        const coverHtml = imageUrl
+            ? `<div class="ro-card-cover">
+                   <div class="ro-cover-bg" style="background-image:url('${imageUrl}')"></div>
+                   <img class="ro-cover-img" src="${imageUrl}" alt="${gameName}" loading="eager"
+                        onerror="this.closest('.ro-card-cover').style.display='none'">
+               </div>`
+            : '';
+
+        const nameHtml = window.GameNames ? GameNames.formatCard(gameName) : `<span class="gn-zh">${gameName}</span>`;
+        const bodyClass = imageUrl ? 'ro-card-body' : 'ro-card-body-nc';
+
+        card.innerHTML = `
+            ${coverHtml}
+            <div class="${bodyClass}">
+                <div class="ro-game-name">${nameHtml}</div>
+                <div class="ro-rating-buttons">
+                    <button class="ro-btn" onclick="rateGame('like')"     title="喜歡">👍</button>
+                    <button class="ro-btn" onclick="rateGame('dislike')"  title="不喜歡">👎</button>
+                    <button class="ro-btn" onclick="rateGame('wishlist')" title="待玩清單">❓</button>
+                </div>
+            </div>`;
+        return card;
+    }
+
+    function buildCurrentCard() {
+        const area = document.getElementById('ro-card-area');
+        // 移除舊的 current 卡
+        area.querySelectorAll('.ro-game-card.current').forEach(el => el.remove());
+        const gameName = ratingState.queue[ratingState.currentIdx];
+        const card = buildRoCard(gameName, ['current']);
+        area.appendChild(card);
+    }
+
+    function preloadNextCard() {
+        const area = document.getElementById('ro-card-area');
+        area.querySelectorAll('.ro-game-card.next').forEach(el => el.remove());
+        const nextIdx = ratingState.currentIdx + 1;
+        if (nextIdx >= ratingState.queue.length) return;
+        const card = buildRoCard(ratingState.queue[nextIdx], ['next']);
+        area.insertBefore(card, area.firstChild); // 放底層
+    }
+
+    async function rateGame(vote) {
+        if (isRating) return;                                          // 防止重複點擊
+        if (ratingState.currentIdx >= ratingState.queue.length) return;
+
+        isRating = true;                                               // 鎖定
+
+        const { collection, queue, currentIdx } = ratingState;
+        const gameName = queue[currentIdx];
+
+        // 飛出動畫（與 recommend.html 一致）
+        const area    = document.getElementById('ro-card-area');
+        const current = area.querySelector('.ro-game-card.current');
+        if (current) {
+            const swipeClass = vote === 'like' ? 'swipe-right' : vote === 'dislike' ? 'swipe-left' : 'swipe-up';
+            current.classList.add(swipeClass);
+            current.classList.remove('current');
+        }
+
+        // 升起下一張
+        const next = area.querySelector('.ro-game-card.next');
+        if (next) {
+            next.classList.remove('next');
+            next.classList.add('current', 'card-enter');
+        }
+
+        ratingState.results[vote]++;
+        ratingState.currentIdx++;
+        updateRatingHeader();
+
+        // 後台儲存（非同步，不阻塞動畫）
+        saveVoteToUserAndXP(gameName, vote);
+        saveVoteToCollection(collection.id, gameName, vote);
+
+        setTimeout(() => {
+            // 移除飛走的卡
+            area.querySelectorAll('.ro-game-card.swipe-right, .ro-game-card.swipe-left, .ro-game-card.swipe-up')
+                .forEach(el => el.remove());
+
+            if (ratingState.currentIdx >= ratingState.queue.length) {
+                closeRatingOverlay();
+                showRatingDone();
+            } else {
+                preloadNextCard();
+            }
+            isRating = false;                                          // 解鎖
+        }, 230);
+    }
+
+    async function saveVoteToUserAndXP(gameName, vote) {
+        try {
+            // 1. 更新 users 的三個遊戲陣列
+            const r = await fetch(`tables/users/${currentUser.id}`);
+            if (!r.ok) return;
+            const fresh = await r.json();
+
+            const liked    = new Set(fresh.liked_games    || []);
+            const disliked = new Set(fresh.disliked_games || []);
+            const wishlist = new Set(fresh.wishlist       || []);
+
+            liked.delete(gameName); disliked.delete(gameName); wishlist.delete(gameName);
+            if (vote === 'like')     liked.add(gameName);
+            if (vote === 'dislike')  disliked.add(gameName);
+            if (vote === 'wishlist') wishlist.add(gameName);
+
+            await fetch(`tables/users/${currentUser.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    liked_games:    [...liked],
+                    disliked_games: [...disliked],
+                    wishlist:       [...wishlist]
+                })
+            });
+
+            currentUser.liked_games    = [...liked];
+            currentUser.disliked_games = [...disliked];
+            currentUser.wishlist       = [...wishlist];
+
+            // 2. 查 game_votes 防刷 XP
+            const isFirstRating = await checkAndWriteGameVotePC(gameName, vote);
+            if (isFirstRating && window.GameMBTI) {
+                await GameMBTI.addXP(currentUser.id, 10, `探索清單評價：${gameName}`);
+            }
+        } catch(e) {}
+    }
+
+    // 查詢 game_votes 是否已有此玩家對此遊戲的評價（同 recommend.html 邏輯）
+    async function checkAndWriteGameVotePC(gameName, vote) {
+        try {
+            const r = await fetch(`tables/game_votes?limit=5000`);
+            if (!r.ok) return true;
+            const d = await r.json();
+            const existing = (d.data || []).find(v =>
+                v.user_id === currentUser.id && v.game_name === gameName
+            );
+            if (existing) {
+                await fetch(`tables/game_votes/${existing.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vote_type: vote })
+                });
+                return false; // 曾評過，不給 XP
+            } else {
+                await fetch('tables/game_votes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: `gv_${currentUser.id.slice(-6)}_${Date.now()}`,
+                        user_id:   currentUser.id,
+                        game_name: gameName,
+                        vote_type: vote,
+                        mbti_type: currentUser.mbti_type || '',
+                        created_at: new Date().toISOString()
+                    })
+                });
+                return true; // 首次，給 XP
+            }
+        } catch(e) {
+            return true; // 查詢失敗，保守給 XP
+        }
+    }
+
+    async function saveVoteToCollection(collectionId, gameName, vote) {
+        try {
+            // 寫入 user_collection_votes
+            const voteId = `ucv_${collectionId.slice(-6)}_${currentUser.id.slice(-6)}_${Date.now()}`;
+            await fetch('tables/user_collection_votes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: voteId,
+                    collection_id: collectionId,
+                    voter_id:  currentUser.id,
+                    game_name: gameName,
+                    vote,
+                    voted_at:  new Date().toISOString()
+                })
+            });
+
+            // 更新 vote_stats
+            const r = await fetch(`tables/user_collections/${collectionId}`);
+            if (!r.ok) return;
+            const col = await r.json();
+            let stats = {};
+            try { stats = col.vote_stats ? JSON.parse(col.vote_stats) : {}; } catch(e) {}
+            if (!stats[gameName]) stats[gameName] = { like: 0, dislike: 0, wishlist: 0 };
+            stats[gameName][vote] = (stats[gameName][vote] || 0) + 1;
+            await fetch(`tables/user_collections/${collectionId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vote_stats: JSON.stringify(stats) })
+            });
+        } catch(e) {}
+    }
+
+    async function showRatingDone() {
+        // play_count +1（僅限首次評價，同一人不重複計算）
+        // 用 rated_by 陣列記錄評過的玩家 ID，避免重複
+        try {
+            const collectionId = ratingState.collection.id;
+            const r = await fetch(`tables/user_collections/${collectionId}`);
+            if (r.ok) {
+                const col = await r.json();
+                let ratedBy = [];
+                try { ratedBy = col.rated_by ? JSON.parse(col.rated_by) : []; } catch(e) { ratedBy = []; }
+
+                const isFirstTime = !ratedBy.includes(currentUser.id);
+                if (isFirstTime) {
+                    ratedBy.push(currentUser.id);
+                    await fetch(`tables/user_collections/${collectionId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            play_count: (col.play_count || 0) + 1,
+                            rated_by: JSON.stringify(ratedBy)
+                        })
+                    });
+                }
+            }
+        } catch(e) {}
+
+        const { like, dislike, wishlist } = ratingState.results;
+        document.getElementById('rd-summary').textContent =
+            `評了 ${like + dislike + wishlist} 款遊戲　👍 ${like} 喜歡　👎 ${dislike} 不喜歡　❓ ${wishlist} 待玩`;
+        document.getElementById('rating-done-overlay').classList.add('open');
+        await loadPlayerCollections(targetUser.id);
+    }
+
+    function closeRatingOverlay() {
+        document.getElementById('rating-overlay').classList.remove('open');
+        document.getElementById('ro-card-area').innerHTML = '';
+        isRating = false;                                              // 確保解鎖
+    }
+
+    function closeRatingDone() {
+        document.getElementById('rating-done-overlay').classList.remove('open');
+    }
+
+    function showToastPC(msg, isWarn = false) {
+        const el = document.createElement('div');
+        el.style.cssText = `position:fixed;top:1.5rem;left:50%;transform:translateX(-50%);
+            background:${isWarn ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#667eea,#764ba2)'};
+            color:white;padding:0.7rem 1.5rem;border-radius:2rem;font-weight:600;
+            font-size:0.92rem;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.25);`;
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2600);
+    }
+
+    function escHtml(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function showNotFound() {
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('not-found-state').style.display = 'block';
+    }
+
+    // 啟動
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', render);
+    } else {
+        render();
+    }
+    </script>
+</body>
+</html>

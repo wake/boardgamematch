@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分享桌遊喜好 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/gamification.css">
+    <style>
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .suggestion-item:hover {
+            background: var(--bg-color);
+        }
+
+        .suggestion-game-name {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .suggestion-source {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-color);
+            border-radius: 0.25rem;
+        }
+
+        .no-suggestions {
+            padding: 0.75rem 1rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <span>🎲</span>
+                MBTI × 桌遊配對
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">分享你的桌遊喜好</h1>
+            <p class="page-subtitle">讓我們了解你喜歡什麼類型的桌上遊戲</p>
+        </div>
+
+        <!-- 表單容器 -->
+        <div class="form-container">
+            <!-- 目前登入使用者資訊 -->
+            <div id="current-user-info" style="display: none; margin-bottom: 2rem; padding: 1rem; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 0.75rem; color: white;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <img id="user-avatar-display" src="" alt="頭像" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid white;">
+                    <div>
+                        <div style="font-weight: 600; font-size: 1.1rem;" id="user-name-display"></div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">正在分享桌遊喜好</div>
+                    </div>
+                </div>
+            </div>
+            
+            <form id="submit-form">
+                <!-- MBTI 類型選擇 -->
+                <div class="form-group">
+                    <label class="form-label" for="mbti-type">
+                        你的 MBTI 類型 <span style="color: red;">*</span>
+                    </label>
+                    <select id="mbti-type" class="form-select" required>
+                        <option value="">請選擇你的 MBTI 類型</option>
+                        <optgroup label="分析家 (NT)">
+                            <option value="INTJ">INTJ - 建築師</option>
+                            <option value="INTP">INTP - 邏輯學家</option>
+                            <option value="ENTJ">ENTJ - 指揮官</option>
+                            <option value="ENTP">ENTP - 辯論家</option>
+                        </optgroup>
+                        <optgroup label="外交家 (NF)">
+                            <option value="INFJ">INFJ - 提倡者</option>
+                            <option value="INFP">INFP - 調停者</option>
+                            <option value="ENFJ">ENFJ - 主人公</option>
+                            <option value="ENFP">ENFP - 競選者</option>
+                        </optgroup>
+                        <optgroup label="守護者 (SJ)">
+                            <option value="ISTJ">ISTJ - 物流師</option>
+                            <option value="ISFJ">ISFJ - 守衛者</option>
+                            <option value="ESTJ">ESTJ - 總經理</option>
+                            <option value="ESFJ">ESFJ - 執政官</option>
+                        </optgroup>
+                        <optgroup label="探險家 (SP)">
+                            <option value="ISTP">ISTP - 鑑賞家</option>
+                            <option value="ISFP">ISFP - 探險家</option>
+                            <option value="ESTP">ESTP - 企業家</option>
+                            <option value="ESFP">ESFP - 表演者</option>
+                        </optgroup>
+                    </select>
+                    <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
+                        不確定自己的類型？可以到 
+                        <a href="https://www.16personalities.com/tw" target="_blank" style="color: var(--primary-color);">
+                            16Personalities
+                        </a> 
+                        進行測試
+                    </small>
+                </div>
+
+                <!-- 喜歡的桌遊 -->
+                <div class="form-group">
+                    <label class="form-label" for="liked-game">
+                        你喜歡的桌遊 <span style="color: red;">*</span> (至少 3 個)
+                    </label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="position: relative; flex: 1;">
+                            <input 
+                                type="text" 
+                                id="liked-game" 
+                                class="form-input" 
+                                placeholder="例如：卡坦島、矮人礦坑、狼人殺..."
+                                autocomplete="off"
+                            >
+                            <div id="liked-suggestions" class="autocomplete-suggestions" style="display: none;"></div>
+                        </div>
+                        <button 
+                            type="button" 
+                            id="add-liked-btn" 
+                            class="btn btn-secondary"
+                        >
+                            ➕ 新增
+                        </button>
+                    </div>
+                    <div id="liked-games-container" class="game-tags-container"></div>
+                    <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
+                        按 Enter 鍵或點擊新增按鈕來新增桌遊。輸入時會顯示建議遊戲。
+                    </small>
+                </div>
+
+                <!-- 不喜歡的桌遊 -->
+                <div class="form-group">
+                    <label class="form-label" for="disliked-game">
+                        你不喜歡的桌遊 <span style="color: red;">*</span> (至少 2 個)
+                    </label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="position: relative; flex: 1;">
+                            <input 
+                                type="text" 
+                                id="disliked-game" 
+                                class="form-input" 
+                                placeholder="輸入遊戲名稱後按 Enter 或點擊新增"
+                                autocomplete="off"
+                            >
+                            <div id="disliked-suggestions" class="autocomplete-suggestions" style="display: none;"></div>
+                        </div>
+                        <button 
+                            type="button" 
+                            id="add-disliked-btn" 
+                            class="btn btn-secondary"
+                        >
+                            ➕ 新增
+                        </button>
+                    </div>
+                    <div id="disliked-games-container" class="game-tags-container"></div>
+                    <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
+                        按 Enter 鍵或點擊新增按鈕來新增桌遊。輸入時會顯示建議遊戲。
+                    </small>
+                </div>
+
+                <!-- 訊息顯示區 -->
+                <div id="message-container"></div>
+
+                <!-- 提交按鈕 -->
+                <button type="submit" class="btn btn-primary btn-block" id="submit-btn">
+                    🎲 提交我的桌遊喜好
+                </button>
+            </form>
+
+            <!-- 提示區塊 -->
+            <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-color); border-radius: 0.5rem; border-left: 4px solid var(--primary-color);">
+                <h4 style="margin-bottom: 0.5rem; color: var(--text-color);">💡 小提示</h4>
+                <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-light);">
+                    <li>請誠實分享你的桌遊喜好，這能幫助我們提供更準確的推薦</li>
+                    <li>桌遊類型可以包括：策略遊戲、派對遊戲、陣營遊戲、合作遊戲等</li>
+                    <li>不喜歡的桌遊同樣重要，能幫助我們了解你的遊戲偏好</li>
+                    <li>你的資料會儲存在本地，隨時可以在「我的檔案」中查看或修改</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer style="text-align: center; padding: 2rem; margin-top: 4rem; color: var(--text-light); border-top: 1px solid var(--border-color);">
+        <p>© 2025 MBTI × 桌遊配對</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script src="js/navbar-auth.js"></script>
+    <script>
+        // 檢查登入狀態
+        let currentUser = null;
+        
+        // 頁面載入時檢查登入
+        window.addEventListener('load', () => {
+            checkLoginStatus();
+        });
+        
+        function checkLoginStatus() {
+            const savedUser = localStorage.getItem('googleUser');
+            
+            if (!savedUser) {
+                // 未登入，顯示提示並導向首頁
+                showLoginRequired();
+                return;
+            }
+            
+            try {
+                currentUser = JSON.parse(savedUser);
+                console.log('當前使用者:', currentUser);
+                
+                // 顯示使用者資訊
+                const userInfo = document.getElementById('current-user-info');
+                const avatar = document.getElementById('user-avatar-display');
+                const name = document.getElementById('user-name-display');
+                
+                if (userInfo && avatar && name) {
+                    avatar.src = currentUser.picture || '';
+                    name.textContent = currentUser.nickname || currentUser.name || '使用者';
+                    userInfo.style.display = 'block';
+                }
+                
+                // 載入遊戲資料庫
+                loadGameSuggestions();
+            } catch (error) {
+                console.error('解析使用者資料失敗:', error);
+                showLoginRequired();
+            }
+        }
+        
+        function showLoginRequired() {
+            const container = document.querySelector('.form-container');
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem 2rem;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">🔒</div>
+                    <h2 style="font-size: 1.8rem; margin-bottom: 1rem; color: var(--text-color);">需要登入</h2>
+                    <p style="color: var(--text-light); margin-bottom: 2rem; line-height: 1.6;">
+                        請先使用 Google 帳號登入，才能分享你的桌遊喜好
+                    </p>
+                    <a href="index.html" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                        前往登入
+                    </a>
+                </div>
+            `;
+        }
+        
+        // 遊戲列表
+        let likedGames = [];
+        let dislikedGames = [];
+        let gameDatabase = []; // 從資料庫載入的遊戲清單
+        let allUserGames = []; // 從所有使用者收集的遊戲名稱
+
+        // 載入遊戲建議清單
+        async function loadGameSuggestions() {
+            try {
+                // 1. 從 game_database 載入
+                const dbResponse = await fetch('tables/game_database?limit=1000');
+                const dbData = await dbResponse.json();
+                gameDatabase = dbData.data.map(game => ({
+                    name: game.name_zh || game.name_en,
+                    source: 'database'
+                }));
+
+                // 2. 從所有使用者收集遊戲名稱
+                const usersResponse = await fetch('tables/users?limit=1000');
+                const usersData = await usersResponse.json();
+                const userGamesSet = new Set();
+                
+                usersData.data.forEach(user => {
+                    (user.liked_games || []).forEach(game => userGamesSet.add(game));
+                    (user.disliked_games || []).forEach(game => userGamesSet.add(game));
+                    (user.wishlist || []).forEach(game => userGamesSet.add(game));
+                });
+
+                allUserGames = Array.from(userGamesSet).map(name => ({
+                    name,
+                    source: 'users'
+                }));
+
+                console.log(`✅ 載入建議：${gameDatabase.length} 款資料庫遊戲，${allUserGames.length} 款玩家遊戲`);
+            } catch (error) {
+                console.error('載入遊戲建議失敗:', error);
+            }
+        }
+
+        // 顯示自動建議
+        function showSuggestions(inputId, suggestionsId) {
+            const input = document.getElementById(inputId);
+            const suggestionsDiv = document.getElementById(suggestionsId);
+            const query = input.value.trim().toLowerCase();
+
+            if (query.length < 1) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+
+            // 合併資料庫和使用者遊戲
+            const allGames = [...gameDatabase, ...allUserGames];
+            
+            // 搜尋匹配的遊戲
+            const matches = allGames
+                .filter(game => game.name.toLowerCase().includes(query))
+                .slice(0, 10); // 只顯示前10個
+
+            if (matches.length === 0) {
+                suggestionsDiv.innerHTML = '<div class="no-suggestions">💡 找不到相關遊戲，你可以直接輸入新遊戲名稱</div>';
+                suggestionsDiv.style.display = 'block';
+                return;
+            }
+
+            suggestionsDiv.innerHTML = matches.map(game => `
+                <div class="suggestion-item" onclick="selectSuggestion('${inputId}', '${game.name.replace(/'/g, "\\'")}')">
+                    <span class="suggestion-game-name">${game.name}</span>
+                    <span class="suggestion-source">${game.source === 'database' ? '資料庫' : '玩家推薦'}</span>
+                </div>
+            `).join('');
+            
+            suggestionsDiv.style.display = 'block';
+        }
+
+        // 選擇建議
+        function selectSuggestion(inputId, gameName) {
+            document.getElementById(inputId).value = gameName;
+            hideSuggestions(inputId === 'liked-game' ? 'liked-suggestions' : 'disliked-suggestions');
+        }
+
+        // 隱藏建議
+        function hideSuggestions(suggestionsId) {
+            setTimeout(() => {
+                document.getElementById(suggestionsId).style.display = 'none';
+            }, 200);
+        }
+
+        // 新增喜歡的遊戲
+        function addLikedGame() {
+            const input = document.getElementById('liked-game');
+            const gameName = input.value.trim();
+            
+            if (!gameName) return;
+            
+            if (likedGames.includes(gameName)) {
+                alert('這個遊戲已經在列表中了！');
+                return;
+            }
+            
+            if (dislikedGames.includes(gameName)) {
+                alert('這個遊戲已經在不喜歡的列表中了！');
+                return;
+            }
+            
+            likedGames.push(gameName);
+            input.value = '';
+            renderLikedGames();
+            
+            // 顯示即時 XP 提示（視覺回饋）
+            const addBtn = document.getElementById('add-liked-btn');
+            addBtn.classList.add('btn-success-pulse');
+            setTimeout(() => addBtn.classList.remove('btn-success-pulse'), 600);
+        }
+
+        // 新增不喜歡的遊戲
+        function addDislikedGame() {
+            const input = document.getElementById('disliked-game');
+            const gameName = input.value.trim();
+            
+            if (!gameName) return;
+            
+            if (dislikedGames.includes(gameName)) {
+                alert('這個遊戲已經在列表中了！');
+                return;
+            }
+            
+            if (likedGames.includes(gameName)) {
+                alert('這個遊戲已經在喜歡的列表中了！');
+                return;
+            }
+            
+            dislikedGames.push(gameName);
+            input.value = '';
+            renderDislikedGames();
+            
+            // 顯示即時 XP 提示（視覺回饋）
+            const addBtn = document.getElementById('add-disliked-btn');
+            addBtn.classList.add('btn-success-pulse');
+            setTimeout(() => addBtn.classList.remove('btn-success-pulse'), 600);
+        }
+
+        // 移除喜歡的遊戲
+        function removeLikedGame(gameName) {
+            likedGames = likedGames.filter(g => g !== gameName);
+            renderLikedGames();
+        }
+
+        // 移除不喜歡的遊戲
+        function removeDislikedGame(gameName) {
+            dislikedGames = dislikedGames.filter(g => g !== gameName);
+            renderDislikedGames();
+        }
+
+        // 渲染喜歡的遊戲
+        function renderLikedGames() {
+            const container = document.getElementById('liked-games-container');
+            
+            if (likedGames.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-light); font-size: 0.9rem;">尚未新增遊戲</p>';
+                return;
+            }
+            
+            container.innerHTML = likedGames.map(game => `
+                <div class="game-tag">
+                    <span>${game}</span>
+                    <button type="button" onclick="removeLikedGame('${game.replace(/'/g, "\\'")}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        // 渲染不喜歡的遊戲
+        function renderDislikedGames() {
+            const container = document.getElementById('disliked-games-container');
+            
+            if (dislikedGames.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-light); font-size: 0.9rem;">尚未新增遊戲</p>';
+                return;
+            }
+            
+            container.innerHTML = dislikedGames.map(game => `
+                <div class="game-tag disliked">
+                    <span>${game}</span>
+                    <button type="button" onclick="removeDislikedGame('${game.replace(/'/g, "\\'")}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        // 表單提交
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            // 檢查是否已登入
+            if (!currentUser) {
+                showLoginRequired();
+                return;
+            }
+            
+            const mbtiType = document.getElementById('mbti-type').value;
+            const messageContainer = document.getElementById('message-container');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            // 驗證
+            if (!mbtiType) {
+                messageContainer.innerHTML = '<div class="alert alert-error">請選擇你的 MBTI 類型！</div>';
+                return;
+            }
+            
+            if (likedGames.length < 3) {
+                messageContainer.innerHTML = '<div class="alert alert-error">請至少新增 3 個喜歡的遊戲！</div>';
+                return;
+            }
+            
+            if (dislikedGames.length < 2) {
+                messageContainer.innerHTML = '<div class="alert alert-error">請至少新增 2 個不喜歡的遊戲！</div>';
+                return;
+            }
+            
+            // 顯示載入狀態
+            submitBtn.disabled = true;
+            submitBtn.textContent = '提交中...';
+            messageContainer.innerHTML = '';
+            
+            try {
+                // 準備資料（使用已登入的使用者資訊）
+                const userData = {
+                    username: currentUser.nickname || currentUser.name,
+                    google_id: currentUser.sub,
+                    email: currentUser.email,
+                    picture: currentUser.picture,
+                    mbti_type: mbtiType,
+                    liked_games: likedGames,
+                    disliked_games: dislikedGames,
+                    last_login: Date.now()
+                };
+                
+                // 提交到資料庫
+                const result = await GameMBTI.createUser(userData);
+                
+                // 儲存到本地
+                GameMBTI.setCurrentUser(result);
+                
+                // === 🎮 遊戲化系統：新增 XP 獎勵 ===
+                try {
+                    // 建立使用者統計資料（自動給予註冊獎勵 100 XP）
+                    await GameMBTI.createUserStats(result.id);
+                    
+                    // 填寫 MBTI 獎勵：+50 XP
+                    const mbtiReward = await GameMBTI.addXP(result.id, 50, '填寫 MBTI 類型');
+                    
+                    // 每個遊戲獎勵：+10 XP（喜歡的 + 不喜歡的）
+                    const totalGames = likedGames.length + dislikedGames.length;
+                    const gamesReward = await GameMBTI.addXP(result.id, totalGames * 10, `新增 ${totalGames} 款桌遊`);
+                    
+                    // 顯示 XP 獲得動畫
+                    const totalXP = 100 + 50 + (totalGames * 10);
+                    GameMBTI.showXPAnimation(totalXP, submitBtn.parentElement);
+                    
+                    // 靜默解鎖成就（不顯示彈窗，統一成就系統體驗）
+                    const newAchievements = await GameMBTI.checkAndUnlockAchievements(result.id);
+                    
+                    // 計算需要的總延遲時間
+                    let totalDelay = 2000; // XP 動畫基礎時間
+                    
+                    // 如果有升級，立即顯示升級通知
+                    if (gamesReward.leveledUp) {
+                        setTimeout(() => {
+                            GameMBTI.showLevelUpNotification(gamesReward.newLevel);
+                        }, 1000);
+                        totalDelay += 3000; // 升級通知時間
+                    }
+                    
+                    console.log('🎮 XP獎勵發放成功！', {
+                        註冊獎勵: '100 XP',
+                        MBTI獎勵: mbtiReward,
+                        遊戲獎勵: gamesReward,
+                        總XP: totalXP,
+                        等級: gamesReward.newLevel,
+                        解鎖成就: newAchievements.length,
+                        跳轉延遲: totalDelay
+                    });
+                    
+                    // 顯示成功訊息
+                    messageContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>提交成功！</strong> 你的資料已經儲存。
+                        </div>
+                    `;
+                    
+                    // 動態計算跳轉延遲（確保所有動畫都能看到）
+                    setTimeout(() => {
+                        window.location.href = 'profile.html';
+                    }, totalDelay);
+                    
+                } catch (xpError) {
+                    console.error('XP 系統錯誤（不影響資料提交）:', xpError);
+                    // 即使 XP 系統出錯，仍然跳轉（但使用較短延遲）
+                    messageContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>提交成功！</strong> 你的資料已經儲存。
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        window.location.href = 'profile.html';
+                    }, 2000);
+                }
+                // === 遊戲化系統結束 ===
+                
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                messageContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>提交失敗！</strong> ${error.message || '請稍後再試。'}
+                    </div>
+                `;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 提交我的遊戲喜好';
+            }
+        }
+
+        // 事件監聽
+        document.addEventListener('DOMContentLoaded', () => {
+            // 新增按鈕
+            document.getElementById('add-liked-btn').addEventListener('click', addLikedGame);
+            document.getElementById('add-disliked-btn').addEventListener('click', addDislikedGame);
+            
+        // 初始化事件監聽器
+        (function initEventListeners() {
+            // 按鈕點擊
+            document.getElementById('add-liked-btn').addEventListener('click', addLikedGame);
+            document.getElementById('add-disliked-btn').addEventListener('click', addDislikedGame);
+
+            // Enter 鍵新增
+            document.getElementById('liked-game').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addLikedGame();
+                }
+            });
+
+            document.getElementById('disliked-game').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addDislikedGame();
+                }
+            });
+
+            // 自動建議
+            document.getElementById('liked-game').addEventListener('input', () => {
+                showSuggestions('liked-game', 'liked-suggestions');
+            });
+
+            document.getElementById('disliked-game').addEventListener('input', () => {
+                showSuggestions('disliked-game', 'disliked-suggestions');
+            });
+
+            // 點擊外部隱藏建議
+            document.getElementById('liked-game').addEventListener('blur', () => {
+                hideSuggestions('liked-suggestions');
+            });
+
+            document.getElementById('disliked-game').addEventListener('blur', () => {
+                hideSuggestions('disliked-suggestions');
+            });
+            
+            // 表單提交
+            document.getElementById('submit-form').addEventListener('submit', handleSubmit);
+        })();
+            
+            // 初始渲染
+            renderLikedGames();
+            renderDislikedGames();
+            
+            // 如果已有使用者資料，自動填入
+            const currentUser = GameMBTI.getCurrentUser();
+            if (currentUser) {
+                if (confirm('檢測到你已經提交過資料，是否要重新填寫？')) {
+                    // 清空當前使用者
+                    GameMBTI.clearCurrentUser();
+                } else {
+                    window.location.href = 'profile.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

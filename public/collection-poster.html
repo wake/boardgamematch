@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清單封面產生器 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 1.5rem;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        @media (max-width: 900px) {
+            .workspace { grid-template-columns: 1fr; }
+        }
+
+        /* ── 設定面板 ── */
+        .control-panel {
+            display: flex; flex-direction: column; gap: 1.25rem;
+        }
+        .ctrl-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-md);
+        }
+        .ctrl-card h3 {
+            margin: 0 0 1rem;
+            font-size: 0.9rem; font-weight: 700;
+            color: var(--text-color); text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .form-row { margin-bottom: 0.85rem; }
+        .form-row label {
+            display: block; font-size: 0.8rem; font-weight: 600;
+            color: var(--text-light); margin-bottom: 0.35rem;
+        }
+        .form-row input[type=text],
+        .form-row input[type=number],
+        .form-row select,
+        .form-row textarea {
+            width: 100%; padding: 0.5rem 0.75rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.6rem; background: var(--bg-color);
+            color: var(--text-color); font-size: 0.88rem;
+            font-family: inherit; transition: border-color 0.2s;
+        }
+        .form-row input:focus,
+        .form-row select:focus,
+        .form-row textarea:focus {
+            border-color: var(--primary-color); outline: none;
+        }
+        .form-row textarea { resize: vertical; min-height: 60px; }
+
+        .range-row {
+            display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem;
+        }
+        .range-row label { font-size: 0.8rem; font-weight: 600; color: var(--text-light); white-space: nowrap; min-width: 80px; }
+        .range-row input[type=range] { flex: 1; accent-color: var(--primary-color); }
+        .range-row .val { font-size: 0.85rem; font-weight: 700; color: var(--primary-color); min-width: 32px; text-align: right; }
+
+        .chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        .chip {
+            padding: 0.28rem 0.65rem;
+            border-radius: 1.5rem;
+            border: 1.5px solid var(--border-color);
+            background: transparent; font-size: 0.8rem;
+            font-weight: 500; color: var(--text-light);
+            cursor: pointer; transition: all 0.15s; user-select: none;
+        }
+        .chip:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .chip.active { background: var(--primary-color); border-color: var(--primary-color); color: white; }
+
+        .color-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .color-swatch {
+            width: 28px; height: 28px; border-radius: 0.4rem;
+            cursor: pointer; border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .color-swatch.active { border-color: var(--primary-color); transform: scale(1.2); }
+        .color-swatch.custom { background: conic-gradient(red,orange,yellow,green,blue,violet,red); }
+
+        /* Export Buttons */
+        .export-btn {
+            width: 100%; padding: 0.85rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 0.75rem;
+            font-size: 0.95rem; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 3px 12px rgba(102,126,234,0.35);
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .export-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.45); }
+        .export-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ── 預覽面板 ── */
+        .preview-panel {
+            position: sticky; top: 1.5rem;
+        }
+        .preview-wrap {
+            background: #111;
+            border-radius: 1.25rem;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .preview-label {
+            text-align: center; padding: 0.6rem;
+            font-size: 0.8rem; color: #888; background: #111;
+        }
+
+        /* ── POSTER DOM（html2canvas 轉換目標）── */
+        #poster-root {
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+        .poster-bg {
+            position: absolute; inset: 0;
+            z-index: 0;
+        }
+        .poster-content {
+            position: relative; z-index: 1;
+            padding: 24px;
+            display: flex; flex-direction: column;
+        }
+        .poster-header {
+            margin-bottom: 16px;
+        }
+        .poster-title {
+            font-weight: 900; line-height: 1.15;
+            word-break: break-word;
+        }
+        .poster-subtitle {
+            line-height: 1.4;
+            margin-top: 6px;
+            word-break: break-word;
+            opacity: 0.8;
+        }
+        .poster-grid {
+            display: grid;
+            flex: 1;
+        }
+        .poster-cell {
+            overflow: hidden;
+            position: relative;
+        }
+        .poster-cell img {
+            width: 100%; height: 100%; object-fit: cover;
+            display: block;
+        }
+        .poster-cell .cell-blur {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 900;
+            color: rgba(255,255,255,0.5);
+        }
+        .poster-cell .cell-name {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            font-size: 11px; padding: 4px 6px;
+            background: rgba(0,0,0,0.55);
+            color: white; text-align: center;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .poster-footer {
+            margin-top: 12px;
+            font-size: 11px; opacity: 0.55;
+            text-align: right;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.65);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; backdrop-filter: blur(4px);
+        }
+        .loading-spinner {
+            width: 48px; height: 48px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: white; margin-top: 1rem; font-weight: 600; }
+
+        /* collection selector */
+        .collection-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.6rem; cursor: pointer;
+            transition: background 0.15s; border: 1.5px solid transparent;
+        }
+        .collection-item:hover { background: var(--bg-light); }
+        .collection-item.selected { border-color: var(--primary-color); background: rgba(102,126,234,0.07); }
+        .manual-input-card {
+            border: 1.5px solid transparent;
+            border-radius: 0.6rem;
+            padding: 0.6rem 0.75rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-top: 0.5rem;
+        }
+        .manual-input-card:hover { background: var(--bg-light); }
+        .manual-input-card.selected { border-color: var(--primary-color); background: rgba(102,126,234,0.07); }
+        .manual-input-card label { font-size: 0.85rem; color: var(--text-light); cursor: pointer; display:block; margin-bottom:0.4rem; }
+        .manual-input-card textarea { width:100%; cursor:text; }
+        /* 手動輸入遊戲搜尋框 */
+        .manual-search-wrap {
+            position: relative;
+            display: flex; gap: 0.4rem; align-items: center;
+            margin-top: 0.5rem;
+        }
+        .manual-search-wrap input {
+            flex: 1; padding: 0.5rem 0.75rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 0.5rem; font-size: 0.9rem;
+            background: var(--bg-color); color: var(--text-color);
+            outline: none; transition: border-color 0.15s;
+        }
+        .manual-search-wrap input:focus { border-color: var(--primary-color); }
+        .manual-search-wrap button {
+            padding: 0.5rem 0.85rem; border: none; border-radius: 0.5rem;
+            background: var(--primary-color); color: white;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+        .manual-ac-dropdown {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 40px;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 0.6rem; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 200; max-height: 260px; overflow-y: auto;
+        }
+        .manual-ac-dropdown.open { display: block; }
+        .manual-ac-item {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.88rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .manual-ac-item:last-child { border-bottom: none; }
+        .manual-ac-item:hover { background: var(--bg-light); }
+        .manual-ac-item img { width: 28px; height: 28px; object-fit: cover; border-radius: 0.25rem; flex-shrink: 0; }
+        .manual-ac-item .ac-icon { width:28px; height:28px; background:var(--border-color); border-radius:0.25rem; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:0.9rem; }
+        .manual-ac-item .ac-name-zh { font-weight: 600; color: var(--text-color); }
+        .manual-ac-item .ac-name-en { font-size: 0.78rem; color: var(--text-light); }
+        .manual-ac-badge { margin-left:auto; font-size:0.7rem; background:rgba(102,126,234,0.12); color:var(--primary-color); padding:0.1rem 0.4rem; border-radius:0.3rem; flex-shrink:0; }
+        /* 已加入的遊戲標籤列 */
+        .manual-game-list {
+            display: flex; flex-wrap: wrap; gap: 0.35rem;
+            margin-top: 0.6rem; min-height: 28px;
+        }
+        .manual-game-tag {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            background: rgba(102,126,234,0.12); color: var(--primary-color);
+            border: 1px solid rgba(102,126,234,0.3); border-radius: 1rem;
+            padding: 0.2rem 0.55rem 0.2rem 0.65rem; font-size: 0.82rem; font-weight: 500;
+        }
+        .manual-game-tag button {
+            background: none; border: none; cursor: pointer; padding: 0;
+            color: var(--text-light); font-size: 0.9rem; line-height: 1;
+            display: flex; align-items: center;
+        }
+        .manual-game-tag button:hover { color: #ef4444; }
+        .manual-game-empty { font-size: 0.8rem; color: var(--text-light); padding: 0.2rem 0; }
+        .collection-icon { font-size: 1.5rem; }
+        .collection-info { flex: 1; min-width: 0; }
+        .collection-title { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .collection-count { font-size: 0.78rem; color: var(--text-light); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="workspace" style="margin-top:1.5rem;">
+        <!-- page header inside workspace left panel will handle title -->
+        <!-- ── 左側設定 ── -->
+        <div class="control-panel">
+
+            <!-- 頁面標題 -->
+            <div class="ctrl-card" style="background: linear-gradient(135deg, #667eea15, #764ba215); border: 1.5px solid var(--border-color);">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <span style="font-size:2rem;">🖼️</span>
+                    <div>
+                        <div style="font-size:1.1rem; font-weight:800; color:var(--text-color);">清單封面牆</div>
+                        <div style="font-size:0.82rem; color:var(--text-light); margin-top:0.15rem;">將桌遊清單製作成精美封面牆，一鍵下載分享！</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 選擇清單 -->
+            <div class="ctrl-card">
+                <h3>📚 選擇清單</h3>
+                <div id="collection-list">
+                    <div style="text-align:center;padding:1.5rem;color:var(--text-light);font-size:0.88rem;">
+                        載入中...
+                    </div>
+                </div>
+                <div class="manual-input-card" id="manual-input-card" onclick="selectManual()">
+                    <label>✏️ 手動新增遊戲</label>
+                    <div class="manual-search-wrap" onclick="event.stopPropagation()">
+                        <input type="text" id="manual-search-input"
+                            placeholder="輸入遊戲名稱搜尋..."
+                            autocomplete="off"
+                            oninput="onManualAcInput(this)"
+                            onblur="closeManualAc()"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();manualAddCurrent()}">
+                        <div class="manual-ac-dropdown" id="manual-ac-drop"></div>
+                        <button onclick="manualAddCurrent()" title="加入">＋</button>
+                    </div>
+                    <div class="manual-game-list" id="manual-game-list">
+                        <span class="manual-game-empty">尚未新增遊戲</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文字設定 -->
+            <div class="ctrl-card">
+                <h3>✏️ 標題文字</h3>
+                <div class="form-row">
+                    <label>清單標題</label>
+                    <input type="text" id="poster-title" value="我的最愛桌遊" oninput="scheduleUpdate()">
+                </div>
+                <div class="form-row">
+                    <label>副標題（可選）</label>
+                    <input type="text" id="poster-subtitle" placeholder="精選 10 款最愛遊戲" oninput="scheduleUpdate()">
+                </div>
+                <div class="form-row">
+                    <label>標題字色</label>
+                    <div class="color-row" id="title-color-row">
+                        <div class="color-swatch active" data-color="#ffffff" style="background:#fff;" title="白"></div>
+                        <div class="color-swatch" data-color="#f8fafc" style="background:#f8fafc; border:1px solid #ccc;" title="淡白"></div>
+                        <div class="color-swatch" data-color="#0f172a" style="background:#0f172a;" title="黑"></div>
+                        <div class="color-swatch" data-color="#fbbf24" style="background:#fbbf24;" title="金"></div>
+                        <div class="color-swatch" data-color="#60a5fa" style="background:#60a5fa;" title="藍"></div>
+                        <div class="color-swatch" data-color="#a78bfa" style="background:#a78bfa;" title="紫"></div>
+                        <div class="color-swatch" data-color="#34d399" style="background:#34d399;" title="綠"></div>
+                        <div class="color-swatch" data-color="#fb7185" style="background:#fb7185;" title="粉"></div>
+                        <input type="color" id="custom-title-color" value="#ffffff"
+                            style="width:28px;height:28px;border:none;padding:0;cursor:pointer;border-radius:0.4rem;"
+                            title="自訂顏色" oninput="setTitleColor(this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 佈局設定 -->
+            <div class="ctrl-card">
+                <h3>🎨 佈局設定</h3>
+                <div class="form-row">
+                    <label>比例</label>
+                    <div class="chip-row" id="ratio-chips">
+                        <div class="chip active" onclick="setChip('ratio-chips',this);cfg.w=1080;cfg.h=1080;scheduleUpdate()">1:1</div>
+                        <div class="chip" onclick="setChip('ratio-chips',this);cfg.w=1080;cfg.h=1350;scheduleUpdate()">4:5</div>
+                        <div class="chip" onclick="setChip('ratio-chips',this);cfg.w=1080;cfg.h=1920;scheduleUpdate()">9:16</div>
+                        <div class="chip" onclick="setChip('ratio-chips',this);cfg.w=1920;cfg.h=1080;scheduleUpdate()">16:9</div>
+                        <div class="chip" onclick="setChip('ratio-chips',this);cfg.w=800;cfg.h=1200;scheduleUpdate()">2:3</div>
+                    </div>
+                </div>
+                <div class="range-row">
+                    <label>每行幾款</label>
+                    <input type="range" id="cols" min="1" max="10" value="3" step="1">
+                    <span class="val" id="cols-val">3</span>
+                </div>
+                <div class="range-row">
+                    <label>格子間距</label>
+                    <input type="range" id="gap" min="0" max="40" value="4" step="1">
+                    <span class="val" id="gap-val">4px</span>
+                </div>
+                <div class="range-row">
+                    <label>圓角</label>
+                    <input type="range" id="radius" min="0" max="60" value="6" step="1">
+                    <span class="val" id="radius-val">6px</span>
+                </div>
+                <div class="form-row">
+                    <label>封面圖顯示方式</label>
+                    <div class="chip-row" id="imgfit-chips">
+                        <div class="chip active" onclick="setChip('imgfit-chips',this);cfg.imgFit='contain-blur';scheduleUpdate()">保留比例＋模糊底</div>
+                        <div class="chip" onclick="setChip('imgfit-chips',this);cfg.imgFit='contain-black';scheduleUpdate()">保留比例＋黑底</div>
+                        <div class="chip" onclick="setChip('imgfit-chips',this);cfg.imgFit='contain-white';scheduleUpdate()">保留比例＋白底</div>
+                        <div class="chip" onclick="setChip('imgfit-chips',this);cfg.imgFit='cover';scheduleUpdate()">填滿裁切</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>遊戲名稱</label>
+                    <div class="chip-row" id="showname-chips">
+                        <div class="chip active" onclick="setChip('showname-chips',this);cfg.showname='always'">一直顯示</div>
+                        <div class="chip" onclick="setChip('showname-chips',this);cfg.showname='none'">不顯示</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 背景設定 -->
+            <div class="ctrl-card">
+                <h3>🌈 背景色</h3>
+                <div class="form-row" style="align-items:center;gap:0.75rem;">
+                    <input type="color" id="bg-solid-color" value="#000000"
+                        style="width:52px;height:52px;border:none;padding:2px;cursor:pointer;border-radius:0.5rem;background:none;"
+                        oninput="cfg.bgColor=this.value;cfg.bgType='solid';applyBgColor(this.value)">
+                    <span style="font-size:0.82rem;color:var(--text-light);">直接點左側色盤自由選色</span>
+                </div>
+            </div>
+
+            <!-- 預覽 & 匯出 -->
+            <div class="ctrl-card">
+                <h3>💾 預覽 & 匯出</h3>
+                <button class="export-btn" id="preview-btn" onclick="updatePreview()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);margin-bottom:0.5rem;">
+                    <span>👁️</span> 產生預覽
+                </button>
+                <div class="form-row">
+                    <label>解析度</label>
+                    <div class="chip-row" id="scale-chips">
+                        <div class="chip active" onclick="setChip('scale-chips',this);cfg.scale=1">標準 (1x)</div>
+                        <div class="chip" onclick="setChip('scale-chips',this);cfg.scale=2">高清 (2x)</div>
+                        <div class="chip" onclick="setChip('scale-chips',this);cfg.scale=3">超清 (3x)</div>
+                    </div>
+                </div>
+                <button class="export-btn" id="download-btn" onclick="downloadPoster()">
+                    <span>⬇️</span> 下載 PNG 圖片
+                </button>
+                <button class="export-btn" onclick="copyPoster()" style="background:linear-gradient(135deg,#10b981,#059669);">
+                    <span>📋</span> 複製到剪貼簿
+                </button>
+                <div id="export-status" style="text-align:center; font-size:0.82rem; color:var(--text-light); margin-top:0.4rem;"></div>
+            </div>
+
+        </div>
+
+        <!-- ── 右側預覽 ── -->
+        <div class="preview-panel">
+            <div class="preview-wrap">
+                <div id="poster-container">
+                    <!-- poster-root 會由 JS 插入 -->
+                </div>
+                <div class="preview-label" id="preview-label">預覽（縮放至視窗大小）</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loading-overlay" style="display:none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loading-text">生成中...</div>
+    </div>
+
+    <script src="js/api-base.js?v=20260302-clear"></script>
+    <script src="js/app.js"></script>
+    <script src="js/game-names.js"></script>
+    <script>
+    // ── 全域狀態 ──
+    let currentUser   = null;
+    let collections   = [];
+    let selectedCollection = null;
+    let currentGames  = [];   // [{name, imageUrl}]
+    let preloadedImages = {}; // name → objectURL (via Jina proxy)
+    let updateTimer = null;
+
+    // ── 設定狀態 ──
+    let cfg = {
+        w: 1080, h: 1080,
+        cols: 3, gap: 4, radius: 6,
+        fallback: 'name',   // name（無封面時固定顯示名稱）
+        showname: 'always', // always | none
+        bgType: 'solid',
+        bgColor: '#000000',
+        titleColor: '#ffffff',
+        title: '我的最愛桌遊',
+        subtitle: '',
+        scale: 1,
+        imgFit: 'contain-blur',    // cover | contain-blur | contain-black | contain-white
+    };
+
+    // ── 初始化 ──
+    document.addEventListener('DOMContentLoaded', async () => {
+        try { currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null'); } catch(e) {}
+
+        await loadCollections();
+        loadAcGames(); // 背景預載 GameNames（autocomplete + 封面查詢用）
+        setupControls();
+    });
+
+    // ── 從編輯清單頁面返回時，重新載入清單（確保資料最新）──
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') {
+            await loadCollections();
+        }
+    });
+
+
+    async function loadCollections() {
+        if (!currentUser) {
+            document.getElementById('collection-list').innerHTML =
+                '<p style="font-size:0.82rem;color:var(--text-light);">登入後可載入你的清單</p>';
+            return;
+        }
+        try {
+            const r = await fetch('tables/user_collections?limit=500');
+            if (r.ok) {
+                const d = await r.json();
+                collections = (d.data || []).filter(c => c.created_by === currentUser.id);
+            }
+        } catch(e) {}
+
+        const listEl = document.getElementById('collection-list');
+        if (collections.length === 0) {
+            listEl.innerHTML = `
+                <div style="text-align:center; padding:1.5rem 1rem;">
+                    <div style="font-size:2.5rem; margin-bottom:0.75rem;">📭</div>
+                    <div style="font-size:0.9rem; font-weight:600; color:var(--text-color); margin-bottom:0.4rem;">你還沒有建立任何清單</div>
+                    <div style="font-size:0.82rem; color:var(--text-light); margin-bottom:1rem;">先建立一個遊戲清單，再來產生封面牆吧！</div>
+                    <a href="my-collections.html" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1.2rem;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:0.65rem;font-size:0.85rem;font-weight:600;text-decoration:none;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                        ➕ 去建立清單
+                    </a>
+                </div>`;
+            return;
+        }
+        listEl.innerHTML = collections.map((c, i) => `
+            <div class="collection-item" id="col-item-${i}" onclick="selectCollection(${i})">
+                <span class="collection-icon">📋</span>
+                <div class="collection-info">
+                    <div class="collection-title">${c.title || '未命名清單'}</div>
+                    <div class="collection-count">${(c.games || []).length} 款遊戲</div>
+                </div>
+                <a href="my-collections.html?edit=${c.id}" onclick="event.stopPropagation()"
+                   style="flex-shrink:0;padding:0.28rem 0.65rem;font-size:0.75rem;font-weight:600;color:var(--primary-color);border:1.5px solid var(--primary-color);border-radius:0.5rem;text-decoration:none;transition:all 0.15s;white-space:nowrap;"
+                   onmouseover="this.style.background='var(--primary-color)';this.style.color='white'"
+                   onmouseout="this.style.background='transparent';this.style.color='var(--primary-color)'">✏️ 編輯</a>
+            </div>`).join('');
+    }
+
+    // ── 更新「每行幾款」slider 的上限 ──
+    function updateColsMax(count) {
+        const n = Math.max(1, count);
+        const colsInput = document.getElementById('cols');
+        colsInput.max = n;
+        if (cfg.cols > n) {
+            cfg.cols = n;
+            colsInput.value = n;
+            document.getElementById('cols-val').textContent = n;
+        }
+    }
+
+    // 手動新增的遊戲清單
+    let manualGames = [];
+    // autocomplete 背景預載
+    let _acLoaded = false, _acGames = [], _acLoadPromise = null;
+    function loadAcGames() {
+        if (_acLoaded) return Promise.resolve();
+        if (_acLoadPromise) return _acLoadPromise;
+        _acLoadPromise = (async () => {
+            await GameNames.load();
+            const nm = GameNames._nameMap || {};
+            const seen = new Set();
+            _acGames = [];
+            Object.values(nm).forEach(g => {
+                const key = g.name_zh || g.name_en || '';
+                if (key && !seen.has(key)) { seen.add(key); _acGames.push(g); }
+            });
+            _acLoaded = true;
+        })();
+        return _acLoadPromise;
+    }
+
+    function selectManual() {
+        document.querySelectorAll('.collection-item').forEach(el => el.classList.remove('selected'));
+        document.getElementById('manual-input-card').classList.add('selected');
+        selectedCollection = null;
+        updateColsMax(manualGames.length || 1);
+        loadAcGames(); // 背景預載
+    }
+
+    function selectCollection(idx) {
+        document.querySelectorAll('.collection-item').forEach(el => el.classList.remove('selected'));
+        document.getElementById('manual-input-card').classList.remove('selected');
+        document.getElementById(`col-item-${idx}`)?.classList.add('selected');
+        selectedCollection = collections[idx];
+        const c = selectedCollection;
+        // 自動填入標題
+        document.getElementById('poster-title').value = c.title || '我的桌遊清單';
+        document.getElementById('poster-subtitle').value = c.description || '';
+        cfg.title    = c.title || '我的桌遊清單';
+        cfg.subtitle = c.description || '';
+        updateColsMax((c.games || []).length);
+        scheduleUpdate();
+    }
+
+    // ── 控制項設定 ──
+    // ── chip active 切換（所有 chip onclick 共用）──
+    function setChip(groupId, el) {
+        document.getElementById(groupId).querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    // ════════════════════════════════════
+    // ── 手動新增 Autocomplete ──
+    // ════════════════════════════════════
+    function onManualAcInput(inputEl) {
+        selectManual();
+        const query = inputEl.value.trim().toLowerCase();
+        const drop = document.getElementById('manual-ac-drop');
+        if (!query) { drop.classList.remove('open'); return; }
+
+        loadAcGames().then(() => {
+            if (_acGames.length === 0) { drop.classList.remove('open'); return; }
+
+            function matchScore(g) {
+                const zh = (g.name_zh || '').toLowerCase();
+                const en = (g.name_en || '').toLowerCase();
+                function ns(name) {
+                    if (!name) return 0;
+                    const ratio = query.length / name.length;
+                    if (name === query) return 100;
+                    if (name.startsWith(query)) return 70 * (0.5 + ratio * 0.5);
+                    if (name.includes(query)) return 40 * (0.3 + ratio * 0.7);
+                    return 0;
+                }
+                return Math.max(ns(zh) * 1.2, ns(en));
+            }
+
+            const results = _acGames
+                .map(g => ({ g, score: matchScore(g) }))
+                .filter(x => x.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 12)
+                .map(x => x.g);
+
+            if (inputEl.value.trim().toLowerCase() !== query) return;
+
+            if (results.length === 0) { drop.classList.remove('open'); return; }
+
+            drop.innerHTML = results.map(g => {
+                const displayName = g.name_zh || g.name_en;
+                const subName = g.name_zh && g.name_en ? g.name_en : '';
+                const safe = displayName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const imgHtml = g.image_url
+                    ? `<img src="${g.image_url}" onerror="this.style.display='none'">`
+                    : `<div class="ac-icon">🎲</div>`;
+                return `<div class="manual-ac-item" onmousedown="manualAcSelect('${safe}')">
+                    ${imgHtml}
+                    <div>
+                        <div class="ac-name-zh">${displayName}</div>
+                        ${subName ? `<div class="ac-name-en">${subName}</div>` : ''}
+                    </div>
+                    <span class="manual-ac-badge">資料庫</span>
+                </div>`;
+            }).join('');
+            drop.classList.add('open');
+        });
+    }
+
+    function manualAcSelect(name) {
+        document.getElementById('manual-search-input').value = name;
+        document.getElementById('manual-ac-drop').classList.remove('open');
+        manualAddGame(name);
+    }
+
+    function closeManualAc() {
+        setTimeout(() => {
+            document.getElementById('manual-ac-drop')?.classList.remove('open');
+        }, 200);
+    }
+
+    function manualAddCurrent() {
+        const input = document.getElementById('manual-search-input');
+        const name = input.value.trim();
+        if (!name) return;
+        manualAddGame(name);
+        input.value = '';
+    }
+
+    function manualAddGame(name) {
+        if (!name || manualGames.includes(name)) return;
+        manualGames.push(name);
+        renderManualGameList();
+        updateColsMax(manualGames.length);
+        selectManual();
+    }
+
+    function manualRemoveGame(name) {
+        manualGames = manualGames.filter(g => g !== name);
+        renderManualGameList();
+        updateColsMax(manualGames.length || 1);
+    }
+
+    function renderManualGameList() {
+        const el = document.getElementById('manual-game-list');
+        if (manualGames.length === 0) {
+            el.innerHTML = '<span class="manual-game-empty">尚未新增遊戲</span>';
+            return;
+        }
+        el.innerHTML = manualGames.map(name => {
+            const safe = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `<div class="manual-game-tag">
+                ${name}
+                <button onclick="event.stopPropagation();manualRemoveGame('${safe}')" title="移除">✕</button>
+            </div>`;
+        }).join('');
+    }
+
+    function setupControls() {
+        // chip 已全部改用 onclick，這裡只處理 range 和 text input
+
+        // Title color swatches
+        document.getElementById('title-color-row').querySelectorAll('.color-swatch').forEach(sw => {
+            sw.addEventListener('click', () => {
+                document.getElementById('title-color-row').querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                sw.classList.add('active');
+                cfg.titleColor = sw.dataset.color;
+                scheduleUpdate();
+            });
+        });
+
+        // Range inputs — 直接更新 cfg
+        document.getElementById('cols').addEventListener('input', function() {
+            cfg.cols = +this.value;
+            document.getElementById('cols-val').textContent = this.value;
+        });
+        document.getElementById('gap').addEventListener('input', function() {
+            cfg.gap = +this.value;
+            document.getElementById('gap-val').textContent = this.value + 'px';
+        });
+        document.getElementById('radius').addEventListener('input', function() {
+            cfg.radius = +this.value;
+            document.getElementById('radius-val').textContent = this.value + 'px';
+        });
+
+        // Text inputs
+        document.getElementById('poster-title').addEventListener('input', e => { cfg.title = e.target.value; });
+        document.getElementById('poster-subtitle').addEventListener('input', e => { cfg.subtitle = e.target.value; });
+        document.getElementById('bg-solid-color').addEventListener('input', e => { cfg.bgColor = e.target.value; });
+    }
+
+    function setTitleColor(color) {
+        cfg.titleColor = color;
+        document.getElementById('title-color-row').querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        scheduleUpdate();
+    }
+
+    // ── scheduleUpdate：不再自動更新，留著給需要的地方呼叫（但不觸發預覽）──
+    function scheduleUpdate() {
+        // 不做任何事，等使用者按「產生預覽」
+    }
+
+    // ── 背景色：即時更新預覽（不需重新載圖）──
+    function applyBgColor(color) {
+        const root = document.getElementById('poster-root');
+        if (root) root.style.background = color;
+    }
+
+    // ── 取得遊戲清單 ──
+    async function getGameList() {
+        let names = [];
+        if (selectedCollection) {
+            // 優先用選取的清單
+            names = selectedCollection.games || [];
+        } else if (manualGames.length > 0) {
+            // 其次用手動新增的遊戲
+            names = [...manualGames];
+        } else if (currentUser) {
+            // 都沒有的話，fallback 用玩家的喜歡清單
+            names = [...(currentUser.liked_games || [])].slice(0, 30);
+        }
+        names = [...new Set(names)].slice(0, 50);
+        return names;
+    }
+
+    // ── 把圖片 URL 轉為 base64（html2canvas 跨域用）──
+    async function fetchImageAsBase64(url) {
+        if (!url) return null;
+        if (preloadedImages[url] !== undefined) return preloadedImages[url];
+
+        // 嘗試 fetch，失敗時用備用 URL 重試
+        async function tryFetch(targetUrl) {
+            try {
+                const r = await fetch(targetUrl, { signal: AbortSignal.timeout(20000) });
+                if (!r.ok) throw new Error('fetch failed');
+                const blob = await r.blob();
+                if (!blob.type.startsWith('image/')) throw new Error('not image');
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload  = () => resolve(reader.result);
+                    reader.onerror = () => reject();
+                    reader.readAsDataURL(blob);
+                });
+            } catch(e) {
+                return null;
+            }
+        }
+
+        // ① 先試 weserv 代理（CORS 安全）
+        let result = await tryFetch(url);
+
+        // ② weserv 失敗，試原始 URL 直接抓（部分圖片源允許跨域）
+        if (!result && url.includes('images.weserv.nl')) {
+            try {
+                const originalUrl = decodeURIComponent(new URL(url).searchParams.get('url') || '');
+                if (originalUrl) result = await tryFetch(originalUrl);
+            } catch(e) {}
+        }
+
+        preloadedImages[url] = result;
+        return result;
+    }
+
+    // ── 取遊戲封面圖 URL ──
+    // GameNames.lookup() 支援中英日名稱 + 別名（如「黃銅」→「工業革命: 伯明翰」）
+    function getGameCoverUrl(name, forExport = false) {
+        const info = GameNames.lookup(name);
+        const raw = info?.image_url;
+        if (!raw || !raw.startsWith('http')) return null;
+        return forExport
+            ? `https://images.weserv.nl/?url=${encodeURIComponent(raw)}&w=400&h=400&fit=cover&output=jpg&maxage=7d`
+            : raw;
+    }
+
+    // ── 建立 Poster DOM（forExport=true 時才等 base64，預覽直接用 img src）──
+    async function buildPosterDOM(names, forExport = false) {
+        const { w, h, cols, gap, radius, fallback, showname,
+                bgType, bgColor, titleColor, title, subtitle } = cfg;
+
+        // 確保 GameNames 載入完畢（有快取幾乎瞬間，沒快取才等）
+        await GameNames.load();
+
+        // 計算格子高度
+        const contentPad = 24;
+        const headerH = title ? (subtitle ? 72 : 52) : 0;
+        const footerH = 24;
+        const gridH = h - contentPad * 2 - headerH - footerH - (headerH > 0 ? 16 : 0);
+        const rows   = Math.ceil(names.length / cols);
+        const cellW  = (w - contentPad * 2 - gap * (cols - 1)) / cols;
+        const cellH  = Math.max(60, (gridH - gap * (rows - 1)) / rows);
+
+        const gameInfoList = names.map(n => ({
+            name: n,
+            info: GameNames.lookup(n) || null
+        }));
+
+        // ── 取圖：預覽直接用原始 URL（瞬間顯示），匯出才用 weserv+base64 ──
+        let imageUrls;
+        if (forExport) {
+            showLoading(`準備封面圖... (0/${names.length})`);
+            let doneCount = 0;
+            imageUrls = await Promise.all(
+                gameInfoList.map(async ({ name }) => {
+                    const proxyUrl = getGameCoverUrl(name, true); // weserv 代理
+                    const b64 = await fetchImageAsBase64(proxyUrl);
+                    showLoading(`準備封面圖... (${++doneCount}/${names.length})`);
+                    return b64;
+                })
+            );
+        } else {
+            // 預覽模式：直接用原始圖片 URL，不走代理，瞬間顯示
+            imageUrls = gameInfoList.map(({ name }) => getGameCoverUrl(name, false));
+        }
+
+        // 背景 CSS
+        const firstImg = imageUrls.find(u => u);
+        let bgCss;
+        if (bgType === 'blur-mosaic') {
+            bgCss = firstImg
+                ? `background: url('${firstImg}') center/cover; filter: blur(20px) brightness(0.5); transform:scale(1.2)`
+                : `background: ${bgColor}`;
+        } else {
+            // solid（預設）或其他
+            bgCss = `background: ${bgColor}`;
+        }
+
+        // 決定文字大小
+        const titleSize = title.length > 16 ? 28 : title.length > 10 ? 34 : 40;
+
+        // 格子 HTML
+        const { imgFit } = cfg;  // cover | contain-blur | contain-black | contain-white
+        const cellsHtml = gameInfoList.map(({ name, info }, i) => {
+            const imgSrc = imageUrls[i];
+            const nameLabel = info?.name_zh || name;
+            const showNameCss = showname === 'always' ? 'display:block' : 'display:none';
+
+            const fallbackColors = {
+                dark:  `background: #1e1b4b`,
+                light: `background: #e0e7ff`,
+                bw:    `background: linear-gradient(135deg,#2d2d2d,#555)`,
+                blur:  `background: linear-gradient(135deg, hsl(${(i*47)%360},50%,25%), hsl(${(i*47+120)%360},60%,30%))`,
+                name:  `background: #1e1b4b`,
+            };
+            const emoji = ['🎲','🃏','♟️','🎯','🧩','🎭','🏆','⚔️','🌍','🔮'][ i % 10 ];
+            const fallbackInner = `
+                <div id="fb_${i}" style="width:100%;height:100%;${imgSrc ? 'display:none;' : 'display:flex;'}align-items:center;justify-content:center;flex-direction:column;${fallbackColors[fallback]||fallbackColors.blur}">
+                    <div style="font-size:${Math.min(12, cellW*0.1)}px;color:rgba(255,255,255,0.7);font-weight:700;text-align:center;padding:0 4px;word-break:break-all;">${nameLabel}</div>
+                </div>`;
+
+            let innerHtml = '';
+            if (imgSrc) {
+                if (imgFit === 'cover') {
+                    // 填滿裁切：用 block + 100% 寬高，不用 absolute，overflow:hidden 在任何環境都有效
+                    innerHtml = `
+                        <img src="${imgSrc}" alt="${nameLabel}"
+                            style="width:${cellW}px;height:${cellH}px;object-fit:cover;display:block;flex-shrink:0;"
+                            onerror="this.style.display='none';var fb=this.parentNode.querySelector('[id^=fb_]');if(fb)fb.style.display='flex';">
+                        ${fallbackInner}`;
+                } else {
+                    // contain 模式：圖片保留比例置中，背景填色或模糊
+                    const bgStyle = imgFit === 'contain-black'
+                        ? 'background:#000'
+                        : imgFit === 'contain-white'
+                            ? 'background:#fff'
+                            : '';  // contain-blur：用圖片本身放大模糊
+
+                    if (imgFit === 'contain-blur') {
+                        // 底層：放大模糊的同一張圖
+                        innerHtml = `
+                            <div style="position:absolute;inset:0;overflow:hidden;">
+                                <img src="${imgSrc}" alt=""
+                                    style="width:120%;height:120%;object-fit:cover;position:absolute;top:-10%;left:-10%;filter:blur(12px) brightness(0.6);transform:scale(1.05);"
+                                    onerror="this.style.display='none'">
+                            </div>
+                            <img src="${imgSrc}" alt="${nameLabel}"
+                                style="width:100%;height:100%;object-fit:contain;display:block;position:absolute;top:0;left:0;z-index:1;"
+                                onerror="this.style.display='none';this.previousElementSibling.style.display='none';var fb=this.parentNode.querySelector('[id^=fb_]');if(fb)fb.style.display='flex';">
+                            ${fallbackInner}`;
+                    } else {
+                        // 黑底 or 白底
+                        innerHtml = `
+                            <div style="position:absolute;inset:0;${bgStyle};display:flex;align-items:center;justify-content:center;">
+                                <img src="${imgSrc}" alt="${nameLabel}"
+                                    style="max-width:100%;max-height:100%;object-fit:contain;display:block;"
+                                    onerror="this.parentNode.style.display='none';var fb=this.parentNode.parentNode.querySelector('[id^=fb_]');if(fb)fb.style.display='flex';">
+                            </div>
+                            ${fallbackInner}`;
+                    }
+                }
+            } else {
+                innerHtml = fallbackInner;
+            }
+
+            return `
+                <div style="
+                    width:${cellW}px; height:${cellH}px;
+                    border-radius:${radius}px;
+                    overflow:hidden; position:relative; flex-shrink:0;
+                    flex: 0 0 ${cellW}px;
+                ">
+                    ${innerHtml}
+                    <div style="${showNameCss};position:absolute;bottom:0;left:0;right:0;z-index:10;
+                        font-size:${Math.max(10, cellW * 0.07)}px;padding:4px 6px;
+                        background:rgba(0,0,0,0.65);color:white;
+                        text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${nameLabel}
+                    </div>
+                </div>`;
+        }).join('');
+
+        const gridHtml = `
+            <div style="
+                display:grid;
+                grid-template-columns:repeat(${cols}, 1fr);
+                gap:${gap}px;
+                width:${w - contentPad*2}px;
+            ">
+                ${cellsHtml}
+            </div>`;
+
+        const headerHtml = title ? `
+            <div style="margin-bottom:16px;">
+                <div style="font-size:${titleSize}px;font-weight:900;color:${titleColor};line-height:1.15;word-break:break-word;font-family:'Inter',sans-serif;">${title}</div>
+                ${subtitle ? `<div style="font-size:16px;color:${titleColor};opacity:0.75;margin-top:6px;line-height:1.4;word-break:break-word;font-family:'Inter',sans-serif;">${subtitle}</div>` : ''}
+            </div>` : '';
+
+        // 模糊背景處理（blur-mosaic 的 bg div 要在外層）
+        const needBgLayer = bgType === 'blur-mosaic';
+        const bgDiv = needBgLayer
+            ? `<div style="position:absolute;inset:0;z-index:0;${bgCss};"></div>`
+            : '';
+
+        const posterHtml = `
+            <div id="poster-root" style="
+                width:${w}px; height:${h}px;
+                position:relative; overflow:hidden;
+                ${!needBgLayer ? bgCss + ';' : ''}
+                font-family:'Inter',sans-serif;
+            ">
+                ${bgDiv}
+                <div style="position:relative;z-index:1;padding:${contentPad}px;display:flex;flex-direction:column;height:100%;width:100%;">
+                    ${headerHtml}
+                    <div style="flex:1;display:flex;align-items:flex-start;">
+                        ${gridHtml}
+                    </div>
+                    <div style="margin-top:8px;font-size:11px;opacity:0.4;text-align:right;color:${titleColor};font-family:'Inter',sans-serif;">
+                        MBTI × 桌遊配對
+                    </div>
+                </div>
+            </div>`;
+
+        return posterHtml;
+    }
+
+    // ── 更新預覽 ──
+    async function updatePreview() {
+        // 讀最新 range 值確保 cfg 正確
+        cfg.cols   = +document.getElementById('cols').value;
+        cfg.gap    = +document.getElementById('gap').value;
+        cfg.radius = +document.getElementById('radius').value;
+        cfg.title    = document.getElementById('poster-title').value;
+        cfg.subtitle = document.getElementById('poster-subtitle').value;
+
+        // 按鈕顯示製作中
+        const btn = document.getElementById('preview-btn');
+        const origHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> 製作中…';
+
+        const names = await getGameList();
+        if (names.length === 0) {
+            document.getElementById('poster-container').innerHTML = `
+                <div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#111;color:#666;flex-direction:column;gap:0.75rem;padding:2rem;">
+                    <div style="font-size:2.5rem;">📋</div>
+                    <div>選擇一個清單或輸入遊戲名稱</div>
+                </div>`;
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+            return;
+        }
+        currentGames = names;
+
+        const html = await buildPosterDOM(names);
+        const container = document.getElementById('poster-container');
+
+        // 縮放預覽
+        const previewWidth = container.offsetWidth || 600;
+        const scale = previewWidth / cfg.w;
+
+        container.innerHTML = `
+            <div style="
+                width:${previewWidth}px;
+                height:${cfg.h * scale}px;
+                overflow:hidden; position:relative;
+            ">
+                <div style="
+                    transform-origin:top left;
+                    transform:scale(${scale});
+                    width:${cfg.w}px;
+                    height:${cfg.h}px;
+                ">
+                    ${html}
+                </div>
+            </div>`;
+
+        document.getElementById('preview-label').textContent =
+            `預覽 ${cfg.w}×${cfg.h}px・${names.length} 款遊戲`;
+
+        // 每行幾款上限 = 遊戲總數
+        updateColsMax(names.length);
+
+        // 按鈕恢復
+        btn.disabled = false;
+        btn.innerHTML = origHTML;
+    }
+
+    // ── 載入圖片為 ImageBitmap（純 Canvas 用）──
+    async function loadImageBitmap(url) {
+        if (!url) return null;
+        if (preloadedImages[url] !== undefined) return preloadedImages[url];
+        try {
+            // 先試 weserv 代理（解決跨域）
+            const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=600&h=600&fit=inside&output=jpg&maxage=7d`;
+            const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+            if (!r.ok) throw new Error('fetch failed');
+            const blob = await r.blob();
+            const bmp = await createImageBitmap(blob);
+            preloadedImages[url] = bmp;
+            return bmp;
+        } catch(e) {
+            // 直連試試
+            try {
+                const r2 = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                if (!r2.ok) throw new Error('fetch failed');
+                const blob2 = await r2.blob();
+                const bmp2 = await createImageBitmap(blob2);
+                preloadedImages[url] = bmp2;
+                return bmp2;
+            } catch(e2) {
+                preloadedImages[url] = null;
+                return null;
+            }
+        }
+    }
+
+    // ── 在 Canvas 上畫圓角矩形 clip ──
+    function roundRect(ctx, x, y, w, h, r) {
+        if (r <= 0) { ctx.rect(x, y, w, h); return; }
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x, y + h, x, y + h - r, r);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+        ctx.closePath();
+    }
+
+    // ── 在 Canvas 上畫「填滿裁切（cover）」圖片 ──
+    function drawImageCover(ctx, img, x, y, w, h) {
+        const imgW = img.width, imgH = img.height;
+        const scale = Math.max(w / imgW, h / imgH);
+        const sw = w / scale, sh = h / scale;
+        const sx = (imgW - sw) / 2, sy = (imgH - sh) / 2;
+        ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+
+    // ── 在 Canvas 上畫「保留比例（contain）」圖片 ──
+    function drawImageContain(ctx, img, x, y, w, h) {
+        const imgW = img.width, imgH = img.height;
+        const scale = Math.min(w / imgW, h / imgH);
+        const dw = imgW * scale, dh = imgH * scale;
+        const dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+        ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    // ── [stackBlur 已移除，改用 downscale blur] ──
+    function stackBlurImageData_UNUSED(imageData, radius) {
+        const pixels = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+        let x, y, i, p, yp, yi, yw;
+        let r_sum, g_sum, b_sum, a_sum;
+        let r_out_sum, g_out_sum, b_out_sum, a_out_sum;
+        let r_in_sum, g_in_sum, b_in_sum, a_in_sum;
+        let pr, pg, pb, pa, rbs;
+        const div = radius + radius + 1;
+        const widthMinus1 = width - 1;
+        const heightMinus1 = height - 1;
+        const radiusPlus1 = radius + 1;
+        const sumFactor = radiusPlus1 * (radiusPlus1 + 1) / 2;
+        const stackStart = new Array(div);
+        for (i = 0; i < div; i++) stackStart[i] = [0,0,0,0];
+        let stack = stackStart;
+        let stackEnd, stackIn, stackOut;
+        const mul_sum = [
+            512,512,456,512,328,456,335,512,405,328,271,456,388,335,292,512,
+            454,405,364,328,298,271,496,456,420,388,360,335,312,292,273,512,
+            492,454,420,388,360,336,314,294,276,260,246,234,223,213,204,196,189,182,176,170,165,160,155,150,146,142,138,135,132,129,126,123,120,117,115,113,111,109,107,105,103,101,100,98,96,95,93,92,91,89,88,87,85,84,83,82,81,79,79,78,77,76,75,74,73,72,71,70,69,68,68,67,66,65,64,64,63,62,62,61,60,60,59,58,58,57,56,56,55,55,54,53,53,52,52,51,51,50,50,49,49,48,48,47,47,46,46,45,45,44,44,43,43,43,42,42,41,41,41,40,40,39,39,39,38
+        ];
+        const shg_sum = [
+            9,11,12,13,13,14,14,15,15,15,15,16,16,16,16,17,17,17,17,17,17,17,18,18,18,18,18,18,18,18,18,19,19,19,19,19,19,19,19,19,19,19,19,19,19,19,19,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,22,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23
+        ];
+        const mul_table = mul_sum;
+        const shg_table = shg_sum;
+        let stackPtr, sp, v1;
+        // Horizontal pass
+        for (y = 0; y < height; y++) {
+            r_in_sum = g_in_sum = b_in_sum = a_in_sum = 0;
+            r_sum = g_sum = b_sum = a_sum = 0;
+            r_out_sum = g_out_sum = b_out_sum = a_out_sum = 0;
+            yi = y * width * 4;
+            for (i = 0; i < div; i++) {
+                p = yi + (Math.min(i, widthMinus1)) * 4;
+                stack[i][0] = pixels[p]; stack[i][1] = pixels[p+1];
+                stack[i][2] = pixels[p+2]; stack[i][3] = pixels[p+3];
+                rbs = radiusPlus1 - Math.abs(i - radius);
+                r_sum += stack[i][0] * rbs; g_sum += stack[i][1] * rbs;
+                b_sum += stack[i][2] * rbs; a_sum += stack[i][3] * rbs;
+                if (i > radius) { r_out_sum += stack[i][0]; g_out_sum += stack[i][1]; b_out_sum += stack[i][2]; a_out_sum += stack[i][3]; }
+                else { r_in_sum += stack[i][0]; g_in_sum += stack[i][1]; b_in_sum += stack[i][2]; a_in_sum += stack[i][3]; }
+            }
+            stackPtr = radius; stackIn = 0; stackOut = radiusPlus1;
+            for (x = 0; x < width; x++) {
+                pixels[yi+x*4]   = (r_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                pixels[yi+x*4+1] = (g_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                pixels[yi+x*4+2] = (b_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                pixels[yi+x*4+3] = (a_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                r_sum -= r_out_sum; g_sum -= g_out_sum; b_sum -= b_out_sum; a_sum -= a_out_sum;
+                sp = stack[stackOut]; r_out_sum -= sp[0]; g_out_sum -= sp[1]; b_out_sum -= sp[2]; a_out_sum -= sp[3];
+                p = x + radiusPlus1 < widthMinus1 ? yi + (x + radiusPlus1) * 4 : yi + widthMinus1 * 4;
+                sp[0] = pixels[p]; sp[1] = pixels[p+1]; sp[2] = pixels[p+2]; sp[3] = pixels[p+3];
+                r_in_sum += sp[0]; g_in_sum += sp[1]; b_in_sum += sp[2]; a_in_sum += sp[3];
+                r_sum += r_in_sum; g_sum += g_in_sum; b_sum += b_in_sum; a_sum += a_in_sum;
+                stackOut = (stackOut + 1) % div;
+                sp = stack[stackPtr = (stackPtr + 1) % div];
+                r_out_sum += sp[0]; g_out_sum += sp[1]; b_out_sum += sp[2]; a_out_sum += sp[3];
+                r_in_sum -= sp[0]; g_in_sum -= sp[1]; b_in_sum -= sp[2]; a_in_sum -= sp[3];
+                stackIn = (stackIn + 1) % div;
+            }
+        }
+        // Vertical pass
+        for (x = 0; x < width; x++) {
+            r_in_sum = g_in_sum = b_in_sum = a_in_sum = 0;
+            r_sum = g_sum = b_sum = a_sum = 0;
+            r_out_sum = g_out_sum = b_out_sum = a_out_sum = 0;
+            yp = -radius * width; xp = x * 4;
+            for (i = 0; i < div; i++) {
+                p = (yp + Math.min(i, heightMinus1) * width) * 4 + xp;
+                if (yp + i * width < 0) p = xp;
+                stack[i][0] = pixels[p]; stack[i][1] = pixels[p+1];
+                stack[i][2] = pixels[p+2]; stack[i][3] = pixels[p+3];
+                rbs = radiusPlus1 - Math.abs(i - radius);
+                r_sum += stack[i][0] * rbs; g_sum += stack[i][1] * rbs;
+                b_sum += stack[i][2] * rbs; a_sum += stack[i][3] * rbs;
+                if (i > radius) { r_out_sum += stack[i][0]; g_out_sum += stack[i][1]; b_out_sum += stack[i][2]; a_out_sum += stack[i][3]; }
+                else { r_in_sum += stack[i][0]; g_in_sum += stack[i][1]; b_in_sum += stack[i][2]; a_in_sum += stack[i][3]; }
+            }
+            stackPtr = radius; stackIn = 0; stackOut = radiusPlus1;
+            for (y = 0; y < height; y++) {
+                p = (y * width + x) * 4;
+                pixels[p]   = (r_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                pixels[p+1] = (g_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                pixels[p+2] = (b_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                pixels[p+3] = (a_sum * (mul_table[radius] >> 0)) >> shg_table[radius];
+                r_sum -= r_out_sum; g_sum -= g_out_sum; b_sum -= b_out_sum; a_sum -= a_out_sum;
+                sp = stack[stackOut]; r_out_sum -= sp[0]; g_out_sum -= sp[1]; b_out_sum -= sp[2]; a_out_sum -= sp[3];
+                const yNext = y + radiusPlus1 < heightMinus1 ? (y + radiusPlus1) * width : heightMinus1 * width;
+                p = (yNext + x) * 4;
+                sp[0] = pixels[p]; sp[1] = pixels[p+1]; sp[2] = pixels[p+2]; sp[3] = pixels[p+3];
+                r_in_sum += sp[0]; g_in_sum += sp[1]; b_in_sum += sp[2]; a_in_sum += sp[3];
+                r_sum += r_in_sum; g_sum += g_in_sum; b_sum += b_in_sum; a_sum += a_in_sum;
+                stackOut = (stackOut + 1) % div;
+                sp = stack[stackPtr = (stackPtr + 1) % div];
+                r_out_sum += sp[0]; g_out_sum += sp[1]; b_out_sum += sp[2]; a_out_sum += sp[3];
+                r_in_sum -= sp[0]; g_in_sum -= sp[1]; b_in_sum -= sp[2]; a_in_sum -= sp[3];
+                stackIn = (stackIn + 1) % div;
+            }
+        }
+        return imageData;
+    }
+
+    // ── contain-blur：downscale × N 次模擬模糊（不依賴 ctx.filter，100% 跨瀏覽器）──
+    // 呼叫時外層已做好圓角 clip，這裡直接在 clipped ctx 上繪製
+    function drawImageContainBlur(ctx, img, x, y, w, h) {
+        // 原理：把圖縮到極小再放大，Canvas 的雙線性插值會讓畫面變糊
+        // 縮放比例越小、來回次數越多，模糊越強
+        const steps = 5;       // 來回幾次
+        const minSize = 8;     // 縮到最小幾像素（越小越模糊）
+
+        // 1. 建工作畫布：先把 cover 版畫進去
+        const tmpA = document.createElement('canvas');
+        tmpA.width = w; tmpA.height = h;
+        const ctxA = tmpA.getContext('2d');
+        // cover fill（放大 1.15x 避免縮放後出現空白邊緣）
+        const coverScale = Math.max(w / img.width, h / img.height) * 1.15;
+        const cw = img.width * coverScale, ch = img.height * coverScale;
+        ctxA.drawImage(img, (w - cw) / 2, (h - ch) / 2, cw, ch);
+
+        // 2. 來回縮放 steps 次製造模糊
+        const tmpB = document.createElement('canvas');
+        tmpB.width = w; tmpB.height = h;
+        const ctxB = tmpB.getContext('2d');
+        let src = tmpA;
+        for (let s = 0; s < steps; s++) {
+            // 縮到 minSize
+            const tiny = document.createElement('canvas');
+            tiny.width = minSize; tiny.height = minSize;
+            tiny.getContext('2d').drawImage(src, 0, 0, minSize, minSize);
+            // 放大回 w×h
+            ctxB.clearRect(0, 0, w, h);
+            ctxB.drawImage(tiny, 0, 0, w, h);
+            // 交換 src
+            ctxA.clearRect(0, 0, w, h);
+            ctxA.drawImage(tmpB, 0, 0);
+            src = tmpA;
+        }
+
+        // 3. 暗化（半透明黑層）
+        ctxA.fillStyle = 'rgba(0,0,0,0.42)';
+        ctxA.fillRect(0, 0, w, h);
+
+        // 4. 把模糊底層貼到主 canvas（外層已有 clip）
+        ctx.drawImage(tmpA, x, y);
+
+        // 5. 前景：contain 原圖置中
+        const fScale = Math.min(w / img.width, h / img.height);
+        const fw = img.width * fScale, fh = img.height * fScale;
+        ctx.drawImage(img, x + (w - fw) / 2, y + (h - fh) / 2, fw, fh);
+    }
+
+    // ── 畫 fallback 格子（沒有封面時）──
+    function drawFallbackCell(ctx, x, y, w, h, name, idx) {
+        const fallback = cfg.fallback; // blur | dark | light | bw | name
+        const hue1 = (idx * 47) % 360;
+        const hue2 = (hue1 + 120) % 360;
+
+        // 背景色
+        if (fallback === 'dark' || fallback === 'name') {
+            ctx.fillStyle = '#1e1b4b';
+        } else if (fallback === 'light') {
+            ctx.fillStyle = '#e0e7ff';
+        } else if (fallback === 'bw') {
+            const grd = ctx.createLinearGradient(x, y, x + w, y + h);
+            grd.addColorStop(0, '#2d2d2d');
+            grd.addColorStop(1, '#555');
+            ctx.fillStyle = grd;
+        } else {
+            // blur（預設）：漸層色塊
+            const grd = ctx.createLinearGradient(x, y, x + w, y + h);
+            grd.addColorStop(0, `hsl(${hue1},50%,20%)`);
+            grd.addColorStop(1, `hsl(${hue2},60%,25%)`);
+            ctx.fillStyle = grd;
+        }
+        ctx.fillRect(x, y, w, h);
+
+        // 內容
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (fallback === 'name') {
+            // 只顯示名稱
+            const nameLabel = GameNames.lookup(name)?.name_zh || name;
+            const fontSize = Math.max(10, Math.min(w * 0.1, 14));
+            ctx.font = `700 ${fontSize}px 'Inter', sans-serif`;
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
+            ctx.globalAlpha = 1;
+            // 換行處理
+            const maxW = w - 12;
+            const words = nameLabel.split('');
+            let line = '', lines = [];
+            for (const ch of words) {
+                if (ctx.measureText(line + ch).width > maxW) { lines.push(line); line = ch; }
+                else line += ch;
+            }
+            if (line) lines.push(line);
+            lines = lines.slice(0, 3);
+            const lineH = fontSize * 1.4;
+            const startY = y + h / 2 - (lines.length - 1) * lineH / 2;
+            lines.forEach((l, li) => ctx.fillText(l, x + w / 2, startY + li * lineH));
+        } else {
+            // 其他模式：顯示 emoji（半透明）
+            const emojis = ['🎲','🃏','♟️','🎯','🧩','🎭','🏆','⚔️','🌍','🔮'];
+            ctx.font = `${Math.min(h, w) * 0.32}px sans-serif`;
+            ctx.globalAlpha = 0.55;
+            ctx.fillText(emojis[idx % emojis.length], x + w / 2, y + h * 0.5);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // ── 純 Canvas 繪製 Poster ──
+    async function renderPosterToCanvas() {
+        const { w, h, cols, gap, radius, showname, bgColor, titleColor, title, subtitle, imgFit, scale } = cfg;
+        const names = currentGames.length ? currentGames : await getGameList();
+        if (!names.length) return null;
+
+        const S = scale; // 輸出倍率
+        const canvas = document.createElement('canvas');
+        canvas.width  = w * S;
+        canvas.height = h * S;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(S, S);
+
+        // ── 背景 ──
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, w, h);
+
+        // ── 計算 layout ──
+        const contentPad = 24;
+        const headerH = title ? (subtitle ? 72 : 52) : 0;
+        const footerH = 24;
+        const gridH   = h - contentPad * 2 - headerH - footerH - (headerH > 0 ? 16 : 0);
+        const rows    = Math.ceil(names.length / cols);
+        const cellW   = Math.floor((w - contentPad * 2 - gap * (cols - 1)) / cols);
+        const cellH   = Math.max(60, Math.floor((gridH - gap * (rows - 1)) / rows));
+
+        // ── 標題 ──
+        if (title) {
+            const titleSize = title.length > 16 ? 28 : title.length > 10 ? 34 : 40;
+            ctx.fillStyle = titleColor;
+            ctx.font = `900 ${titleSize}px 'Inter', sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(title, contentPad, contentPad);
+            if (subtitle) {
+                ctx.font = `400 16px 'Inter', sans-serif`;
+                ctx.globalAlpha = 0.75;
+                ctx.fillText(subtitle, contentPad, contentPad + titleSize * 1.3);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // ── 載入圖片（並行）──
+        const gridTop = contentPad + headerH + (headerH > 0 ? 16 : 0);
+        await GameNames.load();
+        showLoading(`準備封面圖... (0/${names.length})`);
+        let doneCount = 0;
+        const images = await Promise.all(names.map(async (name) => {
+            const url = getGameCoverUrl(name, false); // 原始 URL
+            const bmp = await loadImageBitmap(url);
+            showLoading(`準備封面圖... (${++doneCount}/${names.length})`);
+            return bmp;
+        }));
+
+        // ── 繪製格子 ──
+        for (let i = 0; i < names.length; i++) {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const x = contentPad + col * (cellW + gap);
+            const y = gridTop + row * (cellH + gap);
+            const img = images[i];
+
+            // 圓角 clip
+            ctx.save();
+            roundRect(ctx, x, y, cellW, cellH, radius);
+            ctx.clip();
+
+            if (img) {
+                if (imgFit === 'contain-blur') {
+                    // contain-blur：內部自己處理，不需要外層再 clip（已 clip 在外層）
+                    drawImageContainBlur(ctx, img, x, y, cellW, cellH, radius);
+                } else if (imgFit === 'cover') {
+                    drawImageCover(ctx, img, x, y, cellW, cellH);
+                } else if (imgFit === 'contain-black') {
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(x, y, cellW, cellH);
+                    drawImageContain(ctx, img, x, y, cellW, cellH);
+                } else if (imgFit === 'contain-white') {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(x, y, cellW, cellH);
+                    drawImageContain(ctx, img, x, y, cellW, cellH);
+                }
+            } else {
+                drawFallbackCell(ctx, x, y, cellW, cellH, names[i], i);
+            }
+
+            // 遊戲名稱覆蓋層
+            if (showname === 'always') {
+                const labelH = Math.max(20, cellH * 0.18);
+                const grd2 = ctx.createLinearGradient(x, y + cellH - labelH, x, y + cellH);
+                grd2.addColorStop(0, 'rgba(0,0,0,0)');
+                grd2.addColorStop(1, 'rgba(0,0,0,0.72)');
+                ctx.fillStyle = grd2;
+                ctx.fillRect(x, y + cellH - labelH, cellW, labelH);
+
+                const nameLabel = GameNames.lookup(names[i])?.name_zh || names[i];
+                const fontSize = Math.max(10, cellW * 0.07);
+                ctx.fillStyle = '#fff';
+                ctx.font = `600 ${fontSize}px 'Inter', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // 截斷文字
+                let txt = nameLabel;
+                while (ctx.measureText(txt).width > cellW - 12 && txt.length > 3) {
+                    txt = txt.slice(0, -1);
+                }
+                if (txt !== nameLabel) txt += '…';
+                ctx.fillText(txt, x + cellW / 2, y + cellH - labelH / 2);
+            }
+
+            ctx.restore();
+        }
+
+        // ── 頁腳 ──
+        ctx.fillStyle = titleColor;
+        ctx.globalAlpha = 0.4;
+        ctx.font = `400 11px 'Inter', sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('MBTI × 桌遊配對', w - contentPad, h - 8);
+        ctx.globalAlpha = 1;
+
+        return canvas;
+    }
+
+    // ── 下載 PNG（純 Canvas 繪製，與預覽完全一致）──
+    async function downloadPoster() {
+        const names = currentGames.length ? currentGames : await getGameList();
+        if (names.length === 0) { alert('請先選擇清單或輸入遊戲名稱，然後按「產生預覽」'); return; }
+
+        const btn = document.getElementById('download-btn');
+        const origHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> 生成中…';
+        document.getElementById('export-status').textContent = '';
+
+        try {
+            // 同步讀最新 cfg
+            cfg.cols   = +document.getElementById('cols').value;
+            cfg.gap    = +document.getElementById('gap').value;
+            cfg.radius = +document.getElementById('radius').value;
+            cfg.title    = document.getElementById('poster-title').value;
+            cfg.subtitle = document.getElementById('poster-subtitle').value;
+
+            showLoading('準備中...');
+            const canvas = await renderPosterToCanvas();
+            if (!canvas) { alert('沒有遊戲，請先選擇清單'); return; }
+
+            // 直接在新分頁開圖片
+            const dataUrl = canvas.toDataURL('image/png');
+            const win = window.open('', '_blank');
+            if (win) {
+                win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${cfg.title || '桌遊清單'}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#111; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; gap:1.2rem; font-family:sans-serif; }
+    img { max-width:100%; max-height:90vh; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,0.6); display:block; }
+    a { color:#7dd3fc; font-size:0.9rem; padding:0.5rem 1.4rem; border:1px solid #7dd3fc; border-radius:2rem; text-decoration:none; }
+    a:hover { background:#7dd3fc22; }
+    p { color:#aaa; font-size:0.8rem; }
+  </style>
+</head>
+<body>
+  <img src="${dataUrl}">
+  <a href="${dataUrl}" download="${(cfg.title||'桌遊清單').replace(/[/\\:*?"<>|]/g,'_')}_${cfg.w}x${cfg.h}.png">⬇️ 下載圖片</a>
+  <p>長按或右鍵也可儲存</p>
+</body>
+</html>`);
+                win.document.close();
+                document.getElementById('export-status').textContent = '✅ 已在新分頁開啟！';
+            } else {
+                // popup 被擋，直接觸發下載
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = `${cfg.title||'桌遊清單'}_${cfg.w}x${cfg.h}.png`;
+                a.click();
+                document.getElementById('export-status').textContent = '✅ 下載中！';
+            }
+            setTimeout(() => { document.getElementById('export-status').textContent = ''; }, 5000);
+
+        } catch(e) {
+            console.error(e);
+            document.getElementById('export-status').textContent = '❌ 生成失敗：' + e.message;
+        } finally {
+            hideLoading();
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+        }
+    }
+
+    async function copyPoster() {
+        const names = currentGames.length ? currentGames : await getGameList();
+        if (names.length === 0) { alert('請先選擇清單或輸入遊戲名稱'); return; }
+
+        if (!navigator.clipboard?.write) {
+            alert('您的瀏覽器不支援複製到剪貼簿，請使用下載功能');
+            return;
+        }
+
+        showLoading('複製中...');
+        try {
+            cfg.cols   = +document.getElementById('cols').value;
+            cfg.gap    = +document.getElementById('gap').value;
+            cfg.radius = +document.getElementById('radius').value;
+            cfg.title    = document.getElementById('poster-title').value;
+            cfg.subtitle = document.getElementById('poster-subtitle').value;
+
+            const origScale = cfg.scale;
+            cfg.scale = Math.min(cfg.scale, 2); // 複製不需要太高解析度
+            const canvas = await renderPosterToCanvas();
+            cfg.scale = origScale;
+
+            canvas.toBlob(async blob => {
+                try {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                    hideLoading();
+                    document.getElementById('export-status').textContent = '✅ 已複製到剪貼簿！';
+                    setTimeout(() => document.getElementById('export-status').textContent = '', 3000);
+                } catch(ce) {
+                    hideLoading();
+                    document.getElementById('export-status').textContent = '❌ 複製失敗，請嘗試下載';
+                }
+            }, 'image/png');
+        } catch(e) {
+            hideLoading();
+            console.error(e);
+        }
+    }
+
+    function showLoading(msg) {
+        document.getElementById('loading-text').textContent = msg || '生成中...';
+        document.getElementById('loading-overlay').style.display = 'flex';
+        document.getElementById('download-btn').disabled = true;
+    }
+    function hideLoading() {
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('download-btn').disabled = false;
+    }
+    </script>
+</body>
+</html>

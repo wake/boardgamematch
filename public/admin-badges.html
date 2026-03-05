@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>徽章管理 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        .admin-header {
+            color: white;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 1rem;
+        }
+        .admin-header h2 {
+            margin: 0 0 0.5rem;
+            color: white;
+            background: none;
+            -webkit-text-fill-color: white;
+        }
+        .admin-header p {
+            margin: 0;
+            opacity: 0.9;
+            color: white;
+        }
+        .admin-header .back-btn {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.35rem 1rem;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1.5px solid rgba(255,255,255,0.6);
+            border-radius: 2rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .admin-header .back-btn:hover { background: rgba(255,255,255,0.35); }
+        
+        .badge-list {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .badge-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        
+        .badge-icon-large {
+            font-size: 4rem;
+            text-align: center;
+        }
+        
+        .badge-info {
+            flex: 1;
+        }
+        
+        .badge-info h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-color);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .badge-rarity {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .badge-rarity.common { background: #95a5a6; color: white; }
+        .badge-rarity.rare { background: #3498db; color: white; }
+        .badge-rarity.epic { background: #9b59b6; color: white; }
+        .badge-rarity.legendary { background: #f39c12; color: white; }
+        .badge-rarity.mythic { background: linear-gradient(90deg, #f43f5e, #a855f7, #3b82f6, #10b981, #f59e0b); background-size: 200% auto; color: white; animation: mythicShift 3s linear infinite; }
+        @keyframes mythicShift { 0%{background-position:0% center} 100%{background-position:200% center} }
+        
+        .badge-info p {
+            margin: 0.5rem 0;
+            color: var(--text-light);
+        }
+        
+        .badge-condition {
+            display: inline-block;
+            background: var(--bg-light);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        
+        .badge-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-icon {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-edit {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .add-badge-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+        }
+        
+        .add-badge-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .btn-save {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* 特殊 Tab 子按鈕 */
+        .stab-btn {
+            padding: 0.45rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            background: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.2s;
+        }
+        .stab-btn.stab-active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+    </style>
+    <!-- Google Sign-In SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- 管理後台驗證 -->
+    <script src="js/admin-auth.js?v=20240222-fix"></script>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 彩色橫幅 -->
+        <div class="admin-header" style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 40%, #ef4444 100%);">
+            <h2>🏆 成就徽章管理</h2>
+            <p>管理所有成就徽章的設定、解鎖條件與發放</p>
+            <a href="admin.html" class="back-btn">← 返回管理後台</a>
+        </div>
+
+        <!-- Tab 切換 -->
+        <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;border-bottom:2px solid var(--border-color);padding-bottom:0;">
+            <button id="tab-badges" onclick="switchTab('badges')" style="padding:0.6rem 1.2rem;border:none;background:none;font-size:1rem;font-weight:600;color:var(--primary-color);border-bottom:3px solid var(--primary-color);margin-bottom:-2px;cursor:pointer;">🏆 徽章列表</button>
+            <button id="tab-grant" onclick="switchTab('grant')" style="padding:0.6rem 1.2rem;border:none;background:none;font-size:1rem;font-weight:600;color:var(--text-light);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;">🎖️ 授予徽章</button>
+            <button id="tab-whitelist" onclick="switchTab('whitelist')" style="padding:0.6rem 1.2rem;border:none;background:none;font-size:1rem;font-weight:600;color:var(--text-light);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;">📋 白名單管理</button>
+            <button id="tab-special" onclick="switchTab('special')" style="padding:0.6rem 1.2rem;border:none;background:none;font-size:1rem;font-weight:600;color:var(--text-light);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;">⭐ 特殊徽章</button>
+        </div>
+
+        <!-- Tab: 徽章列表 -->
+        <div id="panel-badges">
+        <!-- 統計資訊 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--primary-color);" id="total-badges">-</div>
+                <div style="color: var(--text-light);">總徽章數</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #a855f7;" id="mythic-count">-</div>
+                <div style="color: var(--text-light);">🌈 神話徽章</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #f39c12;" id="legendary-count">-</div>
+                <div style="color: var(--text-light);">✨ 傳說徽章</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #9b59b6;" id="epic-count">-</div>
+                <div style="color: var(--text-light);">史詩徽章</div>
+            </div>
+        </div>
+
+        <!-- 徽章列表 -->
+        <div class="badge-list" id="badge-list">
+            <!-- 動態插入 -->
+        </div>
+        </div><!-- end panel-badges -->
+
+        <!-- Tab: 特殊徽章 -->
+        <div id="panel-special" style="display:none;">
+
+            <!-- 子頁籤 -->
+            <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+                <button id="stab-fixed" onclick="switchSpecialTab('fixed')" class="stab-btn stab-active">🎖️ 固定特殊徽章</button>
+                <button id="stab-publisher" onclick="switchSpecialTab('publisher')" class="stab-btn">🏭 出版社系列</button>
+                <button id="stab-early" onclick="switchSpecialTab('early')" class="stab-btn">🌱 早期探索者</button>
+            </div>
+
+            <!-- 子頁面: 固定特殊徽章 -->
+            <div id="spanel-fixed">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 style="margin:0;">🎖️ 固定特殊徽章管理</h3>
+                    <button class="btn btn-primary" onclick="openSpecialBadgeModal()">+ 新增特殊徽章</button>
+                </div>
+                <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:1rem;">包含桌遊KOL、地區團主等可自訂圖示的手動頒發徽章</p>
+                <div id="fixed-special-list" style="display:grid;gap:1rem;"></div>
+            </div>
+
+            <!-- 子頁面: 出版社系列 -->
+            <div id="spanel-publisher" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h3 style="margin:0;">🏭 出版社徽章系列</h3>
+                    <button class="btn btn-primary" onclick="openPublisherModal()">+ 新增出版社</button>
+                </div>
+                <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:1rem;">每新增一個出版社，系統自動生成 10 個徽章（5忠實顧客 ＋ 5粉絲），並可授予符合條件的玩家</p>
+                <div id="publisher-list" style="display:grid;gap:1rem;"></div>
+            </div>
+
+            <!-- 子頁面: 早期探索者 -->
+            <div id="spanel-early" style="display:none;">
+                <div style="background:var(--card-bg);border-radius:1rem;padding:1.5rem;box-shadow:var(--shadow-md);margin-bottom:1.5rem;">
+                    <h3 style="margin:0 0 0.5rem 0;">🌱 早期探索者 批量發放</h3>
+                    <p style="color:var(--text-light);font-size:0.9rem;margin:0 0 1rem 0;">條件：在 <strong>2026/06/30 23:59</strong> 前建立帳號的玩家，自動授予 🌱 早期探索者（rare）徽章</p>
+                    <div id="early-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem;"></div>
+                    <button class="btn btn-primary" onclick="runEarlyExplorerGrant()" id="early-grant-btn">🚀 批量授予早期探索者徽章</button>
+                </div>
+                <div id="early-result-log" style="background:var(--bg-light);border-radius:0.75rem;padding:1rem;font-size:0.85rem;font-family:monospace;max-height:300px;overflow-y:auto;display:none;"></div>
+            </div>
+
+        </div><!-- end panel-special -->
+
+        <!-- Tab: 白名單管理 -->
+        <div id="panel-whitelist" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+                <!-- tester_whitelist -->
+                <div style="background:var(--card-bg);border-radius:1rem;padding:1.5rem;box-shadow:var(--shadow-md);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                        <div>
+                            <h3 style="margin:0 0 0.25rem 0;">🧪 測試人員白名單</h3>
+                            <p style="margin:0;font-size:0.85rem;color:var(--text-light);">對應成就：<code>badge_tester</code></p>
+                        </div>
+                        <button class="btn btn-primary" style="padding:0.4rem 0.9rem;font-size:0.85rem;" onclick="openAddWhitelist('tester')">+ 新增</button>
+                    </div>
+                    <div id="tester-list" style="display:flex;flex-direction:column;gap:0.5rem;">
+                        <p style="color:var(--text-light);text-align:center;">載入中...</p>
+                    </div>
+                </div>
+
+                <!-- admin_whitelist -->
+                <div style="background:var(--card-bg);border-radius:1rem;padding:1.5rem;box-shadow:var(--shadow-md);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                        <div>
+                            <h3 style="margin:0 0 0.25rem 0;">🛡️ 管理員白名單</h3>
+                            <p style="margin:0;font-size:0.85rem;color:var(--text-light);">對應成就：<code>badge_admin</code></p>
+                        </div>
+                        <button class="btn btn-primary" style="padding:0.4rem 0.9rem;font-size:0.85rem;" onclick="openAddWhitelist('admin')">+ 新增</button>
+                    </div>
+                    <div id="admin-list" style="display:flex;flex-direction:column;gap:0.5rem;">
+                        <p style="color:var(--text-light);text-align:center;">載入中...</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- influencer_whitelist（獨占整行）-->
+            <div style="background:var(--card-bg);border-radius:1rem;padding:1.5rem;box-shadow:var(--shadow-md);margin-top:1.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <div>
+                        <h3 style="margin:0 0 0.25rem 0;">🌟 桌遊圈內紅人白名單</h3>
+                        <p style="margin:0;font-size:0.85rem;color:var(--text-light);">對應成就：<code>badge_influencer</code>｜史詩級，由管理員手動授予</p>
+                    </div>
+                    <button class="btn btn-primary" style="padding:0.4rem 0.9rem;font-size:0.85rem;" onclick="openAddWhitelist('influencer')">+ 新增</button>
+                </div>
+                <div id="influencer-list" style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <p style="color:var(--text-light);text-align:center;">載入中...</p>
+                </div>
+            </div>
+
+        </div><!-- end panel-whitelist -->
+
+        <!-- Tab: 授予徽章 -->
+        <div id="panel-grant" style="display:none;">
+
+            <!-- 選擇徽章 -->
+            <div style="background:var(--card-bg);border-radius:1rem;padding:1.5rem;box-shadow:var(--shadow-md);margin-bottom:1.5rem;">
+                <h3 style="margin:0 0 1rem 0;">① 選擇要授予的徽章</h3>
+                <div id="grant-badge-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem;">
+                    <p style="color:var(--text-light);">載入中...</p>
+                </div>
+            </div>
+
+            <!-- 已選徽章顯示 -->
+            <div id="grant-selected-info" style="display:none;background:var(--card-bg);border-radius:1rem;padding:1.25rem 1.5rem;box-shadow:var(--shadow-md);margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+                <div style="font-size:2.5rem;" id="grant-selected-icon"></div>
+                <div>
+                    <div style="font-weight:700;font-size:1.1rem;" id="grant-selected-name"></div>
+                    <div style="color:var(--text-light);font-size:0.85rem;" id="grant-selected-desc"></div>
+                </div>
+                <button onclick="clearGrantSelection()" style="margin-left:auto;border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-light);">✕</button>
+            </div>
+
+            <!-- 搜尋玩家 -->
+            <div style="background:var(--card-bg);border-radius:1rem;padding:1.5rem;box-shadow:var(--shadow-md);">
+                <h3 style="margin:0 0 1rem 0;">② 搜尋玩家並授予</h3>
+                <div style="display:flex;gap:0.75rem;margin-bottom:1rem;">
+                    <input id="grant-search" type="text" placeholder="輸入玩家名稱或 username..." style="flex:1;padding:0.65rem 1rem;border:1px solid var(--border-color);border-radius:0.5rem;font-size:1rem;" oninput="searchGrantUsers()">
+                </div>
+                <div id="grant-user-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:420px;overflow-y:auto;">
+                    <p style="color:var(--text-light);text-align:center;font-size:0.9rem;">👆 請先選擇徽章，再搜尋玩家</p>
+                </div>
+            </div>
+
+        </div><!-- end panel-grant -->
+
+    <!-- 新增/編輯徽章彈窗 -->
+    <div class="modal" id="badge-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">新增徽章</h2>
+                <button class="close-btn" onclick="closeModal()">✕</button>
+            </div>
+            
+            <form id="badge-form" onsubmit="saveBadge(event)">
+                <div class="form-group">
+                    <label>徽章圖示 Emoji</label>
+                    <input type="text" id="badge-icon" placeholder="🎮" maxlength="2" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>中文名稱</label>
+                        <input type="text" id="badge-name-zh" placeholder="桌遊入門" required>
+                    </div>
+                    <div class="form-group">
+                        <label>英文名稱</label>
+                        <input type="text" id="badge-name-en" placeholder="Beginner" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="badge-description" placeholder="新增 3 款桌遊" required></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>稀有度</label>
+                        <select id="badge-rarity" required>
+                            <option value="common">普通 (Common)</option>
+                            <option value="rare">稀有 (Rare)</option>
+                            <option value="epic">史詩 (Epic)</option>
+                            <option value="legendary">傳說 (Legendary)</option>
+                            <option value="mythic">神話 (Mythic)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>解鎖類型</label>
+                        <select id="badge-unlock-type" required onchange="onUnlockTypeChange()">
+                            <option value="games_count">🎮 遊戲數量 (games_count)</option>
+                            <option value="mbti_complete">🧠 完成 MBTI 測驗 (mbti_complete)</option>
+                            <option value="votes_count">🗳️ 評價次數 (votes_count)</option>
+                            <option value="streak_days">🔥 連續登入 (streak_days)</option>
+                            <option value="collections_count">📚 清單數量 (collections_count)</option>
+                            <option value="rated_others_count">🤝 評分他人 (rated_others_count)</option>
+                            <option value="event_complete">🎪 活動完成 (event_complete)</option>
+                            <option value="special">⭐ 特殊條件 (special)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="badge-id-group">
+                    <label>徽章系統 ID <span style="color:#e74c3c;">*</span> <span style="font-weight:400;color:var(--text-light);font-size:0.85rem;">（英文+底線，新增後不可修改，如 badge_tester）</span></label>
+                    <input type="text" id="badge-custom-id" placeholder="badge_my_badge" pattern="[a-z0-9_]+" title="只能使用小寫英文、數字、底線">
+                </div>
+
+                <div class="form-group" id="unlock-value-group">
+                    <label>解鎖數值 <span id="unlock-value-hint" style="font-weight:400;color:var(--text-light);font-size:0.85rem;"></span></label>
+                    <input type="number" id="badge-unlock-value" placeholder="3" min="0">
+                </div>
+
+                <div class="form-group" id="special-hint-group" style="display:none;">
+                    <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:0.5rem;padding:0.75rem 1rem;font-size:0.9rem;color:#92400e;">
+                        ⚠️ <strong>特殊條件說明：</strong><br>
+                        • <code>badge_admin</code> → 由 admin_whitelist 資料表控制<br>
+                        • <code>badge_tester</code> → 由 tester_whitelist 資料表控制<br>
+                        • 其他 special ID → 需在 <code>js/app.js</code> 手動新增判斷邏輯<br>
+                        解鎖數值填 <strong>0</strong> 即可。
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="badge-is-limited">
+                        限定徽章（活動限定）
+                    </label>
+                </div>
+                
+                <input type="hidden" id="badge-id">
+                
+                <button type="submit" class="btn-save">儲存徽章</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 新增白名單彈窗 -->
+    <div class="modal" id="whitelist-modal">
+        <div class="modal-content" style="max-width:440px;">
+            <div class="modal-header">
+                <h2 id="whitelist-modal-title">新增測試人員</h2>
+                <button class="close-btn" onclick="closeWhitelistModal()">✕</button>
+            </div>
+            <div class="form-group">
+                <label>Google ID</label>
+                <input type="text" id="wl-google-id" placeholder="貼上 Google 帳號 ID">
+            </div>
+            <div class="form-group">
+                <label>備註（玩家名稱）</label>
+                <input type="text" id="wl-note" placeholder="例：小明">
+            </div>
+            <button class="btn-save" onclick="saveWhitelist()">儲存</button>
+        </div>
+    </div>
+
+    <!-- 新增/編輯 特殊徽章彈窗 -->
+    <div class="modal" id="special-badge-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="sp-modal-title">新增特殊徽章</h2>
+                <button class="close-btn" onclick="closeSpecialBadgeModal()">✕</button>
+            </div>
+            <form id="special-badge-form" onsubmit="saveSpecialBadge(event)">
+                <!-- 圖示上傳 -->
+                <div class="form-group">
+                    <label>🖼️ 徽章圖片（跨圈圆形）</label>
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        <img id="sp-img-preview" src="" style="display:none;width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #667eea;">
+                        <button type="button" onclick="triggerSpecialImageUpload()" class="btn btn-secondary">📷 上傳圖片</button>
+                        <input type="file" id="sp-img-input" accept="image/*" style="display:none;" onchange="handleSpecialImageUpload(event)">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Emoji 圖示（無圖片時顯示）</label>
+                        <input type="text" id="sp-icon" placeholder="🎖️" maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label>稹有度</label>
+                        <select id="sp-rarity" required>
+                            <option value="common">普通 (Common)</option>
+                            <option value="rare">稀有 (Rare)</option>
+                            <option value="epic">史詩 (Epic)</option>
+                            <option value="legendary" selected>傳說 (Legendary)</option>
+                            <option value="mythic">神話 (Mythic)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>中文名稱</label>
+                        <input type="text" id="sp-name-zh" placeholder="桌遊 KOL" required>
+                    </div>
+                    <div class="form-group">
+                        <label>英文名稱</label>
+                        <input type="text" id="sp-name-en" placeholder="Board Game KOL">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>說明</label>
+                    <textarea id="sp-description" placeholder="桌遊界的知名內容創作者" required></textarea>
+                </div>
+
+                <div class="form-group" id="sp-id-group">
+                    <label>徽章系統 ID <span style="color:#e74c3c;">*</span>
+                        <span style="font-weight:400;color:var(--text-light);font-size:0.85rem;">（小寫英文+底線，如 badge_kol_abc）</span>
+                    </label>
+                    <input type="text" id="sp-custom-id" placeholder="badge_kol_abc" pattern="[a-z0-9_]+">
+                </div>
+
+                <button type="submit" class="btn-save">💾 儲存特殊徽章</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 新增/編輯 出版社彈窗 -->
+    <div class="modal" id="publisher-modal">
+        <div class="modal-content" style="max-width:640px;">
+            <div class="modal-header">
+                <h2 id="pub-modal-title">新增出版社</h2>
+                <button class="close-btn" onclick="closePublisherModal()">✕</button>
+            </div>
+            <form id="publisher-form" onsubmit="savePublisher(event)">
+                <!-- LOGO -->
+                <div class="form-group">
+                    <label>🖼️ 出版社 LOGO（圓形裁切）</label>
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        <img id="pub-img-preview" src="" style="display:none;width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #667eea;">
+                        <button type="button" onclick="triggerPubImageUpload()" class="btn btn-secondary">📷 上傳 LOGO</button>
+                        <input type="file" id="pub-img-input" accept="image/*" style="display:none;" onchange="handlePubImageUpload(event)">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Emoji 圖示（無圖片時顯示）</label>
+                        <input type="text" id="pub-icon" placeholder="🏭" maxlength="4" value="🏭">
+                    </div>
+                    <div class="form-group">
+                        <label>是否啟用</label>
+                        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;">
+                            <input type="checkbox" id="pub-active" checked>
+                            啟用此出版社系列
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>出版社中文名稱 <span style="color:#e74c3c;">*</span></label>
+                        <input type="text" id="pub-name" placeholder="賽德拉工作室" required>
+                    </div>
+                    <div class="form-group">
+                        <label>出版社英文名稱</label>
+                        <input type="text" id="pub-name-en" placeholder="Ravensburger">
+                    </div>
+                </div>
+
+                <!-- 遊戲清單 -->
+                <div class="form-group">
+                    <label>🎮 遊戲清單</label>
+                    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
+                        <input type="text" id="pub-game-input" placeholder="輸入遊戲名稱（必須與玩家記錄的名稱相符）" style="flex:1;padding:0.6rem;border:1px solid var(--border-color);border-radius:0.5rem;font-size:0.9rem;" onkeydown="if(event.key==='Enter'){event.preventDefault();addPubGame();}">
+                        <button type="button" onclick="addPubGame()" class="btn btn-primary" style="white-space:nowrap;">新增</button>
+                    </div>
+                    <div id="pub-game-tags" style="display:flex;flex-wrap:wrap;gap:0.4rem;min-height:32px;background:var(--bg-light);border-radius:0.5rem;padding:0.5rem;"></div>
+                    <p style="font-size:0.8rem;color:var(--text-light);margin:0.4rem 0 0 0;">❗ 遊戲名稱要與玩家在「我的檔案」中評價游戲所用的名稱完全相符（不區大小寫）才能計算到</p>
+                </div>
+
+                <!-- 門檻預覽 -->
+                <div style="background:var(--bg-light);border-radius:0.75rem;padding:1rem;margin-bottom:1.5rem;font-size:0.85rem;">
+                    <div style="font-weight:600;margin-bottom:0.5rem;">🎖️ 自動生成的徽章（不可自訂門檻）</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                        <div>
+                            <div style="font-weight:600;color:#667eea;">🏭 忠實顧客（評價過的款數）</div>
+                            <div>🥉 銅牌：≥50款</div><div>🥈 銀牌：≥15款</div><div>🥇 金牌：≥30款</div><div>💎 鑽石：≥50款</div><div>🌈 神話：≥80款</div>
+                        </div>
+                        <div>
+                            <div style="font-weight:600;color:#f59e0b;">💖 粉絲（超喜歡+喜歡款數）</div>
+                            <div>🥉 銅牌：≥3款</div><div>🥈 銀牌：≥8款</div><div>🥇 金牌：≥15款</div><div>💎 鑽石：≥30款</div><div>🌈 神話：≥50款</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-save">💾 儲存出版社</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 新增按鈕 -->
+    <button class="add-badge-btn" id="add-badge-fab" onclick="openModal()" title="新增徽章">+</button>
+
+    <script src="js/app.js"></script>
+    <script src="js/show-admin-link.js?v=20240222-fix"></script>
+    <script src="js/admin-navbar-cleanup.js"></script>
+    <script>
+        let currentEditingId = null;
+
+        // 超級管理員守衛
+        document.addEventListener('adminAuthenticated', (e) => {
+            const role = e.detail?.role || window.AdminAuth?.getCurrentAdmin()?.role;
+            if (role !== 'super_admin') {
+                document.querySelector('.container').innerHTML = `
+                    <div style="text-align:center; padding: 5rem 2rem;">
+                        <div style="font-size:4rem; margin-bottom:1rem;">🚫</div>
+                        <h2 style="margin-bottom:0.5rem;">權限不足</h2>
+                        <p style="color:var(--text-light); margin-bottom:2rem;">此頁面僅限超級管理員訪問</p>
+                        <a href="admin.html" class="btn btn-secondary">← 返回後台</a>
+                    </div>`;
+            }
+        });
+
+        // ── Tab 切換 ──────────────────────────────────────────
+        const TAB_IDS = ['badges', 'grant', 'whitelist', 'special'];
+        function switchTab(tab) {
+            TAB_IDS.forEach(t => {
+                const isActive = t === tab;
+                const panel = document.getElementById(`panel-${t}`);
+                const btn   = document.getElementById(`tab-${t}`);
+                if (panel) panel.style.display = isActive ? 'block' : 'none';
+                if (btn) btn.style.cssText = `padding:0.6rem 1.2rem;border:none;background:none;font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:-2px;color:${isActive ? 'var(--primary-color)' : 'var(--text-light)'};border-bottom:3px solid ${isActive ? 'var(--primary-color)' : 'transparent'};`;
+            });
+            document.getElementById('add-badge-fab').style.display = tab === 'badges' ? 'flex' : 'none';
+            if (tab === 'whitelist') loadWhitelists();
+            if (tab === 'grant') initGrantPanel();
+            if (tab === 'special') initSpecialTab();
+        }
+
+        // ── 授予徽章 ────────────────────────────────────────
+        let grantAllBadges = [];
+        let grantSelectedBadge = null;
+        let grantAllUsers = [];
+
+        async function initGrantPanel() {
+            // 載入徽章選單（只載一次）
+            if (grantAllBadges.length === 0) {
+                grantAllBadges = await GameMBTI.getAllAchievements();
+                renderGrantBadgeList();
+            }
+            // 載入所有玩家（只載一次）
+            if (grantAllUsers.length === 0) {
+                const res = await fetch('tables/users?limit=500');
+                const data = await res.json();
+                grantAllUsers = data.data || [];
+            }
+        }
+
+        function renderGrantBadgeList() {
+            const rarityOrder = { mythic:0, legendary:1, epic:2, rare:3, common:4 };
+            const sorted = [...grantAllBadges].sort((a,b) => (rarityOrder[a.rarity]||9) - (rarityOrder[b.rarity]||9));
+            const rarityColor = { common:'#95a5a6', rare:'#3498db', epic:'#9b59b6', legendary:'#f39c12', mythic:'#a855f7' };
+            document.getElementById('grant-badge-list').innerHTML = sorted.map(b => `
+                <div onclick="selectGrantBadge('${b.id}')" style="cursor:pointer;padding:0.75rem;border-radius:0.75rem;border:2px solid var(--border-color);text-align:center;transition:all 0.2s;" id="grant-badge-card-${b.id}">
+                    <div style="font-size:2rem;">${b.icon}</div>
+                    <div style="font-weight:600;font-size:0.85rem;margin-top:0.25rem;">${b.name_zh}</div>
+                    <div style="font-size:0.7rem;margin-top:0.25rem;padding:0.1rem 0.4rem;border-radius:0.4rem;display:inline-block;background:${rarityColor[b.rarity]}22;color:${rarityColor[b.rarity]};">${getRarityName(b.rarity)}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectGrantBadge(badgeId) {
+            grantSelectedBadge = grantAllBadges.find(b => b.id === badgeId);
+            if (!grantSelectedBadge) return;
+            // 高亮選中
+            document.querySelectorAll('[id^="grant-badge-card-"]').forEach(el => {
+                el.style.borderColor = 'var(--border-color)';
+                el.style.background = '';
+            });
+            const card = document.getElementById(`grant-badge-card-${badgeId}`);
+            if (card) { card.style.borderColor = 'var(--primary-color)'; card.style.background = 'var(--bg-light)'; }
+            // 顯示已選資訊
+            document.getElementById('grant-selected-icon').textContent = grantSelectedBadge.icon;
+            document.getElementById('grant-selected-name').textContent = `${grantSelectedBadge.name_zh}（${grantSelectedBadge.name_en}）`;
+            document.getElementById('grant-selected-desc').textContent = grantSelectedBadge.description;
+            document.getElementById('grant-selected-info').style.display = 'flex';
+            // 重新渲染玩家清單
+            renderGrantUserList(document.getElementById('grant-search').value.trim());
+        }
+
+        function clearGrantSelection() {
+            grantSelectedBadge = null;
+            document.querySelectorAll('[id^="grant-badge-card-"]').forEach(el => {
+                el.style.borderColor = 'var(--border-color)';
+                el.style.background = '';
+            });
+            document.getElementById('grant-selected-info').style.display = 'none';
+            document.getElementById('grant-user-list').innerHTML = '<p style="color:var(--text-light);text-align:center;font-size:0.9rem;">👆 請先選擇徽章，再搜尋玩家</p>';
+        }
+
+        function searchGrantUsers() {
+            const q = document.getElementById('grant-search').value.trim();
+            renderGrantUserList(q);
+        }
+
+        async function renderGrantUserList(q = '') {
+            if (!grantSelectedBadge) {
+                document.getElementById('grant-user-list').innerHTML = '<p style="color:var(--text-light);text-align:center;font-size:0.9rem;">👆 請先選擇徽章，再搜尋玩家</p>';
+                return;
+            }
+            const filtered = q.length < 1
+                ? grantAllUsers.slice(0, 30)
+                : grantAllUsers.filter(u =>
+                    (u.username || '').toLowerCase().includes(q.toLowerCase()) ||
+                    (u.display_name || '').toLowerCase().includes(q.toLowerCase())
+                  );
+
+            if (filtered.length === 0) {
+                document.getElementById('grant-user-list').innerHTML = '<p style="color:var(--text-light);text-align:center;">找不到玩家</p>';
+                return;
+            }
+
+            // 取得每位玩家的 user_stats 以確認是否已有此徽章
+            const badgeId = grantSelectedBadge.id;
+            const statsRes = await fetch(`tables/user_stats?limit=500`);
+            const statsData = await statsRes.json();
+            const statsMap = {};
+            (statsData.data || []).forEach(s => { statsMap[s.user_id] = s; });
+
+            document.getElementById('grant-user-list').innerHTML = filtered.map(u => {
+                const stats = statsMap[u.id];
+                const hasIt = stats && Array.isArray(stats.unlocked_badges) && stats.unlocked_badges.includes(badgeId);
+                return `
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.9rem;border-radius:0.6rem;background:var(--bg-light);">
+                    <div style="font-size:1.5rem;">${u.avatar_emoji || '🎮'}</div>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;font-size:0.92rem;">${u.display_name || u.username || '匿名'}</div>
+                        <div style="font-size:0.78rem;color:var(--text-light);">@${u.username || u.id.slice(0,8)}</div>
+                    </div>
+                    ${hasIt
+                        ? `<span style="font-size:0.78rem;padding:0.2rem 0.6rem;border-radius:0.4rem;background:#d1fae5;color:#065f46;">✅ 已擁有</span>
+                           <button onclick="revokeGrantBadge('${u.id}','${u.display_name||u.username||'此玩家'}')" style="padding:0.3rem 0.75rem;border:1px solid #ef4444;border-radius:0.4rem;background:none;color:#ef4444;cursor:pointer;font-size:0.82rem;">撤銷</button>`
+                        : `<button onclick="doGrantBadge('${u.id}','${u.display_name||u.username||'此玩家'}')" style="padding:0.3rem 0.75rem;border:none;border-radius:0.4rem;background:var(--primary-color);color:white;cursor:pointer;font-size:0.82rem;">授予</button>`
+                    }
+                </div>`;
+            }).join('');
+        }
+
+        async function doGrantBadge(userId, userName) {
+            if (!grantSelectedBadge) return;
+            if (!confirm(`確定授予「${grantSelectedBadge.name_zh}」給 ${userName}？`)) return;
+            try {
+                const sRes = await fetch(`tables/user_stats?limit=500`);
+                const sData = await sRes.json();
+                const stats = (sData.data || []).find(s => s.user_id === userId);
+                if (!stats) { alert('找不到玩家的成就資料（user_stats）！'); return; }
+                const current = Array.isArray(stats.unlocked_badges) ? [...stats.unlocked_badges] : [];
+                if (current.includes(grantSelectedBadge.id)) { alert('玩家已擁有此徽章！'); return; }
+                current.push(grantSelectedBadge.id);
+                const r = await fetch(`tables/user_stats/${stats.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unlocked_badges: current, updated_at: Date.now() })
+                });
+                if (!r.ok) throw new Error('寫入失敗');
+                alert(`✅ 已授予「${grantSelectedBadge.name_zh}」給 ${userName}！`);
+                renderGrantUserList(document.getElementById('grant-search').value.trim());
+            } catch(e) { alert('授予失敗：' + e.message); }
+        }
+
+        async function revokeGrantBadge(userId, userName) {
+            if (!grantSelectedBadge) return;
+            if (!confirm(`確定從 ${userName} 撤銷「${grantSelectedBadge.name_zh}」？`)) return;
+            try {
+                const sRes = await fetch(`tables/user_stats?limit=500`);
+                const sData = await sRes.json();
+                const stats = (sData.data || []).find(s => s.user_id === userId);
+                if (!stats) { alert('找不到玩家的成就資料！'); return; }
+                const current = (Array.isArray(stats.unlocked_badges) ? stats.unlocked_badges : []).filter(id => id !== grantSelectedBadge.id);
+                const r = await fetch(`tables/user_stats/${stats.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unlocked_badges: current, updated_at: Date.now() })
+                });
+                if (!r.ok) throw new Error('寫入失敗');
+                alert(`✅ 已從 ${userName} 撤銷「${grantSelectedBadge.name_zh}」！`);
+                renderGrantUserList(document.getElementById('grant-search').value.trim());
+            } catch(e) { alert('撤銷失敗：' + e.message); }
+        }
+
+        // ── 白名單管理 ────────────────────────────────────────
+        let wlType = 'tester'; // 目前操作的白名單類型
+
+        async function loadWhitelists() {
+            await Promise.all([loadWhitelist('tester'), loadWhitelist('admin'), loadWhitelist('influencer')]);
+        }
+
+        function getWhitelistTable(type) {
+            if (type === 'tester') return 'tester_whitelist';
+            if (type === 'influencer') return 'influencer_whitelist';
+            return 'admin_whitelist';
+        }
+        function getWhitelistContainerId(type) {
+            if (type === 'tester') return 'tester-list';
+            if (type === 'influencer') return 'influencer-list';
+            return 'admin-list';
+        }
+
+        async function loadWhitelist(type) {
+            const table = getWhitelistTable(type);
+            const containerId = getWhitelistContainerId(type);
+            const container = document.getElementById(containerId);
+            try {
+                const res = await fetch(`tables/${table}?limit=200`);
+                const data = await res.json();
+                const rows = data.data || [];
+                if (rows.length === 0) {
+                    container.innerHTML = '<p style="color:var(--text-light);text-align:center;font-size:0.9rem;">尚無資料</p>';
+                    return;
+                }
+                container.innerHTML = rows.map(r => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-light);border-radius:0.5rem;padding:0.5rem 0.75rem;font-size:0.9rem;">
+                        <div>
+                            <div style="font-weight:600;">${r.note || '（未備註）'}</div>
+                            <div style="color:var(--text-light);font-size:0.78rem;word-break:break-all;">${r.google_id}</div>
+                        </div>
+                        <div style="display:flex;gap:0.4rem;align-items:center;">
+                            <span style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:0.4rem;background:${r.is_active !== false ? '#d1fae5' : '#fee2e2'};color:${r.is_active !== false ? '#065f46' : '#991b1b'};">${r.is_active !== false ? '啟用' : '停用'}</span>
+                            <button onclick="toggleWhitelist('${type}','${r.id}',${r.is_active !== false})" style="border:none;background:none;cursor:pointer;font-size:1rem;" title="${r.is_active !== false ? '停用' : '啟用'}">${r.is_active !== false ? '⏸️' : '▶️'}</button>
+                            <button onclick="deleteWhitelist('${type}','${r.id}','${r.note || r.google_id}')" style="border:none;background:none;cursor:pointer;font-size:1rem;" title="刪除">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) {
+                container.innerHTML = '<p style="color:red;font-size:0.9rem;">載入失敗</p>';
+            }
+        }
+
+        function openAddWhitelist(type) {
+            wlType = type;
+            const titleMap = { tester:'新增測試人員', admin:'新增管理員', influencer:'新增桌遊圈內紅人' };
+            document.getElementById('whitelist-modal-title').textContent = titleMap[type] || '新增白名單';
+            document.getElementById('wl-google-id').value = '';
+            document.getElementById('wl-note').value = '';
+            document.getElementById('whitelist-modal').classList.add('active');
+        }
+
+        function closeWhitelistModal() {
+            document.getElementById('whitelist-modal').classList.remove('active');
+        }
+
+        async function saveWhitelist() {
+            const googleId = document.getElementById('wl-google-id').value.trim();
+            const note = document.getElementById('wl-note').value.trim();
+            if (!googleId) { alert('請填寫 Google ID！'); return; }
+            const table = getWhitelistTable(wlType);
+            try {
+                const res = await fetch(`tables/${table}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ google_id: googleId, note, is_active: true })
+                });
+                if (!res.ok) throw new Error('新增失敗');
+                closeWhitelistModal();
+                loadWhitelist(wlType);
+                alert('✅ 新增成功！');
+            } catch(e) {
+                alert('新增失敗：' + e.message);
+            }
+        }
+
+        async function toggleWhitelist(type, rowId, currentActive) {
+            const table = getWhitelistTable(type);
+            try {
+                await fetch(`tables/${table}/${rowId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: !currentActive })
+                });
+                loadWhitelist(type);
+            } catch(e) { alert('操作失敗'); }
+        }
+
+        async function deleteWhitelist(type, rowId, name) {
+            if (!confirm(`確定要從白名單移除「${name}」？`)) return;
+            const table = getWhitelistTable(type);
+            try {
+                await fetch(`tables/${table}/${rowId}`, { method: 'DELETE' });
+                loadWhitelist(type);
+            } catch(e) { alert('刪除失敗'); }
+        }
+
+        // 點擊白名單彈窗外部關閉
+        document.getElementById('whitelist-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeWhitelistModal();
+        });
+
+        // ── 載入徽章列表 ──────────────────────────────────────
+        async function loadBadges() {
+            try {
+                const badges = await GameMBTI.getAllAchievements();
+                
+                // 更新統計
+                document.getElementById('total-badges').textContent = badges.length;
+                document.getElementById('mythic-count').textContent = badges.filter(b => b.rarity === 'mythic').length;
+                document.getElementById('legendary-count').textContent = badges.filter(b => b.rarity === 'legendary').length;
+                document.getElementById('epic-count').textContent = badges.filter(b => b.rarity === 'epic').length;
+                
+                // 渲染列表
+                const container = document.getElementById('badge-list');
+                container.innerHTML = badges.map(badge => `
+                    <div class="badge-card">
+                        <div class="badge-icon-large">${badge.icon}</div>
+                        <div class="badge-info">
+                            <h3>
+                                ${badge.name_zh}
+                                <span class="badge-rarity ${badge.rarity}">${getRarityName(badge.rarity)}</span>
+                                ${badge.is_limited ? '<span style="background: #e74c3c; color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.85rem;">限定</span>' : ''}
+                            </h3>
+                            <p>${badge.description}</p>
+                            <span class="badge-condition">
+                                ${getConditionText(badge.unlock_type, badge.unlock_value)}
+                            </span>
+                        </div>
+                        <div class="badge-actions">
+                            <button class="btn-icon btn-edit" onclick="editBadge('${badge.id}')" title="編輯">✏️</button>
+                            <button class="btn-icon btn-delete" onclick="deleteBadge('${badge.id}', '${badge.name_zh}')" title="刪除">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading badges:', error);
+                alert('載入徽章時發生錯誤');
+            }
+        }
+
+        // 獲取稀有度名稱
+        function getRarityName(rarity) {
+            const names = {
+                'common': '普通',
+                'rare': '稀有',
+                'epic': '史詩',
+                'legendary': '傳說',
+                'mythic': '神話'
+            };
+            return names[rarity] || rarity;
+        }
+
+        // 獲取條件文字
+        function getConditionText(type, value) {
+            const texts = {
+                'games_count': `新增 ${value} 款遊戲`,
+                'mbti_complete': '完成 MBTI 測驗',
+                'votes_count': `評價 ${value} 次`,
+                'streak_days': `連續登入 ${value} 天`,
+                'collections_count': `建立 ${value} 個清單`,
+                'rated_others_count': `評分他人 ${value} 次`,
+                'event_complete': '完成指定活動',
+                'special': '特殊條件（白名單/管理員）'
+            };
+            return texts[type] || `${value}`;
+        }
+
+        // 解鎖類型改變時更新 UI 提示
+        function onUnlockTypeChange() {
+            const type = document.getElementById('badge-unlock-type').value;
+            const hints = {
+                'games_count': '至少需新增幾款遊戲',
+                'mbti_complete': '填 0（有 MBTI 結果即解鎖）',
+                'votes_count': '至少需評價幾次',
+                'streak_days': '連續登入幾天',
+                'collections_count': '建立幾個清單',
+                'rated_others_count': '評分他人清單幾次',
+                'event_complete': '填 0（由活動系統控制）',
+                'special': '填 0'
+            };
+            document.getElementById('unlock-value-hint').textContent = hints[type] ? `（${hints[type]}）` : '';
+            document.getElementById('special-hint-group').style.display = type === 'special' ? 'block' : 'none';
+        }
+
+        // 開啟彈窗
+        function openModal(badgeId = null) {
+            currentEditingId = badgeId;
+            document.getElementById('modal-title').textContent = badgeId ? '編輯徽章' : '新增徽章';
+
+            // 新增時顯示 ID 欄位，編輯時隱藏（ID 不可改）
+            const idGroup = document.getElementById('badge-id-group');
+            idGroup.style.display = badgeId ? 'none' : 'block';
+            
+            if (badgeId) {
+                loadBadgeData(badgeId);
+            } else {
+                document.getElementById('badge-form').reset();
+                document.getElementById('badge-id').value = '';
+                document.getElementById('badge-custom-id').value = '';
+                onUnlockTypeChange();
+            }
+            
+            document.getElementById('badge-modal').classList.add('active');
+        }
+
+        // 關閉彈窗
+        function closeModal() {
+            document.getElementById('badge-modal').classList.remove('active');
+            currentEditingId = null;
+        }
+
+        // 載入徽章資料
+        async function loadBadgeData(badgeId) {
+            try {
+                const badges = await GameMBTI.getAllAchievements();
+                const badge = badges.find(b => b.id === badgeId);
+                
+                if (badge) {
+                    document.getElementById('badge-id').value = badge.id;
+                    document.getElementById('badge-icon').value = badge.icon;
+                    document.getElementById('badge-name-zh').value = badge.name_zh;
+                    document.getElementById('badge-name-en').value = badge.name_en;
+                    document.getElementById('badge-description').value = badge.description;
+                    document.getElementById('badge-rarity').value = badge.rarity;
+                    document.getElementById('badge-unlock-type').value = badge.unlock_type;
+                    document.getElementById('badge-unlock-value').value = badge.unlock_value;
+                    document.getElementById('badge-is-limited').checked = badge.is_limited || false;
+                    onUnlockTypeChange();
+                }
+            } catch (error) {
+                console.error('Error loading badge data:', error);
+            }
+        }
+
+        // 編輯徽章
+        function editBadge(badgeId) {
+            openModal(badgeId);
+        }
+
+        // 儲存徽章
+        async function saveBadge(event) {
+            event.preventDefault();
+            
+            const badgeId = document.getElementById('badge-id').value;
+            const badgeData = {
+                icon: document.getElementById('badge-icon').value,
+                name_zh: document.getElementById('badge-name-zh').value,
+                name_en: document.getElementById('badge-name-en').value,
+                description: document.getElementById('badge-description').value,
+                rarity: document.getElementById('badge-rarity').value,
+                unlock_type: document.getElementById('badge-unlock-type').value,
+                unlock_value: parseInt(document.getElementById('badge-unlock-value').value) || 0,
+                is_limited: document.getElementById('badge-is-limited').checked
+            };
+            
+            try {
+                if (badgeId) {
+                    // 更新
+                    const response = await fetch(`tables/achievements/${badgeId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(badgeData)
+                    });
+                    if (!response.ok) throw new Error('更新失敗');
+                    alert('✅ 徽章更新成功！');
+                } else {
+                    // 新增：優先用自訂 ID，否則自動產生
+                    const customId = document.getElementById('badge-custom-id').value.trim();
+                    if (!customId) {
+                        alert('請填寫徽章系統 ID！');
+                        return;
+                    }
+                    if (!/^[a-z0-9_]+$/.test(customId)) {
+                        alert('徽章 ID 只能使用小寫英文、數字、底線！');
+                        return;
+                    }
+                    badgeData.id = customId;
+                    badgeData.created_at = Date.now();
+                    
+                    const response = await fetch('tables/achievements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(badgeData)
+                    });
+                    if (!response.ok) throw new Error('新增失敗');
+                    alert('✅ 徽章新增成功！');
+                }
+                
+                closeModal();
+                loadBadges();
+                
+            } catch (error) {
+                console.error('Error saving badge:', error);
+                alert('儲存徽章時發生錯誤：' + error.message);
+            }
+        }
+
+        // 刪除徽章
+        async function deleteBadge(badgeId, badgeName) {
+            if (!confirm(`確定要刪除「${badgeName}」徽章嗎？\n\n注意：此操作無法復原！`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`tables/achievements/${badgeId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('刪除失敗');
+                
+                alert('徽章已刪除！');
+                loadBadges();
+                
+            } catch (error) {
+                console.error('Error deleting badge:', error);
+                alert('刪除徽章時發生錯誤：' + error.message);
+            }
+        }
+
+        // 點擊彈窗外部關閉
+        document.getElementById('badge-modal').addEventListener('click', function(e) {
+            if (e.target === this) { closeModal(); }
+        });
+        document.getElementById('special-badge-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeSpecialBadgeModal();
+        });
+        document.getElementById('publisher-modal').addEventListener('click', function(e) {
+            if (e.target === this) closePublisherModal();
+        });
+
+        // ── 特殊徽章 Tab ─────────────────────────────────────
+        let specialTabInited = false;
+
+        function switchSpecialTab(name) {
+            ['fixed','publisher','early'].forEach(t => {
+                document.getElementById(`spanel-${t}`).style.display = t === name ? 'block' : 'none';
+                const btn = document.getElementById(`stab-${t}`);
+                if (btn) {
+                    btn.classList.toggle('stab-active', t === name);
+                }
+            });
+            if (name === 'fixed') loadFixedSpecialBadges();
+            if (name === 'publisher') loadPublisherList();
+            if (name === 'early') loadEarlyStats();
+        }
+
+        function initSpecialTab() {
+            if (!specialTabInited) {
+                specialTabInited = true;
+                loadFixedSpecialBadges();
+            }
+        }
+
+        // ── 固定特殊徽章 ────────────────────────────────────
+        const FIXED_SPECIAL_IDS = ['badge_board_clerk','badge_board_manager','badge_board_teacher'];
+
+        async function loadFixedSpecialBadges() {
+            const container = document.getElementById('fixed-special-list');
+            container.innerHTML = '<p style="color:var(--text-light);">載入中...</p>';
+            const allBadges = await GameMBTI.getAllAchievements();
+            // 顯示 special unlock_type 且非 admin/tester/早期探索者/handyman 的徽章
+            const excluded = new Set(['badge_admin','badge_tester','badge_early_explorer','ach_handyman_001']);
+            const specials = allBadges.filter(b => b.unlock_type === 'special' && !excluded.has(b.id)
+                && !b.id.startsWith('pub_'));
+            if (specials.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-light);text-align:center;">尚無固定特殊徽章，點右上方「+ 新增」建立</p>';
+                return;
+            }
+            const rarityColor = { common:'#95a5a6', rare:'#3498db', epic:'#9b59b6', legendary:'#f39c12', mythic:'#a855f7' };
+            container.innerHTML = specials.map(b => `
+                <div style="background:var(--card-bg);border-radius:1rem;padding:1.25rem 1.5rem;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:1rem;">
+                    ${b.image_url
+                        ? `<img src="${b.image_url}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid ${rarityColor[b.rarity]||'#ccc'};flex-shrink:0;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                           <div style="display:none;width:56px;height:56px;border-radius:50%;background:${rarityColor[b.rarity]||'#ccc'}22;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;">${b.icon}</div>`
+                        : `<div style="width:56px;height:56px;border-radius:50%;background:${rarityColor[b.rarity]||'#ccc'}22;display:flex;align-items:center;justify-content:center;font-size:1.8rem;border:3px solid ${rarityColor[b.rarity]||'#ccc'};flex-shrink:0;">${b.icon}</div>`
+                    }
+                    <div style="flex:1;">
+                        <div style="font-weight:700;font-size:1rem;">${b.name_zh}</div>
+                        <div style="font-size:0.82rem;color:var(--text-light);margin:0.2rem 0;">${b.description}</div>
+                        <span style="font-size:0.75rem;padding:0.1rem 0.5rem;border-radius:0.4rem;background:${rarityColor[b.rarity]||'#ccc'}22;color:${rarityColor[b.rarity]||'#666'};">${getRarityName(b.rarity)}</span>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+                        <button onclick="openSpecialBadgeModal('${b.id}')" class="btn-icon btn-edit" title="編輯">✏️</button>
+                        <button onclick="grantSpecialBadgeToUser('${b.id}','${b.name_zh.replace(/'/g,"&apos;")}')" class="btn-icon" style="background:#10b981;color:white;" title="授予">🎖️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 特殊徽章彈窗
+        let specialEditId = null;
+        let pendingSpecialImageData = null;
+
+        function openSpecialBadgeModal(badgeId = null) {
+            specialEditId = badgeId;
+            pendingSpecialImageData = null;
+            document.getElementById('sp-modal-title').textContent = badgeId ? '編輯特殊徽章' : '新增特殊徽章';
+            document.getElementById('sp-id-group').style.display = badgeId ? 'none' : 'block';
+            const form = document.getElementById('special-badge-form');
+            form.reset();
+            document.getElementById('sp-img-preview').style.display = 'none';
+            document.getElementById('sp-img-preview').src = '';
+            if (badgeId) {
+                GameMBTI.getAllAchievements().then(all => {
+                    const b = all.find(x => x.id === badgeId);
+                    if (!b) return;
+                    document.getElementById('sp-icon').value = b.icon;
+                    document.getElementById('sp-name-zh').value = b.name_zh;
+                    document.getElementById('sp-name-en').value = b.name_en || '';
+                    document.getElementById('sp-description').value = b.description;
+                    document.getElementById('sp-rarity').value = b.rarity;
+                    if (b.image_url) {
+                        document.getElementById('sp-img-preview').src = b.image_url;
+                        document.getElementById('sp-img-preview').style.display = 'block';
+                    }
+                });
+            }
+            document.getElementById('special-badge-modal').classList.add('active');
+        }
+
+        function closeSpecialBadgeModal() {
+            document.getElementById('special-badge-modal').classList.remove('active');
+        }
+
+        function triggerSpecialImageUpload() {
+            document.getElementById('sp-img-input').click();
+        }
+
+        function handleSpecialImageUpload(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('圖片不能超過 5MB'); return; }
+            const reader = new FileReader();
+            reader.onload = e => openSpecialImageCropper(e.target.result);
+            reader.readAsDataURL(file);
+        }
+
+        function openSpecialImageCropper(src) {
+            const CROP = 280;
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:360px;width:95%;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                        <h3 style="margin:0;color:#333;">✂️ 裁切徽章圖片</h3>
+                        <button id="sp-crop-close" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:#888;">✕</button>
+                    </div>
+                    <div style="position:relative;display:flex;justify-content:center;margin-bottom:1rem;">
+                        <canvas id="sp-crop-canvas" width="${CROP}" height="${CROP}" style="border-radius:50%;border:3px solid #667eea;cursor:grab;touch-action:none;background:#f0f0f0;"></canvas>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+                        <span style="font-size:0.8rem;color:#555;">縮放</span>
+                        <input type="range" id="sp-crop-slider" min="50" max="300" value="100" style="flex:1;">
+                        <span id="sp-crop-scale-label" style="font-size:0.8rem;color:#555;width:3em;">100%</span>
+                    </div>
+                    <div style="display:flex;justify-content:center;gap:0.75rem;">
+                        <button id="sp-crop-cancel" style="flex:1;padding:0.7rem;border:1px solid #ccc;border-radius:0.5rem;background:#fff;color:#555;cursor:pointer;">取消</button>
+                        <button id="sp-crop-confirm" style="flex:1;padding:0.7rem;border:none;border-radius:0.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:white;cursor:pointer;font-weight:600;">確認</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+
+            const canvas = document.getElementById('sp-crop-canvas');
+            const ctx = canvas.getContext('2d');
+            const slider = document.getElementById('sp-crop-slider');
+            const label = document.getElementById('sp-crop-scale-label');
+            const img = new Image();
+            img.onload = () => {
+                let scale = Math.max(CROP / img.width, CROP / img.height);
+                let ox = (CROP - img.width * scale) / 2;
+                let oy = (CROP - img.height * scale) / 2;
+                slider.value = Math.round(scale * 100);
+                label.textContent = slider.value + '%';
+                let isDrag = false, lastX = 0, lastY = 0;
+
+                function clamp() {
+                    const sw = img.width * scale, sh = img.height * scale;
+                    ox = Math.min(0, Math.max(CROP - sw, ox));
+                    oy = Math.min(0, Math.max(CROP - sh, oy));
+                }
+                function draw() {
+                    ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0, 0, CROP, CROP);
+                    ctx.drawImage(img, ox, oy, img.width * scale, img.height * scale);
+                }
+                draw();
+                canvas.addEventListener('mousedown', e => { isDrag = true; lastX = e.clientX; lastY = e.clientY; canvas.style.cursor = 'grabbing'; });
+                canvas.addEventListener('mousemove', e => { if (!isDrag) return; ox += e.clientX - lastX; oy += e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; clamp(); draw(); });
+                canvas.addEventListener('mouseup', () => { isDrag = false; canvas.style.cursor = 'grab'; });
+                canvas.addEventListener('wheel', e => { e.preventDefault(); scale = Math.max(CROP/img.width, scale + (e.deltaY < 0 ? 0.05 : -0.05)); clamp(); draw(); slider.value = Math.round(scale * 100); label.textContent = slider.value + '%'; });
+                slider.addEventListener('input', () => { scale = slider.value / 100; clamp(); draw(); label.textContent = slider.value + '%'; });
+
+                document.getElementById('sp-crop-confirm').onclick = () => {
+                    const out = document.createElement('canvas'); out.width = 300; out.height = 300;
+                    const octx = out.getContext('2d');
+                    const ratio = 300 / CROP;
+                    octx.drawImage(img, -ox * ratio, -oy * ratio, img.width * scale * ratio, img.height * scale * ratio);
+                    pendingSpecialImageData = out.toDataURL('image/jpeg', 0.88);
+                    const prev = document.getElementById('sp-img-preview');
+                    prev.src = pendingSpecialImageData; prev.style.display = 'block';
+                    overlay.remove();
+                };
+                document.getElementById('sp-crop-cancel').onclick = () => overlay.remove();
+                document.getElementById('sp-crop-close').onclick = () => overlay.remove();
+            };
+            img.src = src;
+        }
+
+        async function saveSpecialBadge(event) {
+            event.preventDefault();
+            const isEdit = !!specialEditId;
+            const payload = {
+                icon: document.getElementById('sp-icon').value,
+                name_zh: document.getElementById('sp-name-zh').value,
+                name_en: document.getElementById('sp-name-en').value,
+                description: document.getElementById('sp-description').value,
+                rarity: document.getElementById('sp-rarity').value,
+                unlock_type: 'special',
+                unlock_value: 0,
+                is_limited: false,
+            };
+            if (pendingSpecialImageData) payload.image_url = pendingSpecialImageData;
+
+            if (isEdit) {
+                const r = await fetch(`tables/achievements/${specialEditId}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (!r.ok) { alert('更新失敗'); return; }
+                alert('✅ 更新成功！');
+            } else {
+                const customId = document.getElementById('sp-custom-id').value.trim();
+                if (!customId || !/^[a-z0-9_]+$/.test(customId)) { alert('請填寫合法的徽章 ID（小寫英文＋底線）'); return; }
+                payload.id = customId;
+                payload.created_at = Date.now();
+                const r = await fetch('tables/achievements', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (!r.ok) { alert('新增失敗'); return; }
+                alert('✅ 新增成功！');
+            }
+            closeSpecialBadgeModal();
+            loadFixedSpecialBadges();
+            // 重新整理授予徽章面板的快取
+            grantAllBadges = [];
+        }
+
+        // 快速跳到授予面板並選定徽章
+        function grantSpecialBadgeToUser(badgeId, badgeName) {
+            switchTab('grant');
+            initGrantPanel().then(() => {
+                selectGrantBadge(badgeId);
+                document.getElementById('grant-search').focus();
+            });
+        }
+
+        // ── 出版社系列 ──────────────────────────────────────
+        const PUB_CUSTOMER_THRESHOLDS = [5, 15, 30, 50, 80];
+        const PUB_FAN_THRESHOLDS      = [3, 8, 15, 30, 50];
+        const PUB_RARITY              = ['common','rare','epic','legendary','mythic'];
+        const PUB_LEVEL_LABELS        = ['🥉 銅牌','🥈 銀牌','🥇 金牌','💎 鑽石','🌈 神話'];
+        let publisherList = [];
+
+        async function loadPublisherList() {
+            const container = document.getElementById('publisher-list');
+            container.innerHTML = '<p style="color:var(--text-light);">載入中...</p>';
+            const res = await fetch('tables/publisher_badge_series?limit=200');
+            const data = await res.json();
+            publisherList = (data.data || []).filter(p => !p.deleted);
+            if (publisherList.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-light);text-align:center;">尚無出版社，點右上方「+ 新增出版社」建立</p>';
+                return;
+            }
+            container.innerHTML = publisherList.map(p => {
+                const games = Array.isArray(p.game_list) ? p.game_list : [];
+                return `
+                <div style="background:var(--card-bg);border-radius:1rem;padding:1.25rem 1.5rem;box-shadow:var(--shadow-md);">
+                    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;">
+                        ${p.image_url
+                            ? `<img src="${p.image_url}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:3px solid #667eea;flex-shrink:0;">`
+                            : `<div style="width:52px;height:52px;border-radius:50%;background:#667eea22;display:flex;align-items:center;justify-content:center;font-size:1.8rem;border:3px solid #667eea;flex-shrink:0;">${p.icon||'🏭'}</div>`
+                        }
+                        <div style="flex:1;">
+                            <div style="font-weight:700;font-size:1rem;">${p.publisher_name}</div>
+                            <div style="font-size:0.82rem;color:var(--text-light);">${p.publisher_name_en||''}</div>
+                            <div style="font-size:0.78rem;color:var(--text-light);margin-top:0.2rem;">📋 ${games.length} 款遊戲 ・ ${p.is_active !== false ? '✅ 啟用' : '⏸️ 停用'}</div>
+                        </div>
+                        <div style="display:flex;gap:0.4rem;flex-shrink:0;">
+                            <button onclick="openPublisherModal('${p.id}')" class="btn-icon btn-edit" title="編輯">✏️</button>
+                            <button onclick="runPublisherAutoGrant('${p.id}','${p.publisher_name.replace(/'/g,"&apos;")}')" class="btn-icon" style="background:#10b981;color:white;" title="批量授予符合玩家">🚀</button>
+                        </div>
+                    </div>
+                    <details style="font-size:0.82rem;color:var(--text-light);">
+                        <summary style="cursor:pointer;">📋 遊戲清單（${games.length} 款）</summary>
+                        <div style="margin-top:0.5rem;padding:0.5rem;background:var(--bg-light);border-radius:0.5rem;max-height:120px;overflow-y:auto;">${games.length > 0 ? games.map(g=>`<span style="display:inline-block;margin:0.15rem 0.3rem;padding:0.1rem 0.5rem;background:#e5e7eb;border-radius:0.4rem;">${g}</span>`).join('') : '（尚無遊戲）'}</div>
+                    </details>
+                </div>`;
+            }).join('');
+        }
+
+        // 出版社彈窗
+        let publisherEditId = null;
+        let pendingPubImageData = null;
+        let pubGameListCache = [];
+
+        function openPublisherModal(pubId = null) {
+            publisherEditId = pubId;
+            pendingPubImageData = null;
+            pubGameListCache = [];
+            document.getElementById('pub-modal-title').textContent = pubId ? '編輯出版社' : '新增出版社';
+            const form = document.getElementById('publisher-form');
+            form.reset();
+            document.getElementById('pub-img-preview').style.display = 'none';
+            document.getElementById('pub-game-tags').innerHTML = '';
+            if (pubId) {
+                const p = publisherList.find(x => x.id === pubId);
+                if (p) {
+                    document.getElementById('pub-name').value = p.publisher_name || '';
+                    document.getElementById('pub-name-en').value = p.publisher_name_en || '';
+                    document.getElementById('pub-icon').value = p.icon || '🏭';
+                    document.getElementById('pub-active').checked = p.is_active !== false;
+                    if (p.image_url) {
+                        document.getElementById('pub-img-preview').src = p.image_url;
+                        document.getElementById('pub-img-preview').style.display = 'block';
+                    }
+                    pubGameListCache = Array.isArray(p.game_list) ? [...p.game_list] : [];
+                    renderPubGameTags();
+                }
+            }
+            document.getElementById('publisher-modal').classList.add('active');
+        }
+
+        function closePublisherModal() {
+            document.getElementById('publisher-modal').classList.remove('active');
+        }
+
+        function renderPubGameTags() {
+            const container = document.getElementById('pub-game-tags');
+            container.innerHTML = pubGameListCache.map((g, i) => `
+                <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#667eea22;padding:0.25rem 0.6rem;border-radius:1rem;font-size:0.82rem;">
+                    ${g}
+                    <button onclick="removePubGame(${i})" style="border:none;background:none;cursor:pointer;color:#ef4444;font-size:0.9rem;padding:0;">✕</button>
+                </span>`).join('');
+        }
+
+        function addPubGame() {
+            const input = document.getElementById('pub-game-input');
+            const name = input.value.trim();
+            if (!name) return;
+            if (pubGameListCache.includes(name)) { alert('已存在！'); return; }
+            pubGameListCache.push(name);
+            input.value = '';
+            renderPubGameTags();
+        }
+
+        function removePubGame(idx) {
+            pubGameListCache.splice(idx, 1);
+            renderPubGameTags();
+        }
+
+        function triggerPubImageUpload() {
+            document.getElementById('pub-img-input').click();
+        }
+
+        function handlePubImageUpload(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('圖片不能超過 5MB'); return; }
+            const reader = new FileReader();
+            reader.onload = e => openPubImageCropper(e.target.result);
+            reader.readAsDataURL(file);
+        }
+
+        function openPubImageCropper(src) {
+            const CROP = 280;
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:1rem;padding:1.5rem;max-width:360px;width:95%;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                        <h3 style="margin:0;color:#333;">✂️ 裁切出版社圖示</h3>
+                        <button id="pub-crop-close" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:#888;">✕</button>
+                    </div>
+                    <div style="display:flex;justify-content:center;margin-bottom:1rem;">
+                        <canvas id="pub-crop-canvas" width="${CROP}" height="${CROP}" style="border-radius:50%;border:3px solid #667eea;cursor:grab;touch-action:none;background:#f0f0f0;"></canvas>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+                        <span style="font-size:0.8rem;color:#555;">縮放</span>
+                        <input type="range" id="pub-crop-slider" min="50" max="300" value="100" style="flex:1;">
+                        <span id="pub-crop-scale-label" style="font-size:0.8rem;color:#555;width:3em;">100%</span>
+                    </div>
+                    <div style="display:flex;gap:0.75rem;">
+                        <button id="pub-crop-cancel" style="flex:1;padding:0.7rem;border:1px solid #ccc;border-radius:0.5rem;background:#fff;color:#555;cursor:pointer;">取消</button>
+                        <button id="pub-crop-confirm" style="flex:1;padding:0.7rem;border:none;border-radius:0.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:white;cursor:pointer;font-weight:600;">確認</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            const canvas = document.getElementById('pub-crop-canvas');
+            const ctx = canvas.getContext('2d');
+            const slider = document.getElementById('pub-crop-slider');
+            const slabel = document.getElementById('pub-crop-scale-label');
+            const img = new Image();
+            img.onload = () => {
+                let scale = Math.max(CROP / img.width, CROP / img.height);
+                let ox = (CROP - img.width * scale) / 2;
+                let oy = (CROP - img.height * scale) / 2;
+                slider.value = Math.round(scale * 100); slabel.textContent = slider.value + '%';
+                let isDrag = false, lastX = 0, lastY = 0;
+                function clamp() { const sw=img.width*scale,sh=img.height*scale; ox=Math.min(0,Math.max(CROP-sw,ox)); oy=Math.min(0,Math.max(CROP-sh,oy)); }
+                function draw() { ctx.fillStyle='#f0f0f0'; ctx.fillRect(0,0,CROP,CROP); ctx.drawImage(img,ox,oy,img.width*scale,img.height*scale); }
+                draw();
+                canvas.addEventListener('mousedown',e=>{isDrag=true;lastX=e.clientX;lastY=e.clientY;canvas.style.cursor='grabbing';});
+                canvas.addEventListener('mousemove',e=>{if(!isDrag)return;ox+=e.clientX-lastX;oy+=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;clamp();draw();});
+                canvas.addEventListener('mouseup',()=>{isDrag=false;canvas.style.cursor='grab';});
+                canvas.addEventListener('wheel',e=>{e.preventDefault();scale=Math.max(CROP/img.width,scale+(e.deltaY<0?0.05:-0.05));clamp();draw();slider.value=Math.round(scale*100);slabel.textContent=slider.value+'%';});
+                slider.addEventListener('input',()=>{scale=slider.value/100;clamp();draw();slabel.textContent=slider.value+'%';});
+                document.getElementById('pub-crop-confirm').onclick=()=>{
+                    const out=document.createElement('canvas');out.width=300;out.height=300;
+                    const octx=out.getContext('2d');const ratio=300/CROP;
+                    octx.drawImage(img,-ox*ratio,-oy*ratio,img.width*scale*ratio,img.height*scale*ratio);
+                    pendingPubImageData=out.toDataURL('image/jpeg',0.88);
+                    const prev=document.getElementById('pub-img-preview');
+                    prev.src=pendingPubImageData;prev.style.display='block';
+                    overlay.remove();
+                };
+                document.getElementById('pub-crop-cancel').onclick=()=>overlay.remove();
+                document.getElementById('pub-crop-close').onclick=()=>overlay.remove();
+            };
+            img.src = src;
+        }
+
+        async function savePublisher(event) {
+            event.preventDefault();
+            const name = document.getElementById('pub-name').value.trim();
+            if (!name) { alert('請填寫出版社名稱'); return; }
+            const payload = {
+                publisher_name: name,
+                publisher_name_en: document.getElementById('pub-name-en').value.trim(),
+                icon: document.getElementById('pub-icon').value.trim() || '🏭',
+                game_list: pubGameListCache,
+                fan_thresholds: PUB_FAN_THRESHOLDS,
+                customer_thresholds: PUB_CUSTOMER_THRESHOLDS,
+                is_active: document.getElementById('pub-active').checked,
+            };
+            if (pendingPubImageData) payload.image_url = pendingPubImageData;
+
+            if (publisherEditId) {
+                const r = await fetch(`tables/publisher_badge_series/${publisherEditId}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (!r.ok) { alert('更新失敗'); return; }
+                alert('✅ 出版社更新成功！');
+                closePublisherModal();
+                loadPublisherList();
+            } else {
+                // 建立出版社記錄
+                payload.created_at = Date.now();
+                const r = await fetch('tables/publisher_badge_series', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if (!r.ok) { alert('新增失敗'); return; }
+                const pub = await r.json();
+                alert(`✅ 出版社「${name}」建立成功！\n系統將在玩家開啟我的檔案時自動計算徽章資格。`);
+                closePublisherModal();
+                loadPublisherList();
+            }
+        }
+
+        // 批量計算並授予出版社徽章
+        async function runPublisherAutoGrant(pubId, pubName) {
+            if (!confirm(`確定要掃描所有玩家並授予「${pubName}」系列徽章給符合條件者？\n（不會重複授予已有的徽章）`)) return;
+            const btn = event.target;
+            btn.disabled = true; btn.textContent = '處理中...';
+
+            try {
+                // 取得出版社資料
+                const pubRes = await fetch(`tables/publisher_badge_series/${pubId}`);
+                const pub = await pubRes.json();
+                const gameList = Array.isArray(pub.game_list) ? pub.game_list.map(g => g.toLowerCase()) : [];
+                const customerThresholds = pub.customer_thresholds || PUB_CUSTOMER_THRESHOLDS;
+                const fanThresholds = pub.fan_thresholds || PUB_FAN_THRESHOLDS;
+                const safeId = pubId.replace(/-/g,'_');
+
+                // 取得所有玩家和 stats
+                const [usersRes, statsRes] = await Promise.all([
+                    fetch('tables/users?limit=500'),
+                    fetch('tables/user_stats?limit=500')
+                ]);
+                const usersData = await usersRes.json();
+                const statsData = await statsRes.json();
+                const users = usersData.data || [];
+                const statsMap = {};
+                (statsData.data || []).forEach(s => { statsMap[s.user_id] = s; });
+
+                let granted = 0, skipped = 0;
+                const log = [];
+
+                for (const user of users) {
+                    const rated = [
+                        ...(user.super_liked_games || []),
+                        ...(user.liked_games || []),
+                        ...(user.neutral_games || []),
+                        ...(user.disliked_games || [])
+                    ].map(g => g.toLowerCase());
+                    const liked = [
+                        ...(user.super_liked_games || []),
+                        ...(user.liked_games || [])
+                    ].map(g => g.toLowerCase());
+
+                    const customerCount = rated.filter(g => gameList.includes(g)).length;
+                    const fanCount = liked.filter(g => gameList.includes(g)).length;
+
+                    const stats = statsMap[user.id];
+                    if (!stats) { skipped++; continue; }
+                    const current = Array.isArray(stats.unlocked_badges) ? [...stats.unlocked_badges] : [];
+                    const newBadges = [];
+
+                    // 計算忠實顧客等級
+                    customerThresholds.forEach((threshold, i) => {
+                        const bid = `pub_${safeId}_customer_${i}`;
+                        if (customerCount >= threshold && !current.includes(bid)) newBadges.push(bid);
+                    });
+                    // 計算粉絲等級
+                    fanThresholds.forEach((threshold, i) => {
+                        const bid = `pub_${safeId}_fan_${i}`;
+                        if (fanCount >= threshold && !current.includes(bid)) newBadges.push(bid);
+                    });
+
+                    if (newBadges.length > 0) {
+                        const updated = [...current, ...newBadges];
+                        await fetch(`tables/user_stats/${stats.id}`, {
+                            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ unlocked_badges: updated })
+                        });
+                        granted += newBadges.length;
+                        log.push(`✅ ${user.nickname || user.username || user.id.slice(0,8)} → +${newBadges.length} 個徽章`);
+                    }
+                }
+
+                alert(`✅ 完成！授予 ${granted} 個徽章，跳過 ${skipped} 筆無 stats 玩家`);
+                log.unshift(`=== ${pubName} 批量授予結果 ===`);
+                const logEl = document.getElementById('early-result-log');
+                logEl.style.display = 'block';
+                logEl.innerHTML = log.join('<br>');
+
+            } catch(e) {
+                alert('批量授予失敗：' + e.message);
+            } finally {
+                btn.disabled = false; btn.textContent = '🚀';
+            }
+        }
+
+        // ── 早期探索者 ─────────────────────────────────────
+        const EARLY_CUTOFF = new Date('2026-07-01T00:00:00+08:00').getTime();
+        const EARLY_BADGE_ID = 'badge_early_explorer';
+
+        async function loadEarlyStats() {
+            const container = document.getElementById('early-stats');
+            container.innerHTML = '<p style="color:var(--text-light);">載入中...</p>';
+            const [usersRes, statsRes] = await Promise.all([
+                fetch('tables/users?limit=500'),
+                fetch('tables/user_stats?limit=500')
+            ]);
+            const users = (await usersRes.json()).data || [];
+            const statsAll = (await statsRes.json()).data || [];
+            const statsMap = {};
+            statsAll.forEach(s => { statsMap[s.user_id] = s; });
+
+            const eligible = users.filter(u => {
+                const created = u.created_at || 0;
+                return created < EARLY_CUTOFF;
+            });
+            const alreadyHas = eligible.filter(u => {
+                const s = statsMap[u.id];
+                return s && Array.isArray(s.unlocked_badges) && s.unlocked_badges.includes(EARLY_BADGE_ID);
+            });
+            const pending = eligible.length - alreadyHas.length;
+
+            container.innerHTML = `
+                <div style="background:var(--card-bg);border-radius:0.75rem;padding:1rem;text-align:center;">
+                    <div style="font-size:2rem;font-weight:bold;color:#10b981;">${eligible.length}</div>
+                    <div style="color:var(--text-light);font-size:0.85rem;">符合條件玩家</div>
+                </div>
+                <div style="background:var(--card-bg);border-radius:0.75rem;padding:1rem;text-align:center;">
+                    <div style="font-size:2rem;font-weight:bold;color:#3b82f6;">${alreadyHas.length}</div>
+                    <div style="color:var(--text-light);font-size:0.85rem;">已有徽章</div>
+                </div>
+                <div style="background:var(--card-bg);border-radius:0.75rem;padding:1rem;text-align:center;">
+                    <div style="font-size:2rem;font-weight:bold;color:#f59e0b;">${pending}</div>
+                    <div style="color:var(--text-light);font-size:0.85rem;">待發放</div>
+                </div>`;
+        }
+
+        async function runEarlyExplorerGrant() {
+            if (!confirm('確定要批量授予「早期探索者」徽章給所有 2026/6/30 前加入的玩家？')) return;
+            const btn = document.getElementById('early-grant-btn');
+            btn.disabled = true; btn.textContent = '處理中...';
+            const logEl = document.getElementById('early-result-log');
+            logEl.style.display = 'block'; logEl.innerHTML = '掃描中...';
+
+            const [usersRes, statsRes] = await Promise.all([
+                fetch('tables/users?limit=500'),
+                fetch('tables/user_stats?limit=500')
+            ]);
+            const users = (await usersRes.json()).data || [];
+            const statsAll = (await statsRes.json()).data || [];
+            const statsMap = {};
+            statsAll.forEach(s => { statsMap[s.user_id] = s; });
+
+            let grantedCount = 0; let skipCount = 0;
+            const log = ['=== 早期探索者批量授予 ==='];
+
+            for (const u of users) {
+                if ((u.created_at || 0) >= EARLY_CUTOFF) { skipCount++; continue; }
+                const stats = statsMap[u.id];
+                if (!stats) { log.push(`⚠️ ${u.nickname||u.id.slice(0,8)} → 無 stats 記錄`); skipCount++; continue; }
+                const current = Array.isArray(stats.unlocked_badges) ? [...stats.unlocked_badges] : [];
+                if (current.includes(EARLY_BADGE_ID)) { log.push(`⏭️ ${u.nickname||u.id.slice(0,8)} → 已擁有`); continue; }
+                current.push(EARLY_BADGE_ID);
+                await fetch(`tables/user_stats/${stats.id}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unlocked_badges: current })
+                });
+                grantedCount++;
+                log.push(`✅ ${u.nickname||u.id.slice(0,8)} → 授予成功`);
+            }
+            log.push(`=== 完成：授予 ${grantedCount} 人，略過 ${skipCount} 人 ===`);
+            logEl.innerHTML = log.join('<br>');
+            btn.disabled = false; btn.textContent = '🚀 批量授予早期探索者徽章';
+            loadEarlyStats();
+        }
+
+        // 初始化
+        loadBadges();
+    </script>
+</body>
+</html>

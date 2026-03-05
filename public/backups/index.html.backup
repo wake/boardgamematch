@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBTI × 桌遊配對 - 找到適合你的桌遊</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <!-- Google Sign-In SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <span>🎲</span>
+                MBTI × 桌遊配對
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="active">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="container">
+        <!-- 頁面標題 -->
+        <div class="page-header">
+            <h1 class="page-title">MBTI × 桌遊配對</h1>
+            <p class="page-subtitle">根據你的人格類型，找到最適合你的桌遊體驗</p>
+        </div>
+
+        <!-- Google 登入 / 使用者資訊區塊 -->
+        <section style="margin-bottom: 3rem;">
+            <!-- Google 登入按鈕容器（未登入狀態） -->
+            <div id="google-signin-container" style="display: none;">
+                <div style="background: var(--card-bg); padding: 3rem 2rem; border-radius: 1rem; box-shadow: var(--shadow-lg); text-align: center; max-width: 500px; margin: 0 auto;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">🎮</div>
+                    <h3 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--text-color);">開始你的桌遊探索之旅</h3>
+                    <p style="color: var(--text-light); margin-bottom: 2rem; line-height: 1.6;">
+                        使用 Google 帳號登入，立即探索適合你的桌遊，<br>並與其他玩家分享你的遊戲體驗
+                    </p>
+                    
+                    <!-- Google 登入按鈕（置中） -->
+                    <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                        <div id="g_id_onload"
+                             data-client_id="105319270176-djqr0n6r4l3mvmpalsqjn8kasqii9ukt.apps.googleusercontent.com"
+                             data-callback="handleGoogleSignIn"
+                             data-auto_prompt="false">
+                        </div>
+                        <div class="g_id_signin"
+                             data-type="standard"
+                             data-size="large"
+                             data-theme="filled_blue"
+                             data-text="signin_with"
+                             data-shape="rectangular"
+                             data-logo_alignment="left">
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 1rem;">
+                        或者 <a href="explore.html" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">先瀏覽數據分析</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 已登入狀態顯示 -->
+            <div id="logged-in-container" style="display: none;">
+                <div style="background: var(--card-bg); padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-md); text-align: center; max-width: 600px; margin: 0 auto;">
+                    <div style="display: inline-flex; align-items: center; gap: 1rem; padding: 1rem 2rem; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 1rem; margin-bottom: 1.5rem;">
+                        <img id="user-avatar" src="" alt="頭像" style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid white;">
+                        <div style="text-align: left; color: white;">
+                            <div id="user-name" style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.25rem;"></div>
+                            <div id="user-mbti" style="font-size: 0.9rem; opacity: 0.95;"></div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                        <a href="recommend.html" class="btn btn-primary" style="font-size: 1rem; padding: 0.875rem 1.75rem;">🎲 開始評分桌遊</a>
+                        <a href="profile.html" class="btn btn-secondary" style="font-size: 1rem; padding: 0.875rem 1.75rem;">👤 我的檔案</a>
+                        <button onclick="logout()" class="btn btn-danger" style="font-size: 1rem; padding: 0.875rem 1.75rem;">🚪 登出</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 狀態訊息 -->
+            <div id="status-message" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 0.5rem; background: #e7f3ff; color: #0066cc; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;"></div>
+        </section>
+
+        <!-- 統計數據區塊 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--text-color);">📊 總覽統計</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-users">-</div>
+                    <div class="stat-label">位玩家</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">16</div>
+                    <div class="stat-label">種人格類型</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-games">-</div>
+                    <div class="stat-label">款桌遊</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="most-popular-type">-</div>
+                    <div class="stat-label">最多玩家類型</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MBTI 類型選擇 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--text-color);">🎯 16 種人格類型</h2>
+            <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                點擊任一類型查看該人格的桌遊偏好詳情
+            </p>
+            <div class="mbti-grid" id="mbti-preview">
+                <!-- 透過 JavaScript 動態生成 -->
+            </div>
+        </section>
+
+        <!-- 熱門桌遊排行 -->
+        <section style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; color: var(--text-color);"><span style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';">🏆</span> 熱門桌遊排行</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                <div class="game-list">
+                    <h3 class="game-list-title"><span style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';">😍</span> 最受歡迎</h3>
+                    <div id="popular-games-list">
+                        <div class="simple-hourglass">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-list">
+                    <h3 class="game-list-title"><span style="font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';">😕</span> 最不受歡迎</h3>
+                    <div id="disliked-games-list">
+                        <div class="simple-hourglass">
+                            <span class="hourglass-icon-simple combined">⏳</span>
+                            <span class="hourglass-text-simple">載入中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 開始探索 CTA -->
+        <section style="margin-bottom: 3rem;">
+            <div style="text-align: center; padding: 3rem 2rem; background: var(--card-bg); border-radius: 1rem; box-shadow: var(--shadow-md);">
+                <h2 style="font-size: 2rem; margin-bottom: 1rem; color: var(--text-color);">開始探索</h2>
+                <p style="color: var(--text-light); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    立即分享你的桌遊喜好，幫助我們建立更準確的推薦系統
+                </p>
+                <a href="submit.html" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    分享我的喜好
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer style="text-align: center; padding: 2rem; margin-top: 4rem; color: var(--text-light); border-top: 1px solid var(--border-color);">
+        <p>© 2025 MBTI × 桌遊配對</p>
+        <p style="font-size: 0.9rem; margin-top: 0.5rem;">根據 MBTI 人格類型，找到最適合你的桌遊體驗</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script src="js/navbar-auth.js"></script>
+    
+    <!-- 內嵌 NicknameManager -->
+    <script>
+        const NicknameManager = {
+            ADJECTIVES: ['神秘的', '勇敢的', '聰明的', '友善的', '幽默的', '冷靜的', '熱情的', '謹慎的', 
+                        '大膽的', '溫柔的', '機智的', '沉穩的', '活潑的', '優雅的', '堅定的', '細心的',
+                        '開朗的', '靈巧的', '勤奮的', '樂觀的'],
+            
+            ANIMALS: ['狐狸', '老鷹', '獅子', '熊貓', '海豚', '老虎', '貓頭鷹', '企鵝', 
+                     '狼', '兔子', '鯊魚', '獵豹', '松鼠', '浣熊', '鸚鵡', '水獺',
+                     '熊', '鹿', '海獅', '蜂鳥'],
+            
+            generateRandomNickname() {
+                const adj = this.ADJECTIVES[Math.floor(Math.random() * this.ADJECTIVES.length)];
+                const animal = this.ANIMALS[Math.floor(Math.random() * this.ANIMALS.length)];
+                const num = Math.floor(Math.random() * 9000) + 1000;
+                return `${adj}${animal} #${num}`;
+            },
+            
+            validateNickname(nickname) {
+                if (!nickname || nickname.trim() === '') {
+                    return { valid: false, message: '暱稱不能為空' };
+                }
+                if (nickname.length < 2 || nickname.length > 20) {
+                    return { valid: false, message: '暱稱長度必須在 2-20 個字元之間' };
+                }
+                const badWords = ['幹', 'fuck', '操', 'shit', '靠北'];
+                for (const word of badWords) {
+                    if (nickname.toLowerCase().includes(word)) {
+                        return { valid: false, message: '暱稱包含不適當內容' };
+                    }
+                }
+                return { valid: true };
+            },
+            
+            async showNicknameModal(user, isFirstTime = true) {
+                return new Promise((resolve) => {
+                    const modal = document.createElement('div');
+                    modal.style.cssText = `
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(0,0,0,0.5); display: flex; align-items: center;
+                        justify-content: center; z-index: 10000; backdrop-filter: blur(5px);
+                    `;
+                    
+                    const content = document.createElement('div');
+                    content.style.cssText = `
+                        background: white; padding: 2rem; border-radius: 1rem;
+                        max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                        animation: slideIn 0.3s ease-out;
+                    `;
+                    
+                    const randomNick = this.generateRandomNickname();
+                    
+                    content.innerHTML = `
+                        <style>
+                            @keyframes slideIn {
+                                from { transform: translateY(-30px); opacity: 0; }
+                                to { transform: translateY(0); opacity: 1; }
+                            }
+                        </style>
+                        <h2 style="margin-bottom: 1rem; color: #333; font-size: 1.8rem; text-align: center;">
+                            ${isFirstTime ? '🎉 歡迎！' : '✏️ 修改暱稱'}
+                        </h2>
+                        <p style="color: #666; margin-bottom: 1.5rem; text-align: center;">
+                            ${isFirstTime ? '請設定你的暱稱，或使用系統自動產生的暱稱' : '輸入新的暱稱或點擊「隨機產生」'}
+                        </p>
+                        <div style="margin-bottom: 1rem;">
+                            <input type="text" id="nickname-input" 
+                                   placeholder="輸入暱稱 (2-20字元)" 
+                                   value="${randomNick}"
+                                   style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #e5e7eb;
+                                          border-radius: 0.5rem; font-size: 1rem; transition: border-color 0.3s;">
+                        </div>
+                        <div id="nickname-error" style="color: #ef4444; margin-bottom: 1rem; display: none;"></div>
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                            <button id="random-btn" style="flex: 1; padding: 0.75rem; background: #f3f4f6;
+                                    border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem;
+                                    transition: background 0.3s;">
+                                🎲 隨機產生暱稱
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            ${!isFirstTime ? `<button id="cancel-btn" class="btn btn-secondary" style="flex: 1;">取消</button>` : ''}
+                            <button id="save-btn" class="btn btn-primary" style="flex: 1;">
+                                ${isFirstTime ? '開始使用' : '儲存'}
+                            </button>
+                        </div>
+                    `;
+                    
+                    modal.appendChild(content);
+                    document.body.appendChild(modal);
+                    
+                    const input = document.getElementById('nickname-input');
+                    const errorDiv = document.getElementById('nickname-error');
+                    const randomBtn = document.getElementById('random-btn');
+                    const saveBtn = document.getElementById('save-btn');
+                    const cancelBtn = document.getElementById('cancel-btn');
+                    
+                    randomBtn.addEventListener('click', () => {
+                        input.value = this.generateRandomNickname();
+                        errorDiv.style.display = 'none';
+                    });
+                    
+                    saveBtn.addEventListener('click', () => {
+                        const nickname = input.value.trim();
+                        const validation = this.validateNickname(nickname);
+                        
+                        if (!validation.valid) {
+                            errorDiv.textContent = validation.message;
+                            errorDiv.style.display = 'block';
+                            return;
+                        }
+                        
+                        modal.remove();
+                        resolve(nickname);
+                    });
+                    
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            modal.remove();
+                            resolve(null);
+                        });
+                    }
+                    
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') saveBtn.click();
+                    });
+                    
+                    input.focus();
+                });
+            }
+        };
+    </script>
+    
+    <!-- 簡化版 Google Auth -->
+    <script>
+        async function handleGoogleSignIn(response) {
+            console.log('[Google OAuth] 收到登入回應');
+            
+            try {
+                const credential = response.credential;
+                const payload = parseJwt(credential);
+                
+                console.log('[Google OAuth] 使用者資料:', payload);
+                
+                // 檢查是否已有儲存的暱稱
+                let savedNicknames = localStorage.getItem('userNicknames');
+                let nicknamesMap = savedNicknames ? JSON.parse(savedNicknames) : {};
+                let nickname = nicknamesMap[payload.sub] || null;
+                
+                // 如果沒有暱稱，顯示暱稱設定視窗
+                if (!nickname) {
+                    nickname = await NicknameManager.showNicknameModal(payload, true);
+                    if (!nickname) {
+                        nickname = NicknameManager.generateRandomNickname();
+                    }
+                    // 儲存暱稱到獨立的 map
+                    nicknamesMap[payload.sub] = nickname;
+                    localStorage.setItem('userNicknames', JSON.stringify(nicknamesMap));
+                }
+                
+                // 儲存使用者資料（包含暱稱）
+                const userWithNickname = {
+                    ...payload,
+                    nickname: nickname || payload.name
+                };
+                localStorage.setItem('googleUser', JSON.stringify(userWithNickname));
+                
+                // 顯示使用者資訊
+                updateLoginUI(userWithNickname);
+                
+                // 顯示狀態訊息
+                showStatus('✅ 登入成功！歡迎 ' + (nickname || payload.name));
+                
+            } catch (error) {
+                console.error('[Google OAuth] 處理失敗:', error);
+                showStatus('❌ 登入失敗: ' + error.message, true);
+            }
+        }
+        
+        function updateLoginUI(user) {
+            const container = document.getElementById('logged-in-container');
+            const signinContainer = document.getElementById('google-signin-container');
+            const displayName = user.nickname || user.name;
+            
+            if (container && signinContainer) {
+                document.getElementById('user-avatar').src = user.picture;
+                document.getElementById('user-name').textContent = '哈囉！' + displayName;
+                document.getElementById('user-mbti').textContent = '歡迎使用 MBTI × 桌遊配對';
+                
+                signinContainer.style.display = 'none';
+                container.style.display = 'block';
+            }
+        }
+        
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+                    '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+                ).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (error) {
+                console.error('JWT 解析失敗:', error);
+                throw new Error('無效的登入憑證');
+            }
+        }
+        
+        function showStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status-message');
+            if (statusDiv) {
+                statusDiv.textContent = message;
+                statusDiv.style.display = 'block';
+                statusDiv.style.background = isError ? '#fee' : '#e7f3ff';
+                statusDiv.style.color = isError ? '#c00' : '#0066cc';
+                setTimeout(() => statusDiv.style.display = 'none', 5000);
+            }
+        }
+        
+        function logout() {
+            if (!confirm('確定要登出嗎？')) return;
+            // 只清除 googleUser，保留 userNicknames
+            localStorage.removeItem('googleUser');
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                google.accounts.id.disableAutoSelect();
+            }
+            location.reload();
+        }
+        
+        // 全局變數
+        let allUsers = [];
+        
+        // 頁面載入時檢查登入狀態
+        window.addEventListener('load', () => {
+            const savedUser = localStorage.getItem('googleUser');
+            if (savedUser) {
+                try {
+                    const user = JSON.parse(savedUser);
+                    updateLoginUI(user);
+                } catch (error) {
+                    console.error('解析使用者資料失敗:', error);
+                }
+            } else {
+                document.getElementById('google-signin-container').style.display = 'block';
+            }
+            
+            // 載入所有資料
+            loadAllData();
+        });
+        
+        // 載入所有資料
+        async function loadAllData() {
+            try {
+                allUsers = await GameMBTI.getAllUsers();
+                displayOverallStats();
+                displayMBTIGrid();
+                displayGlobalGames();
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        // 顯示總覽統計
+        function displayOverallStats() {
+            const stats = GameMBTI.calculateStats(allUsers);
+            
+            document.getElementById('total-users').textContent = stats.totalUsers;
+            
+            // 計算總遊戲數
+            const allGames = new Set();
+            allUsers.forEach(user => {
+                if (user.liked_games) user.liked_games.forEach(g => allGames.add(g));
+                if (user.disliked_games) user.disliked_games.forEach(g => allGames.add(g));
+            });
+            document.getElementById('total-games').textContent = allGames.size;
+            
+            // 最多玩家類型
+            const mostPopular = Object.entries(stats.mbtiDistribution)
+                .sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('most-popular-type').textContent = 
+                mostPopular ? mostPopular[0] : '-';
+        }
+        
+        // 顯示 MBTI 網格
+        function displayMBTIGrid() {
+            const container = document.getElementById('mbti-preview');
+            if (!container) return;
+            
+            const grouped = GameMBTI.groupUsersByMBTI(allUsers);
+            
+            container.innerHTML = Object.entries(GameMBTI.MBTI_TYPES).map(([type, info]) => {
+                const count = grouped[type].length;
+                
+                return `
+                    <div class="mbti-card" style="--mbti-gradient: ${info.color};" 
+                         onclick="location.href='explore.html#${type}'">
+                        <h3 class="mbti-type">${type}</h3>
+                        <p class="mbti-name">${info.name}</p>
+                        <p class="mbti-description">${info.description}</p>
+                        <div class="mbti-count">
+                            👥 ${count} 位玩家
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 顯示全站遊戲排行
+        function displayGlobalGames() {
+            const stats = GameMBTI.calculateStats(allUsers);
+            
+            const popularContainer = document.getElementById('popular-games-list');
+            if (stats.mostPopularGames.length === 0) {
+                popularContainer.innerHTML = '<div class="empty-state"><p>尚無資料</p></div>';
+            } else {
+                popularContainer.innerHTML = stats.mostPopularGames.slice(0, 10).map((item, index) => `
+                    <div class="game-item">
+                        <span class="game-name">${index + 1}. ${item.game}</span>
+                        <span class="game-votes">😍 ${item.count} 票</span>
+                    </div>
+                `).join('');
+            }
+            
+            const dislikedContainer = document.getElementById('disliked-games-list');
+            if (stats.mostDislikedGames.length === 0) {
+                dislikedContainer.innerHTML = '<div class="empty-state"><p>尚無資料</p></div>';
+            } else {
+                dislikedContainer.innerHTML = stats.mostDislikedGames.slice(0, 10).map((item, index) => `
+                    <div class="game-item">
+                        <span class="game-name">${index + 1}. ${item.game}</span>
+                        <span class="game-votes">😕 ${item.count} 票</span>
+                    </div>
+                `).join('');
+            }
+        }
+    </script>
+</body>
+</html>

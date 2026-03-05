@@ -1,0 +1,275 @@
+/* 沙漏載入動畫 - 統一全站使用 */
+
+.hourglass-loader {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.hourglass-icon {
+    font-size: 3rem;
+    display: inline-block;
+    position: relative;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    animation: hourglass-shake 4s ease-in-out infinite;
+}
+
+/* 沙漏輕微晃動效果 */
+@keyframes hourglass-shake {
+    0%, 45%, 55%, 100% {
+        transform: rotate(0deg);
+    }
+    48%, 52% {
+        transform: rotate(-2deg);
+    }
+    50% {
+        transform: rotate(0deg);
+    }
+}
+
+/* 沙粒容器 */
+.hourglass-icon::before,
+.hourglass-icon::after {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #f4a460;
+    border-radius: 50%;
+    left: 50%;
+    opacity: 0;
+}
+
+/* 上半部沙粒往下掉 */
+.hourglass-icon::before {
+    top: 25%;
+    animation: sand-fall-top 2s linear infinite;
+}
+
+/* 下半部沙粒堆積 */
+.hourglass-icon::after {
+    bottom: 25%;
+    animation: sand-fall-bottom 2s linear infinite;
+}
+
+/* 沙粒從上往下掉落 */
+@keyframes sand-fall-top {
+    0% {
+        transform: translate(-50%, -10px);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, 15px);
+        opacity: 1;
+    }
+    60% {
+        opacity: 0;
+    }
+    100% {
+        transform: translate(-50%, 20px);
+        opacity: 0;
+    }
+}
+
+/* 沙粒在下半部堆積 */
+@keyframes sand-fall-bottom {
+    0%, 50% {
+        transform: translate(-50%, 0);
+        opacity: 0;
+    }
+    55% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, 5px);
+        opacity: 0.8;
+    }
+}
+
+/* 多個沙粒效果 - 使用多個陰影模擬 */
+.hourglass-icon {
+    position: relative;
+}
+
+.hourglass-icon::after {
+    box-shadow: 
+        -2px 0 0 #f4a460,
+        2px 0 0 #f4a460,
+        -1px -2px 0 #d4834d,
+        1px -2px 0 #d4834d,
+        0 2px 0 #c97945;
+    animation: sand-particles 2s linear infinite;
+}
+
+/* 沙粒粒子動畫 */
+@keyframes sand-particles {
+    0% {
+        transform: translate(-50%, -12px) scale(1);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, 15px) scale(0.8);
+        opacity: 0.9;
+    }
+    60% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate(-50%, 20px) scale(0.6);
+        opacity: 0;
+    }
+}
+
+/* 文字脈衝動畫 */
+.hourglass-text {
+    color: var(--text-light, #888);
+    font-size: 0.95rem;
+    animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* 小尺寸版本 */
+.hourglass-loader.small {
+    gap: 0.5rem;
+}
+
+.hourglass-loader.small .hourglass-icon {
+    font-size: 1.5rem;
+}
+
+.hourglass-loader.small .hourglass-text {
+    font-size: 0.85rem;
+}
+
+/* 大尺寸版本 */
+.hourglass-loader.large {
+    gap: 1.5rem;
+}
+
+.hourglass-loader.large .hourglass-icon {
+    font-size: 4rem;
+}
+
+.hourglass-loader.large .hourglass-text {
+    font-size: 1.1rem;
+}
+
+/* 大尺寸的沙粒也要放大 */
+.hourglass-loader.large .hourglass-icon::before,
+.hourglass-loader.large .hourglass-icon::after {
+    width: 4px;
+    height: 4px;
+}
+
+/* 純圖示模式（無文字） */
+.hourglass-loader.icon-only .hourglass-text {
+    display: none;
+}
+
+/* 配合舊有 .loading 類別 */
+.loading.hourglass-style {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.loading.hourglass-style .spinner {
+    display: none; /* 隱藏舊的 spinner */
+}
+
+/* 替換舊的 spinner 為沙漏 */
+.loading .hourglass-replacement {
+    font-size: 3rem;
+    display: inline-block;
+    position: relative;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    margin-bottom: 1rem;
+}
+
+/* 沙漏翻轉效果（每 4 秒翻轉一次） */
+.hourglass-icon.with-flip {
+    animation: hourglass-flip-and-shake 4s ease-in-out infinite;
+}
+
+@keyframes hourglass-flip-and-shake {
+    0%, 45% {
+        transform: rotate(0deg);
+    }
+    50% {
+        transform: rotate(180deg);
+    }
+    95%, 100% {
+        transform: rotate(180deg);
+    }
+}
+
+/* 增強版：更多沙粒流動效果 */
+.hourglass-icon.enhanced {
+    overflow: visible;
+}
+
+/* 使用偽元素創造連續沙流 */
+.hourglass-enhanced {
+    position: relative;
+    display: inline-block;
+}
+
+.hourglass-enhanced::before {
+    content: '⏳';
+    font-size: inherit;
+    position: relative;
+    z-index: 1;
+}
+
+.hourglass-enhanced::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 20px;
+    background: linear-gradient(to bottom, 
+        rgba(244, 164, 96, 0.9) 0%,
+        rgba(244, 164, 96, 0.7) 30%,
+        rgba(244, 164, 96, 0.4) 60%,
+        rgba(244, 164, 96, 0) 100%
+    );
+    top: 35%;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: sand-stream 2s linear infinite;
+}
+
+@keyframes sand-stream {
+    0% {
+        opacity: 0;
+        height: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+        height: 20px;
+    }
+    100% {
+        opacity: 0;
+        height: 20px;
+    }
+}

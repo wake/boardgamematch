@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲管理 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 1rem;
+        }
+        
+        .search-bar {
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .game-table {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: var(--bg-light);
+        }
+        
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        tr:hover {
+            background: var(--bg-light);
+        }
+        
+        .game-icon {
+            font-size: 2rem;
+            text-align: center;
+        }
+        
+        .game-name {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .game-name-en {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+        
+        .complexity-stars {
+            color: #f39c12;
+        }
+        
+        .btn-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-edit {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .add-game-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+        }
+        
+        .add-game-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+    </style>
+    <!-- 管理後台密碼驗證 -->
+    <script src="js/admin-password.js"></script>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <span>🎲</span>
+                MBTI × 桌遊配對
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+                <li><a href="admin.html" class="active">管理後台</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 頁首 -->
+        <div class="admin-header">
+            <h2 style="margin: 0 0 0.5rem 0;">🎮 遊戲資料管理</h2>
+            <p style="margin: 0; opacity: 0.9;">管理遊戲資料庫中的所有桌遊資訊</p>
+        </div>
+
+        <!-- 統計資訊 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: var(--primary-color);" id="total-games">-</div>
+                <div style="color: var(--text-light);">總遊戲數</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #27ae60;" id="bgg-games">-</div>
+                <div style="color: var(--text-light);">BGG 遊戲</div>
+            </div>
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #e74c3c;" id="manual-games">-</div>
+                <div style="color: var(--text-light);">手動新增</div>
+            </div>
+        </div>
+
+        <!-- 搜尋列 -->
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="🔍 搜尋遊戲名稱..." onkeyup="filterGames()">
+            <select id="source-filter" onchange="filterGames()">
+                <option value="">全部來源</option>
+                <option value="BGG">BGG</option>
+                <option value="manual">手動新增</option>
+            </select>
+        </div>
+
+        <!-- 遊戲列表 -->
+        <div class="game-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">圖示</th>
+                        <th>遊戲名稱</th>
+                        <th style="width: 100px;">年份</th>
+                        <th style="width: 100px;">玩家數</th>
+                        <th style="width: 100px;">時間</th>
+                        <th style="width: 100px;">複雜度</th>
+                        <th style="width: 100px;">來源</th>
+                        <th style="width: 120px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="game-list">
+                    <!-- 動態插入 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 新增/編輯遊戲彈窗 -->
+    <div class="modal" id="game-modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 id="modal-title">新增遊戲</h2>
+                <button onclick="closeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+            </div>
+            
+            <form id="game-form" onsubmit="saveGame(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>中文名稱 *</label>
+                        <input type="text" id="game-name-zh" required>
+                    </div>
+                    <div class="form-group">
+                        <label>英文名稱</label>
+                        <input type="text" id="game-name-en">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>圖示 Emoji</label>
+                        <input type="text" id="game-icon" placeholder="🎲" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label>發行年份</label>
+                        <input type="number" id="game-year" min="1900" max="2099">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>最少玩家數</label>
+                        <input type="number" id="game-min-players" min="1" max="99">
+                    </div>
+                    <div class="form-group">
+                        <label>最多玩家數</label>
+                        <input type="number" id="game-max-players" min="1" max="99">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>遊戲時間（分鐘）</label>
+                        <input type="number" id="game-playing-time" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>複雜度（1-5）</label>
+                        <input type="number" id="game-complexity" min="1" max="5">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>遊戲描述</label>
+                    <textarea id="game-description" rows="4"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>資料來源</label>
+                        <select id="game-source">
+                            <option value="manual">手動新增</option>
+                            <option value="BGG">BGG</option>
+                            <option value="BGA">BGA</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>BGG ID（選填）</label>
+                        <input type="text" id="game-bgg-id">
+                    </div>
+                </div>
+                
+                <input type="hidden" id="game-id">
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;">儲存遊戲</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 新增按鈕 -->
+    <button class="add-game-btn" onclick="openModal()">+ 新增遊戲</button>
+
+    <script src="js/app.js"></script>
+<script src="js/navbar-auth.js"></script>
+    <script>
+        let allGames = [];
+        let filteredGames = [];
+
+        // 載入遊戲列表
+        async function loadGames() {
+            try {
+                const response = await fetch('tables/game_database?limit=1000');
+                const result = await response.json();
+                allGames = result.data || [];
+                filteredGames = allGames;
+                
+                // 更新統計
+                document.getElementById('total-games').textContent = allGames.length;
+                document.getElementById('bgg-games').textContent = allGames.filter(g => g.source === 'BGG').length;
+                document.getElementById('manual-games').textContent = allGames.filter(g => g.source === 'manual').length;
+                
+                renderGames();
+                
+            } catch (error) {
+                console.error('Error loading games:', error);
+                alert('載入遊戲時發生錯誤');
+            }
+        }
+
+        // 渲染遊戲列表
+        function renderGames() {
+            const tbody = document.getElementById('game-list');
+            
+            if (filteredGames.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-light);">沒有找到遊戲</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filteredGames.map(game => `
+                <tr>
+                    <td class="game-icon">${game.image_url || '🎲'}</td>
+                    <td>
+                        <div class="game-name">${game.name_zh || '未命名'}</div>
+                        <div class="game-name-en">${game.name_en || '-'}</div>
+                    </td>
+                    <td>${game.year || '-'}</td>
+                    <td>${game.min_players && game.max_players ? `${game.min_players}-${game.max_players}` : '-'}</td>
+                    <td>${game.playing_time ? `${game.playing_time}分` : '-'}</td>
+                    <td class="complexity-stars">${game.complexity ? '★'.repeat(game.complexity) : '-'}</td>
+                    <td><span style="padding: 0.25rem 0.75rem; background: var(--bg-light); border-radius: 0.5rem; font-size: 0.85rem;">${game.source || 'manual'}</span></td>
+                    <td>
+                        <div class="btn-actions">
+                            <button class="btn-small btn-edit" onclick="editGame('${game.id}')">編輯</button>
+                            <button class="btn-small btn-delete" onclick="deleteGame('${game.id}', '${game.name_zh}')">刪除</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 篩選遊戲
+        function filterGames() {
+            const searchText = document.getElementById('search-input').value.toLowerCase();
+            const sourceFilter = document.getElementById('source-filter').value;
+            
+            filteredGames = allGames.filter(game => {
+                const matchSearch = !searchText || 
+                    (game.name_zh && game.name_zh.toLowerCase().includes(searchText)) ||
+                    (game.name_en && game.name_en.toLowerCase().includes(searchText));
+                
+                const matchSource = !sourceFilter || game.source === sourceFilter;
+                
+                return matchSearch && matchSource;
+            });
+            
+            renderGames();
+        }
+
+        // 開啟彈窗
+        function openModal(gameId = null) {
+            document.getElementById('modal-title').textContent = gameId ? '編輯遊戲' : '新增遊戲';
+            
+            if (gameId) {
+                loadGameData(gameId);
+            } else {
+                document.getElementById('game-form').reset();
+                document.getElementById('game-id').value = '';
+            }
+            
+            document.getElementById('game-modal').classList.add('active');
+        }
+
+        // 關閉彈窗
+        function closeModal() {
+            document.getElementById('game-modal').classList.remove('active');
+        }
+
+        // 載入遊戲資料
+        function loadGameData(gameId) {
+            const game = allGames.find(g => g.id === gameId);
+            if (!game) return;
+            
+            document.getElementById('game-id').value = game.id;
+            document.getElementById('game-name-zh').value = game.name_zh || '';
+            document.getElementById('game-name-en').value = game.name_en || '';
+            document.getElementById('game-icon').value = game.image_url || '';
+            document.getElementById('game-year').value = game.year || '';
+            document.getElementById('game-min-players').value = game.min_players || '';
+            document.getElementById('game-max-players').value = game.max_players || '';
+            document.getElementById('game-playing-time').value = game.playing_time || '';
+            document.getElementById('game-complexity').value = game.complexity || '';
+            document.getElementById('game-description').value = game.description || '';
+            document.getElementById('game-source').value = game.source || 'manual';
+            document.getElementById('game-bgg-id').value = game.bgg_id || '';
+        }
+
+        // 編輯遊戲
+        function editGame(gameId) {
+            openModal(gameId);
+        }
+
+        // 儲存遊戲
+        async function saveGame(event) {
+            event.preventDefault();
+            
+            const gameId = document.getElementById('game-id').value;
+            const gameData = {
+                name_zh: document.getElementById('game-name-zh').value,
+                name_en: document.getElementById('game-name-en').value,
+                image_url: document.getElementById('game-icon').value || '🎲',
+                year: parseInt(document.getElementById('game-year').value) || null,
+                min_players: parseInt(document.getElementById('game-min-players').value) || null,
+                max_players: parseInt(document.getElementById('game-max-players').value) || null,
+                playing_time: parseInt(document.getElementById('game-playing-time').value) || null,
+                complexity: parseInt(document.getElementById('game-complexity').value) || null,
+                description: document.getElementById('game-description').value,
+                source: document.getElementById('game-source').value,
+                bgg_id: document.getElementById('game-bgg-id').value
+            };
+            
+            try {
+                if (gameId) {
+                    // 更新
+                    const response = await fetch(`tables/game_database/${gameId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(gameData)
+                    });
+                    
+                    if (!response.ok) throw new Error('更新失敗');
+                    alert('遊戲更新成功！');
+                } else {
+                    // 新增
+                    gameData.id = 'game_' + Date.now();
+                    gameData.created_at = Date.now();
+                    
+                    const response = await fetch('tables/game_database', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(gameData)
+                    });
+                    
+                    if (!response.ok) throw new Error('新增失敗');
+                    alert('遊戲新增成功！');
+                }
+                
+                closeModal();
+                loadGames();
+                
+            } catch (error) {
+                console.error('Error saving game:', error);
+                alert('儲存遊戲時發生錯誤：' + error.message);
+            }
+        }
+
+        // 刪除遊戲
+        async function deleteGame(gameId, gameName) {
+            if (!confirm(`確定要刪除「${gameName}」嗎？\n\n注意：此操作無法復原！`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`tables/game_database/${gameId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('刪除失敗');
+                
+                alert('遊戲已刪除！');
+                loadGames();
+                
+            } catch (error) {
+                console.error('Error deleting game:', error);
+                alert('刪除遊戲時發生錯誤：' + error.message);
+            }
+        }
+
+        // 點擊彈窗外部關閉
+        document.getElementById('game-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // 初始化
+        loadGames();
+    </script>
+</body>
+</html>

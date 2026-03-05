@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理後台 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">
+                <div class="navbar-logo-text" style="display:flex;flex-direction:column;line-height:1.3;">
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">MBTI ×</span>
+                    <span style="display:block;font-size:1.1rem;font-weight:700;">桌遊配對</span>
+                </div>
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="index.html">回到首頁</a></li>
+                <li><a href="explore.html">玩家數據</a></li>
+                <li><a href="recommend.html">桌遊探索</a></li>
+                <li><a href="quiz.html">桌遊問答</a></li>
+                <li><a href="leaderboard.html">貢獻排行</a></li>
+                <li><a href="profile.html">我的檔案</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="admin-container" style="max-width: 1400px; margin: 0 auto; padding: 2rem;">
+        <div class="page-header">
+            <h1 class="page-title">🔧 管理後台</h1>
+            <p class="page-subtitle">資料管理與系統維護中心</p>
+        </div>
+
+        <!-- 快速統計 -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-lg);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">👥 註冊玩家數</div>
+                <div style="font-size: 2.5rem; font-weight: bold;" id="total-users">-</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-lg);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">🎮 遊戲總數</div>
+                <div style="font-size: 2.5rem; font-weight: bold;" id="total-games">-</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-lg);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">📋 主題清單</div>
+                <div style="font-size: 2.5rem; font-weight: bold;" id="total-collections">-</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 2rem; border-radius: 1rem; box-shadow: var(--shadow-lg);">
+                <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">⚠️ 待整合別名</div>
+                <div style="font-size: 2.5rem; font-weight: bold;" id="pending-aliases">-</div>
+            </div>
+        </div>
+
+        <!-- 管理功能卡片 -->
+        <h2 style="margin-bottom: 1.5rem; color: var(--text-color);">🛠️ 管理功能</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+            <!-- 遊戲名稱整合工具 -->
+            <a href="admin-merge-games.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">🔗</div>
+                    <h3 class="admin-card-title">遊戲名稱整合工具</h3>
+                    <p class="admin-card-desc">合併玩家輸入的重複遊戲名稱，統一為標準名稱並更新所有使用者資料</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge">名稱合併</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 別名整合工具 -->
+            <a href="admin-game-aliases.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">🎯</div>
+                    <h3 class="admin-card-title">別名整合工具</h3>
+                    <p class="admin-card-desc">將玩家輸入的遊戲名稱對應到標準遊戲資料庫，統一名稱管理</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge" id="aliases-badge">載入中...</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 清單管理 -->
+            <a href="admin-collections.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">📋</div>
+                    <h3 class="admin-card-title">清單管理</h3>
+                    <p class="admin-card-desc">管理常駐主題和限時活動清單，設定每次評價題數和遊戲列表</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge" id="collections-badge">載入中...</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 遊戲管理 -->
+            <a href="admin-games.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">🎲</div>
+                    <h3 class="admin-card-title">遊戲管理</h3>
+                    <p class="admin-card-desc">管理遊戲資料庫，新增、編輯或刪除遊戲的詳細資訊</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge" id="games-badge">載入中...</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 桌遊問答管理 -->
+            <a href="admin-quiz.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">🧠</div>
+                    <h3 class="admin-card-title">桌遊問答管理</h3>
+                    <p class="admin-card-desc">管理桌遊問答題目集與題目內容，審核玩家投稿題目</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge" id="quiz-badge">載入中...</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 徽章管理 (超管專屬) -->
+            <a href="admin-badges.html" class="admin-card-link super-admin-only" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">🏆</div>
+                    <h3 class="admin-card-title">徽章管理</h3>
+                    <p class="admin-card-desc">管理成就徽章系統，設定解鎖條件和獎勵內容</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge" id="badges-badge">載入中...</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 管理員管理 (超管專屬) -->
+            <a href="admin-admins.html" class="admin-card-link super-admin-only" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">👥</div>
+                    <h3 class="admin-card-title">管理員管理</h3>
+                    <p class="admin-card-desc">管理後台訪問權限，新增或移除受信任的管理員帳號</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">權限管理</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+    <style>
+        .admin-card-link:hover .admin-card {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .admin-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .admin-card:hover {
+            border-color: var(--primary-color);
+        }
+
+        .admin-card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .admin-card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-card-desc {
+            color: var(--text-light);
+            line-height: 1.5;
+            flex: 1;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .admin-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .admin-card-badge {
+            background: var(--bg-color);
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-color);
+        }
+
+        .admin-card-arrow {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        /* 手機列位修正 */
+        @media (max-width: 600px) {
+            .admin-card-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+            .admin-card-title { font-size: 1.1rem; }
+            .admin-card { padding: 1rem; }
+        }
+    </style>
+
+    <!-- Google Sign-In SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- 🧹 後台導覽列清理（必須最先載入） -->
+    <script src="js/admin-navbar-cleanup.js?v=20240222-fix"></script>
+    
+    <!-- 管理後台驗證 -->
+    <script src="js/admin-auth.js?v=20240222-fix"></script>
+    <script src="js/show-admin-link.js?v=20260223b"></script>
+    <script>
+        // 載入統計資料
+        async function loadStats() {
+            try {
+                // 載入使用者數量
+                const usersRes = await fetch('tables/users?limit=1');
+                const usersData = await usersRes.json();
+                document.getElementById('total-users').textContent = usersData.total || 0;
+
+                // 載入遊戲數量
+                const gamesRes = await fetch('tables/game_database?limit=1');
+                const gamesData = await gamesRes.json();
+                document.getElementById('total-games').textContent = gamesData.total || 0;
+                document.getElementById('games-badge').textContent = `${gamesData.total || 0} 款遊戲`;
+
+                // 載入清單數量
+                const collectionsRes = await fetch('tables/game_collections?limit=1000');
+                const collectionsData = await collectionsRes.json();
+                const activeCollections = (collectionsData.data || []).filter(c => c.is_active);
+                document.getElementById('total-collections').textContent = activeCollections.length;
+                document.getElementById('collections-badge').textContent = `${activeCollections.length} 個清單`;
+
+                // 載入別名數量
+                const aliasesRes = await fetch('tables/game_aliases?limit=1000');
+                const aliasesData = await aliasesRes.json();
+                
+                // 計算待整合別名
+                const allUsersRes = await fetch('tables/users?limit=1000');
+                const allUsers = await allUsersRes.json();
+                const gameStats = new Map();
+                
+                (allUsers.data || []).forEach(user => {
+                    const allUserGames = [
+                        ...(user.liked_games || []),
+                        ...(user.neutral_games || []),
+                        ...(user.disliked_games || []),
+                        ...(user.wishlist || [])
+                    ];
+                    allUserGames.forEach(game => {
+                        gameStats.set(game, (gameStats.get(game) || 0) + 1);
+                    });
+                });
+
+                const existingAliases = new Set((aliasesData.data || []).map(a => a.alias_name));
+                const allGames = (gamesData.data || []).map(g => g.name);
+                const pending = Array.from(gameStats.keys()).filter(name => 
+                    !existingAliases.has(name) && !allGames.includes(name)
+                );
+
+                document.getElementById('pending-aliases').textContent = pending.length;
+                document.getElementById('aliases-badge').textContent = `${pending.length} 待整合`;
+                
+                // 載入徽章數量
+                const badgesRes = await fetch('tables/achievements?limit=1');
+                const badgesData = await badgesRes.json();
+                document.getElementById('badges-badge').textContent = `${badgesData.total || 0} 個徽章`;
+
+                // 載入問答題目集數量
+                const quizRes = await fetch('tables/quiz_collections?limit=1');
+                const quizData = await quizRes.json();
+                document.getElementById('quiz-badge').textContent = `${quizData.total || 0} 個題目集`;
+
+            } catch (error) {
+                console.error('載入統計資料失敗:', error);
+            }
+        }
+
+        // 頁面載入時執行
+        document.addEventListener('DOMContentLoaded', loadStats);
+
+        // 驗證管理員角色，顯示對應功能卡片
+        document.addEventListener('adminAuthenticated', (e) => {
+            const role = e.detail?.role || window.AdminAuth?.getCurrentAdmin()?.role;
+            if (role === 'super_admin') {
+                document.querySelectorAll('.super-admin-only').forEach(el => {
+                    el.style.display = '';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

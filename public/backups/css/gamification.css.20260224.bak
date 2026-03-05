@@ -1,0 +1,647 @@
+/* ========================================
+   🎮 遊戲化系統樣式
+   ======================================== */
+
+/* 浮動 XP 文字動畫 */
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-30px) scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-60px) scale(1);
+        opacity: 0;
+    }
+}
+
+.xp-float {
+    animation: floatUp 1.5s ease-out forwards;
+}
+
+/* 升級彈窗 */
+.level-up-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.level-up-content {
+    background: white;
+    padding: 3rem;
+    border-radius: 1rem;
+    text-align: center;
+    max-width: 400px;
+    animation: scaleIn 0.5s ease;
+}
+
+@keyframes scaleIn {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.level-up-icon {
+    font-size: 5rem;
+    margin-bottom: 1rem;
+    animation: rotate360 1s ease;
+}
+
+@keyframes rotate360 {
+    0% {
+        transform: rotate(0deg) scale(0);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.2);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+.level-up-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 1rem;
+}
+
+.level-up-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.level-up-subtitle {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin-bottom: 2rem;
+}
+
+.level-up-btn {
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.level-up-btn:hover {
+    transform: scale(1.05);
+}
+
+/* 成就解鎖彈窗 */
+.achievement-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.achievement-content {
+    background: white;
+    padding: 3rem;
+    border-radius: 1rem;
+    text-align: center;
+    max-width: 400px;
+    position: relative;
+    overflow: hidden;
+    animation: scaleIn 0.5s ease;
+}
+
+/* 粒子效果背景 */
+.achievement-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle, rgba(255, 193, 7, 0.1) 0%, transparent 70%);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.achievement-icon {
+    font-size: 5rem;
+    margin-bottom: 1rem;
+    animation: bounceIn 0.8s ease;
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes bounceIn {
+    0% {
+        transform: scale(0) rotate(0deg);
+    }
+    50% {
+        transform: scale(1.3) rotate(180deg);
+    }
+    70% {
+        transform: scale(0.9) rotate(300deg);
+    }
+    100% {
+        transform: scale(1) rotate(360deg);
+    }
+}
+
+.achievement-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.achievement-name {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.achievement-desc {
+    color: #6c757d;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.achievement-rarity {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.rarity-common {
+    background: linear-gradient(135deg, #6c757d, #adb5bd);
+    color: white;
+}
+
+.rarity-rare {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.rarity-epic {
+    background: linear-gradient(135deg, #6f42c1, #5a32a3);
+    color: white;
+}
+
+.rarity-legendary {
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    color: white;
+}
+
+.rarity-mythic {
+    background: linear-gradient(135deg, #e83e8c, #c2185b);
+    color: white;
+    box-shadow: 0 0 20px rgba(232, 62, 140, 0.5);
+}
+
+.achievement-btn {
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+    position: relative;
+    z-index: 1;
+}
+
+.achievement-btn:hover {
+    transform: scale(1.05);
+}
+
+/* 訊息提示 Toast */
+@keyframes slideInRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.toast {
+    animation: slideInRight 0.3s ease;
+}
+
+/* XP 進度條 */
+.xp-bar-container {
+    background: #e5e7eb;
+    height: 30px;
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+    margin: 1rem 0;
+}
+
+.xp-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+/* 進度條閃光效果 */
+.xp-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shine 2s infinite;
+}
+
+@keyframes shine {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* 等級徽章 */
+.level-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 2rem;
+    font-weight: bold;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: transform 0.2s;
+}
+
+.level-badge:hover {
+    transform: scale(1.05);
+}
+
+/* 徽章牆 */
+.badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.badge-item {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: #f8f9fa;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.badge-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.badge-item.unlocked {
+    background: linear-gradient(135deg, #fff3cd, #ffc107);
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+}
+
+/* 成就卡片（縮小版） */
+.achievement-card {
+    background: var(--card-bg, white);
+    padding: 0.75rem 0.6rem;
+    border-radius: 0.6rem;
+    border: 2px solid var(--border-color, #e5e7eb);
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.achievement-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color, #667eea);
+}
+
+.achievement-card .achievement-icon {
+    font-size: 2rem;
+    margin-bottom: 0.3rem;
+    animation: none; /* Remove auto-animation */
+}
+
+.badge-item.locked {
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+.badge-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.badge-name {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.badge-rarity {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* 每日任務卡片 */
+.quest-card {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s;
+}
+
+.quest-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.quest-card.completed {
+    background: #d1e7dd;
+    border-color: #28a745;
+    opacity: 0.8;
+}
+
+.quest-checkbox {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #667eea;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.5rem;
+    transition: all 0.3s;
+}
+
+.quest-checkbox.checked {
+    background: #667eea;
+    color: white;
+}
+
+.quest-content {
+    flex: 1;
+}
+
+.quest-title {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.quest-progress {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.quest-reward {
+    color: #ffc107;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+/* 按鈕動畫效果 */
+.btn-animated {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-animated::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn-animated:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .level-up-content,
+    .achievement-content {
+        margin: 1rem;
+        padding: 2rem 1.5rem;
+    }
+    
+    .level-up-icon,
+    .achievement-icon {
+        font-size: 3.5rem;
+    }
+    
+    .badges-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .badge-icon {
+        font-size: 2rem;
+    }
+}
+
+/* XP 獲得動畫 */
+.xp-gain {
+    position: absolute;
+    color: #667eea;
+    font-weight: bold;
+    font-size: 1.5rem;
+    animation: floatUp 2s ease-out forwards;
+    pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+/* 升級通知 */
+.level-up-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    animation: scaleIn 0.5s ease;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+.level-up-notification::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: -1;
+}
+
+/* 成就解鎖通知 */
+.achievement-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    animation: scaleIn 0.5s ease;
+    max-width: 450px;
+    width: 90%;
+}
+
+.achievement-notification::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: -1;
+}
+
+.achievement-content {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    text-align: left;
+}
+
+.achievement-details h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--primary-color);
+}
+
+.achievement-details p {
+    margin: 0;
+}
+
+/* 按鈕成功脈衝效果 */
+@keyframes successPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+}
+
+.btn-success-pulse {
+    animation: successPulse 0.6s ease;
+}
