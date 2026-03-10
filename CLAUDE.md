@@ -17,18 +17,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 建立 upstream PR 時，使用 `.upstream-exclude` 排除不應推送的檔案（CLAUDE.md、.gitignore、.upstream-exclude、cloudflare/wrangler.dev.toml）
 - 做法：從 `upstream/main` 建 `upstream-pr/*` 分支，`git merge --squash` 後 `git reset HEAD` 排除清單中的檔案
 
-## 環境設定
+## 開發 / 正式環境分野
 
-### Wrangler 設定檔
+⚠️ **每次操作前務必確認目標環境，兩套完全獨立，帳號、資料庫、Worker 皆不同。**
 
-| 檔案 | 環境 | Worker 名稱 | D1 資料庫 | ALLOWED_ORIGINS |
-|---|---|---|---|---|
-| `cloudflare/wrangler.toml` | 正式 | `mbti-boardgame-api` | `mbti-board-game-matcher-db` | `https://boardgamematch.com.tw` |
-| `cloudflare/wrangler.dev.toml` | 開發 | `mbti-boardgame-api-dev` | `boardgame-dev-db` | `mlab.host`, `demo1.app` |
+### Cloudflare 帳號
 
-- `wrangler.dev.toml` 不進 git（在 `.upstream-exclude` 和 `.gitignore` 中）
-- `API_SECRET` 透過 `wrangler secret put` 設定，勿寫入設定檔
-- 部署：`npx wrangler deploy`（正式）/ `npx wrangler deploy -c wrangler.dev.toml`（開發）
+| | 正式 | 開發 |
+|---|---|---|
+| **帳號** | `Emailev01@gmail.com`（客戶） | `Wake.gs@gmail.com`（自己） |
+| **Account ID** | `66dbbebbbfca60062a1786be103124ff` | `6b0c09e5f370b202dd45b8dc191e2e84` |
+
+### Worker（API）
+
+| | 正式 | 開發 |
+|---|---|---|
+| **設定檔** | `cloudflare/wrangler.toml` | `cloudflare/wrangler.dev.toml`（不進 git） |
+| **Worker 名稱** | `mbti-boardgame-api` | `mbti-boardgame-api-dev` |
+| **部署指令** | `npx wrangler deploy` | `npx wrangler deploy -c wrangler.dev.toml` |
+| **ALLOWED_ORIGINS** | `https://boardgamematch.com.tw` | 未設定（預設 `*`） |
+| **GOOGLE_CLIENT_ID** | 有設定 | 未設定（JWT 不驗 aud） |
+| **API_SECRET** | 有（`wrangler secret put`） | 有（`wrangler secret put -c wrangler.dev.toml`） |
+
+兩個環境共用同一份 `cloudflare/worker.js`，但須分別部署。
+
+### D1 資料庫
+
+| | 正式 | 開發 |
+|---|---|---|
+| **資料庫名稱** | `boardgame-match-db` | `boardgame-dev-db` |
+| **UUID** | `f3387dc6-6fcb-4882-9a84-ddc4a40e6599` | `b20f8252-9040-42c1-b637-ed47cdca6919` |
+| **所屬帳號** | Emailev01（客戶） | Wake.gs（自己） |
+
+兩個資料庫的 schema 需手動同步（`cloudflare/schema.sql`），資料完全獨立。
+
+### 前端網域 / 主機
+
+| 網域 | 環境 | 主機 | API 反向代理目標 |
+|---|---|---|---|
+| `boardgamematch.com.tw` | 正式 | CloudPanel（遠端 VPS） | 正式 Worker |
+| `boardgamematch.mlab.host` | 開發 | Herd/Nginx（本機 Mini-Lab） | 開發 Worker |
+| `boardgamematch.demo1.app` | 開發 | CloudPanel（遠端 VPS） | 開發 Worker |
+
+所有網域的 Nginx 都會在反向代理時注入 `X-Api-Key` header（API Secret）。本機 `mlab.host` 編輯 `public/` 即時生效。
 
 ## 架構
 

@@ -344,6 +344,17 @@
             document.getElementById('progress-bar').style.width = Math.max(0, pct) + '%';
         }
 
+        // ══ JWT 有效性檢查 ══
+        function isJwtValid() {
+            const token = localStorage.getItem('google_id_token');
+            if (!token) return false;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                // 留 60 秒餘裕
+                return payload.exp && (payload.exp * 1000) > (Date.now() + 60000);
+            } catch { return false; }
+        }
+
         // ══ 帶 JWT 的 fetch（管理員需要存取受保護的表）══
         function authFetch(url, options = {}) {
             const token = localStorage.getItem('google_id_token');
@@ -655,10 +666,61 @@
 
         function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+        // ══ 重新取得 Google credential ══
+        function promptTokenRefresh() {
+            log('JWT 已過期，需要重新登入以存取受保護的資料表...', 'warn');
+            setStatus('JWT 已過期，請點擊下方按鈕重新登入');
+
+            const wrap = document.createElement('div');
+            wrap.id = 'token-refresh-bar';
+            wrap.style.cssText = 'background:var(--card);border:1px solid var(--warn);border-radius:0.75rem;padding:1rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;';
+            wrap.innerHTML = `
+                <span style="color:var(--warn);font-size:0.9rem;flex:1">⚠️ Google JWT 已過期，需重新登入才能讀取所有資料表（含使用者、管理員等）</span>
+                <div id="refresh-signin-btn"></div>
+                <button class="btn btn-outline" style="font-size:0.82rem" onclick="skipTokenRefresh()">跳過（僅匯出公開表）</button>
+            `;
+            const container = document.querySelector('.container');
+            const exportBtn = document.getElementById('btn-export').parentElement;
+            container.insertBefore(wrap, exportBtn);
+
+            // 渲染 Google 登入按鈕
+            if (typeof google !== 'undefined' && google.accounts) {
+                google.accounts.id.initialize({
+                    client_id: '105319270176-djqr0n6r4l3mvmpalsqjn8kasqii9ukt.apps.googleusercontent.com',
+                    callback: handleTokenRefresh
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById('refresh-signin-btn'),
+                    { theme: 'filled_blue', size: 'medium', text: 'signin_with' }
+                );
+            }
+        }
+
+        function handleTokenRefresh(response) {
+            localStorage.setItem('google_id_token', response.credential);
+            log('✅ JWT 已刷新', 'ok');
+            setStatus('JWT 已刷新，開始載入資料表...');
+            const bar = document.getElementById('token-refresh-bar');
+            if (bar) bar.remove();
+            loadSchemas();
+        }
+
+        function skipTokenRefresh() {
+            log('跳過 JWT 刷新，僅匯出公開資料表', 'warn');
+            const bar = document.getElementById('token-refresh-bar');
+            if (bar) bar.remove();
+            loadSchemas();
+        }
+
         // ══ 頁面載入：等待 admin 驗證通過後才開始掃描 ══
         document.addEventListener('adminAuthenticated', () => {
-            log('管理員驗證通過，開始載入資料表...', 'ok');
-            loadSchemas();
+            log('管理員驗證通過', 'ok');
+            if (isJwtValid()) {
+                log('JWT 有效，開始載入資料表...', 'ok');
+                loadSchemas();
+            } else {
+                promptTokenRefresh();
+            }
         });
     </script>
 </body>

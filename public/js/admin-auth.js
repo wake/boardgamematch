@@ -313,11 +313,14 @@ async function handleAdminGoogleLogin(response) {
     try {
         const credential = response.credential;
         const payload = parseJwt(credential);
-        
+
         if (!payload) {
             throw new Error('無法解析 Google 登入資訊');
         }
-        
+
+        // 儲存 JWT credential（供 admin-db-migrate 等頁面的 authFetch 使用）
+        localStorage.setItem('google_id_token', credential);
+
         console.log('Google 登入成功，檢查管理員權限...');
         
         // 檢查是否為管理員
