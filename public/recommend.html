@@ -922,13 +922,11 @@
                     buttonText = unratedGames.length === 0 ? '✅ 已全部評價' : `開始評價 (${unratedGames.length} 款)`;
                 }
                 
-                // 出版社類型 badge
+                // 出版社類型 badge（僅出版社顯示）
                 const isPublisher = sectionType === 'publisher';
                 const badgeHtml = isPublisher
                     ? `<span class="collection-badge publisher-badge">出版社</span>`
-                    : `<span class="collection-badge ${collection.type === 'limited' ? 'limited-badge' : ''}">
-                        ${collection.type === 'permanent' ? '常駐' : '限時'}
-                       </span>`;
+                    : '';
                 
                 return `
                 <div class="collection-card${isPublisher ? ' publisher-card' : ''}" id="collection-${collection.id}">
