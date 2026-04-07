@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>揪桌趣處 - MBTI × 桌遊配對</title>
+    <title>📍 揪桌趣處 - MBTI × 桌遊配對</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/hourglass-simple.css">
     <style>
@@ -73,7 +73,7 @@
 
     <div class="container">
         <div class="page-hero-fix" style="background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);">
-            <h1>👥 揪桌趣處</h1>
+            <h1>📍 揪桌趣處</h1>
             <p>全台桌遊揪團與討論群組，一鍵加入</p>
         </div>
 
@@ -120,6 +120,10 @@
         let mainFilter = 'discussion';
         let subFilter = null;
 
+        function isTrueFlag(v) {
+            return v === 1 || v === '1' || v === true;
+        }
+
         async function loadLinks() {
             try {
                 const r = await fetch('tables/community_links?limit=500');
@@ -132,7 +136,7 @@
                         ...row,
                         category_regions: parseJson(row.category_regions),
                         category_platforms: parseJson(row.category_platforms),
-                        category_store: row.category_store === 1 || row.category_store === '1' ? 1 : 0
+                        category_store: isTrueFlag(row.category_store) ? 1 : 0
                     }))
                     .sort((a, b) => (Number(a.sort_order) || 999) - (Number(b.sort_order) || 999));
                 render();
@@ -159,9 +163,9 @@
                 if (!subFilter) return platforms.length > 0;
                 return platforms.includes(subFilter);
             }
-            if (mainFilter === 'meetup') return link.category_meetup === 1 || link.category_meetup === '1';
+            if (mainFilter === 'meetup') return isTrueFlag(link.category_meetup);
             if (mainFilter === 'store') {
-                if (!(link.category_store === 1 || link.category_store === '1')) return false;
+                if (!isTrueFlag(link.category_store)) return false;
                 const regions = link.category_regions || [];
                 if (!subFilter) return true;
                 return regions.includes(subFilter);

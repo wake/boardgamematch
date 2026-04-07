@@ -250,6 +250,8 @@ async function getAllUsers(forceRefresh = false) {
             u.neutral_games      = toArr(u.neutral_games);
             u.no_interest_games  = toArr(u.no_interest_games);
             u.wishlist           = toArr(u.wishlist);
+            u.owned_games        = toArr(u.owned_games);
+            u.to_buy_games       = toArr(u.to_buy_games);
         });
         _allUsersCache = allData;
         _allUsersCacheTime = Date.now();
@@ -295,7 +297,23 @@ async function getUserById(userId) {
     try {
         const response = await fetch(`${API_BASE}/${userId}`);
         if (!response.ok) throw new Error('無法載入使用者資料');
-        return await response.json();
+        const user = await response.json();
+        const toArr = v => {
+            if (Array.isArray(v)) return v;
+            if (typeof v === 'string' && v) { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch(e) {} }
+            return [];
+        };
+        user.liked_games        = toArr(user.liked_games);
+        user.disliked_games     = toArr(user.disliked_games);
+        user.super_liked_games  = toArr(user.super_liked_games);
+        user.neutral_games      = toArr(user.neutral_games);
+        user.no_interest_games  = toArr(user.no_interest_games);
+        user.wishlist           = toArr(user.wishlist);
+        user.owned_games        = toArr(user.owned_games);
+        user.to_buy_games       = toArr(user.to_buy_games);
+        user.owned_games_bgg_pending = toArr(user.owned_games_bgg_pending);
+        user.to_buy_games_bgg_pending = toArr(user.to_buy_games_bgg_pending);
+        return user;
     } catch (error) {
         console.error('Error fetching user:', error);
         return null;
@@ -775,7 +793,7 @@ async function checkAndUnlockAchievements(userId) {
         const hasSpecial = allAchievements.some(a => a.unlock_type === 'special');
         if (hasSpecial) {
             try {
-                const ar = await fetch('tables/admin_whitelist?limit=200');
+                const ar = await fetch('tables/admin_whitelist?limit=200', { headers: getAuthHeaders() });
                 if (ar.ok) {
                     const ad = await ar.json();
                     (ad.data || []).filter(a => a.is_active !== false).forEach(a => {
@@ -822,7 +840,7 @@ async function checkAndUnlockAchievements(userId) {
         const hasTesterBadge = allAchievements.some(a => a.unlock_type === 'special' && a.id === 'badge_tester');
         if (hasTesterBadge) {
             try {
-                const tr = await fetch('tables/tester_whitelist?limit=200');
+                const tr = await fetch('tables/tester_whitelist?limit=200', { headers: getAuthHeaders() });
                 if (tr.ok) {
                     const td = await tr.json();
                     (td.data || []).filter(a => a.is_active !== false).forEach(a => {
@@ -1192,6 +1210,285 @@ async function updateWishlist(userId, gameName, action = 'add') {
     }
 }
 
+/**
+ * 若 *_bgg_pending 的 ID 已存在 game_database，自 pending 移除，並將擁有／想買字串對齊資料庫主名（name_zh 優先）。
+ * @returns {Promise<boolean>} 是否已寫回資料庫
+ */
+async function pruneResolvedBggPendingForUser(user) {
+    if (!user || user.id == null) return false;
+    const toArray = (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === 'string' && v) {
+            try {
+                const p = JSON.parse(v);
+                return Array.isArray(p) ? p : [];
+            } catch (e) {}
+        }
+        return [];
+    };
+    try {
+        if (typeof GameNames !== 'undefined' && GameNames.load) {
+            await GameNames.load();
+        }
+    } catch (e) {
+        /* 略過：仍可依 collection_bgg_links 的 BGG ID 對照 */
+    }
+    function parseCollectionBggLinks(raw) {
+        try {
+            const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return {
+                owned:
+                    o && typeof o.owned === 'object' && o.owned !== null && !Array.isArray(o.owned)
+                        ? { ...o.owned }
+                        : {},
+                buy:
+                    o && typeof o.buy === 'object' && o.buy !== null && !Array.isArray(o.buy) ? { ...o.buy } : {},
+            };
+        } catch (e) {
+            return { owned: {}, buy: {} };
+        }
+    }
+    let ownedBggPending = toArray(user.owned_games_bgg_pending);
+    let toBuyBggPending = toArray(user.to_buy_games_bgg_pending);
+    const ids = [...new Set([...ownedBggPending, ...toBuyBggPending].map((x) => String(x).trim()))]
+        .filter((id) => /^\d+$/.test(id))
+        .slice(0, 100);
+    if (!ids.length) {
+        return false;
+    }
+
+    try {
+        const r = await fetch('/api/bgg/resolve-pending-ids?ids=' + encodeURIComponent(ids.join(',')), {
+            headers: getAuthHeaders(),
+            credentials: 'include',
+        });
+        if (!r.ok) {
+            const hint =
+                r.status === 404
+                    ? '（API 路由不存在：請確認已部署 mbti-boardgame-api Worker 含 resolve-pending-ids）'
+                    : r.status === 403
+                      ? '（403：請用掛上入口 Worker 的網域如 boardgamematch.com.tw，勿只用 *.pages.dev）'
+                      : '';
+            console.warn('[pruneResolvedBggPending] resolve-pending-ids HTTP', r.status, hint);
+            return false;
+        }
+        const data = await r.json();
+        const items = data.items || [];
+        if (!items.length) {
+            console.info(
+                '[pruneResolvedBggPending] 無已入庫的 pending bgg_id（仍待匯入或 bgg_id 與資料庫不一致）:',
+                ids.join(',')
+            );
+            return false;
+        }
+
+        const inDb = new Set(items.map((it) => String(it.bgg_id)));
+        let dirty = false;
+        const links = parseCollectionBggLinks(user.collection_bgg_links);
+        let linksDirty = false;
+        const pendingSnapOwned = [...ownedBggPending];
+        const pendingSnapBuy = [...toBuyBggPending];
+
+        ownedBggPending = ownedBggPending.filter((id) => {
+            if (inDb.has(String(id))) {
+                dirty = true;
+                return false;
+            }
+            return true;
+        });
+        toBuyBggPending = toBuyBggPending.filter((id) => {
+            if (inDb.has(String(id))) {
+                dirty = true;
+                return false;
+            }
+            return true;
+        });
+
+        let ownedGames = toArray(user.owned_games);
+        let toBuyGames = toArray(user.to_buy_games);
+
+        // 舊資料備援：僅一筆 pending 且清單只有一款時，視為該顯示名對應此 BGG ID（仍為 ID 語意）
+        if (Object.keys(links.owned).length === 0 && pendingSnapOwned.length === 1 && ownedGames.length === 1) {
+            const pid = String(pendingSnapOwned[0]).trim();
+            if (/^\d+$/.test(pid) && inDb.has(pid)) links.owned[ownedGames[0]] = pid;
+        }
+        if (Object.keys(links.buy).length === 0 && pendingSnapBuy.length === 1 && toBuyGames.length === 1) {
+            const pid = String(pendingSnapBuy[0]).trim();
+            if (/^\d+$/.test(pid) && inDb.has(pid)) links.buy[toBuyGames[0]] = pid;
+        }
+
+        // ① 依使用者儲存的「顯示名 → bgg_id」（collection_bgg_links）對齊主名（權威為 BGG ID）
+        for (const it of items) {
+            const bidTarget = String(it.bgg_id || '').trim();
+            const canon = String((it.name_zh || it.name_en || '').trim());
+            function renameByPersistedLinks(list, section) {
+                const bag = links[section];
+                if (!bag) return;
+                const keys = Object.keys(bag).filter((k) => String(bag[k]).trim() === bidTarget);
+                for (const displayKey of keys) {
+                    for (let i = 0; i < list.length; i++) {
+                        if (list[i] !== displayKey) continue;
+                        if (canon && list[i] !== canon) {
+                            list[i] = canon;
+                            dirty = true;
+                        }
+                    }
+                    delete bag[displayKey];
+                    linksDirty = true;
+                }
+            }
+            renameByPersistedLinks(ownedGames, 'owned');
+            renameByPersistedLinks(toBuyGames, 'buy');
+        }
+
+        // ② 備援：GameNames 索引裡該字串所屬 entry 的 bgg_id 與 pending 相同（仍為依 ID，非字串相等）
+        for (const it of items) {
+            const bidTarget = String(it.bgg_id || '').trim();
+            const canon = String((it.name_zh || it.name_en || '').trim());
+            if (!canon) continue;
+            function renameByLookupBggId(list) {
+                for (let i = 0; i < list.length; i++) {
+                    const gStr = String(list[i] || '');
+                    if (gStr === canon) continue;
+                    const lo = typeof GameNames !== 'undefined' && GameNames.lookup ? GameNames.lookup(gStr) : null;
+                    if (lo && String(lo.bgg_id || '').trim() === bidTarget) {
+                        list[i] = canon;
+                        dirty = true;
+                    }
+                }
+            }
+            renameByLookupBggId(ownedGames);
+            renameByLookupBggId(toBuyGames);
+        }
+
+        if (!dirty) return false;
+
+        user.owned_games_bgg_pending = ownedBggPending;
+        user.to_buy_games_bgg_pending = toBuyBggPending;
+        user.owned_games = ownedGames;
+        user.to_buy_games = toBuyGames;
+
+        const patchBody = {
+            owned_games: ownedGames,
+            to_buy_games: toBuyGames,
+            owned_games_bgg_pending: ownedBggPending,
+            to_buy_games_bgg_pending: toBuyBggPending,
+        };
+        if (linksDirty) {
+            const serialized = JSON.stringify({ owned: links.owned, buy: links.buy });
+            patchBody.collection_bgg_links = serialized;
+            user.collection_bgg_links = serialized;
+        }
+
+        await safePatch(`tables/users/${user.id}`, patchBody);
+        setCurrentUser(user);
+        console.info(
+            '[pruneResolvedBggPending] 已對照資料庫並寫回：已自 pending 移除',
+            [...inDb].join(','),
+            '（依 collection_bgg_links 與 GameNames 的 bgg_id 對齊主名）'
+        );
+        return true;
+    } catch (e) {
+        console.warn('pruneResolvedBggPendingForUser failed', e);
+        return false;
+    }
+}
+
+/**
+ * 依 collection_bgg_links 的 BGG ID 對照 game_database（resolve-pending-ids），
+ * 將擁有／想買清單字串與連結表鍵名更新為資料庫主名（pending 清空後仍會執行）。
+ */
+async function alignCollectionGameLabelsToDatabase(user) {
+    if (!user || user.id == null) return false;
+    const toArray = (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === 'string' && v) {
+            try {
+                const p = JSON.parse(v);
+                return Array.isArray(p) ? p : [];
+            } catch (e) {}
+        }
+        return [];
+    };
+    let linksOwned = {};
+    let linksBuy = {};
+    try {
+        const raw = user.collection_bgg_links;
+        const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (o && typeof o.owned === 'object' && o.owned !== null && !Array.isArray(o.owned)) linksOwned = { ...o.owned };
+        if (o && typeof o.buy === 'object' && o.buy !== null && !Array.isArray(o.buy)) linksBuy = { ...o.buy };
+    } catch (e) {
+        return false;
+    }
+
+    const idSet = new Set();
+    Object.values(linksOwned).forEach((v) => {
+        const s = String(v == null ? '' : v).trim();
+        if (/^\d+$/.test(s)) idSet.add(s);
+    });
+    Object.values(linksBuy).forEach((v) => {
+        const s = String(v == null ? '' : v).trim();
+        if (/^\d+$/.test(s)) idSet.add(s);
+    });
+    const ids = [...idSet].slice(0, 100);
+    if (!ids.length) return false;
+
+    try {
+        const r = await fetch('/api/bgg/resolve-pending-ids?ids=' + encodeURIComponent(ids.join(',')), {
+            headers: getAuthHeaders(),
+            credentials: 'include',
+        });
+        if (!r.ok) return false;
+        const data = await r.json();
+        const items = data.items || [];
+        if (!items.length) return false;
+        const byId = new Map(items.map((it) => [String(it.bgg_id), it]));
+
+        let ownedGames = toArray(user.owned_games);
+        let toBuyGames = toArray(user.to_buy_games);
+        let dirty = false;
+
+        function renameList(list, bag) {
+            for (let i = 0; i < list.length; i++) {
+                const g = String(list[i] || '').trim();
+                const bid = String(bag[g] != null ? bag[g] : '').trim();
+                if (!/^\d+$/.test(bid)) continue;
+                const it = byId.get(bid);
+                if (!it) continue;
+                const canon = String((it.name_zh || it.name_en || '').trim());
+                if (!canon || list[i] === canon) continue;
+                if (Object.prototype.hasOwnProperty.call(bag, g)) {
+                    delete bag[g];
+                    bag[canon] = bid;
+                }
+                list[i] = canon;
+                dirty = true;
+            }
+        }
+
+        renameList(ownedGames, linksOwned);
+        renameList(toBuyGames, linksBuy);
+
+        if (!dirty) return false;
+
+        user.owned_games = ownedGames;
+        user.to_buy_games = toBuyGames;
+        user.collection_bgg_links = JSON.stringify({ owned: linksOwned, buy: linksBuy });
+
+        await safePatch(`tables/users/${user.id}`, {
+            owned_games: ownedGames,
+            to_buy_games: toBuyGames,
+            collection_bgg_links: user.collection_bgg_links,
+        });
+        setCurrentUser(user);
+        console.info('[alignCollectionGameLabels] 已依資料庫對齊收藏名稱', ids.join(','));
+        return true;
+    } catch (e) {
+        console.warn('alignCollectionGameLabelsToDatabase failed', e);
+        return false;
+    }
+}
+
 // 匯出函數供全域使用
 window.GameMBTI = {
     MBTI_TYPES,
@@ -1232,5 +1529,7 @@ window.GameMBTI = {
     getRandomGame,
     recordGameAnswer,
     getAnswerStreak,
-    updateWishlist
+    updateWishlist,
+    pruneResolvedBggPendingForUser,
+    alignCollectionGameLabelsToDatabase
 };

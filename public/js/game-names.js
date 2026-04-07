@@ -16,12 +16,14 @@ window.GameNames = (() => {
     // 快取時改存壓縮格式：{ keys: [...], games: [...], map: {key: idx} }
     // 讀出後還原成 nameMap，每款遊戲資料只存一份，節省 60~70% localStorage 空間
     let nameMap = {};
+    /** bgg_id → nameMap 的 entry；收藏字串對不到鍵時可用 ID 對到完整列 */
+    let bggIdToEntry = {};
     let loaded = false;
     let loadPromise = null;
 
     // ── LocalStorage 快取設定 ──
-    const CACHE_KEY     = 'gn_nameMap_v7';
-    const CACHE_TS_KEY  = 'gn_nameMap_ts_v7';
+    const CACHE_KEY     = 'gn_nameMap_v8';
+    const CACHE_TS_KEY  = 'gn_nameMap_ts_v8';
     const CACHE_TTL_MS  = 2 * 60 * 60 * 1000; // 2 小時
 
     // ── image_url 壓縮/還原 ──
@@ -96,6 +98,15 @@ window.GameNames = (() => {
         }
     }
 
+    function rebuildBggIdToEntryFromNameMap() {
+        bggIdToEntry = {};
+        for (const entry of Object.values(nameMap)) {
+            if (!entry || !entry.bgg_id) continue;
+            const bid = String(entry.bgg_id).trim();
+            if (bid) bggIdToEntry[bid] = entry;
+        }
+    }
+
     // ── 載入 game_database（只載入一次，優先用快取）──
     async function load() {
         if (loaded) return Promise.resolve();
@@ -107,6 +118,7 @@ window.GameNames = (() => {
                 const cached = loadCache();
                 if (cached && Object.keys(cached).length > 0) {
                     nameMap = cached;
+                    rebuildBggIdToEntryFromNameMap();
                     loaded = true;
                     console.log(`[GameNames] ✅ 快取命中，載入 ${Object.keys(nameMap).length} 筆（省略 fetch）`);
                     return;
@@ -176,6 +188,7 @@ window.GameNames = (() => {
                 }
 
                 // ③ 寫入快取
+                rebuildBggIdToEntryFromNameMap();
                 saveCache(nameMap);
                 loaded = true;
 
@@ -200,6 +213,7 @@ window.GameNames = (() => {
             });
         } catch(e) {}
         nameMap = {};
+        bggIdToEntry = {};
         loaded = false;
         loadPromise = null;
         console.log('[GameNames] 快取已清除');
@@ -223,6 +237,20 @@ window.GameNames = (() => {
         return nameMap[key] || null;
     }
 
+    function lookupByBggId(bggId) {
+        const bid = String(bggId || '').trim();
+        return bid ? (bggIdToEntry[bid] || null) : null;
+    }
+
+    /** 先依名稱查，失敗時可傳使用者的 BGG ID（例如 collection_bgg_links） */
+    function entryInfo(name, bggIdOpt) {
+        const byName = lookup(name);
+        if (byName) return byName;
+        const bid = bggIdOpt != null ? String(bggIdOpt).trim() : '';
+        if (bid && /^\d+$/.test(bid)) return lookupByBggId(bid);
+        return null;
+    }
+
     /**
      * 根據遊戲資料決定「上行」與「下行」名稱
      * 回傳 { top, sub }
@@ -242,8 +270,8 @@ window.GameNames = (() => {
     }
 
     // ── formatCard：大卡片，分行顯示 ──
-    function formatCard(name) {
-        const info = lookup(name);
+    function formatCard(name, bggIdOpt) {
+        const info = entryInfo(name, bggIdOpt);
         const { top, sub } = resolveNames(info);
 
         if (top && sub) {
@@ -258,8 +286,8 @@ window.GameNames = (() => {
     }
 
     // ── formatTag：小標籤，兩行顯示 ──
-    function formatTag(name) {
-        const info = lookup(name);
+    function formatTag(name, bggIdOpt) {
+        const info = entryInfo(name, bggIdOpt);
         const { top, sub } = resolveNames(info);
 
         if (top && sub) {
@@ -272,8 +300,8 @@ window.GameNames = (() => {
     }
 
     // ── formatInline：排行榜，同行 ｜ 分隔 ──
-    function formatInline(name) {
-        const info = lookup(name);
+    function formatInline(name, bggIdOpt) {
+        const info = entryInfo(name, bggIdOpt);
         const { top, sub } = resolveNames(info);
 
         if (top && sub) {
@@ -286,15 +314,15 @@ window.GameNames = (() => {
     }
 
     // ── displayName：純文字主名稱（優先中 > 日 > 英）──
-    function displayName(name) {
-        const info = lookup(name);
+    function displayName(name, bggIdOpt) {
+        const info = entryInfo(name, bggIdOpt);
         if (info) return info.name_zh || info.name_ja || info.name_en || name;
         return name;
     }
 
     // ── getImageUrl：取得封面圖片 URL（同步，只查 DB）──
-    function getImageUrl(name) {
-        const info = lookup(name);
+    function getImageUrl(name, bggIdOpt) {
+        const info = entryInfo(name, bggIdOpt);
         return (info && info.image_url && info.image_url.startsWith('http'))
             ? info.image_url
             : null;
@@ -303,13 +331,14 @@ window.GameNames = (() => {
     // ── fetchCoverImage：取得封面圖（只用資料庫的 image_url，快速無阻塞）──
     // 回傳可直接放進 <img src> 的 URL，DB 無圖片則回傳 null
     const _coverCache = {};
-    async function fetchCoverImage(name) {
+    async function fetchCoverImage(name, bggIdOpt) {
         if (!name) return null;
-        const key = name.toLowerCase();
+        const bid = bggIdOpt != null ? String(bggIdOpt).trim() : '';
+        const key = normalizeName(name) + '|' + bid;
         if (_coverCache[key] !== undefined) return _coverCache[key];
 
         // 只查 DB 的 image_url，不做任何遠端 BGG 請求
-        const info = lookup(name);
+        const info = entryInfo(name, bggIdOpt);
         if (info?.image_url && info.image_url.startsWith('http')) {
             // 用 weserv 代理繞 CORS（讓 html2canvas 能讀取）
             const proxied = `https://images.weserv.nl/?url=${encodeURIComponent(info.image_url)}&w=400&h=400&fit=cover&output=jpg&maxage=7d`;
@@ -324,12 +353,26 @@ window.GameNames = (() => {
 
     // ── getDirectImageUrl：直接回傳 DB 原始 image_url（不走代理）──
     // 用於 <img src> 直接顯示
-    function getDirectImageUrl(name) {
-        const info = lookup(name);
+    function getDirectImageUrl(name, bggIdOpt) {
+        const info = entryInfo(name, bggIdOpt);
         return (info?.image_url && info.image_url.startsWith('http'))
             ? info.image_url
             : null;
     }
 
-    return { load, clearCache, lookup, resolveNames, formatCard, formatTag, formatInline, displayName, getImageUrl, getDirectImageUrl, fetchCoverImage, get _nameMap() { return nameMap; } };
+    return {
+        load,
+        clearCache,
+        lookup,
+        lookupByBggId,
+        resolveNames,
+        formatCard,
+        formatTag,
+        formatInline,
+        displayName,
+        getImageUrl,
+        getDirectImageUrl,
+        fetchCoverImage,
+        get _nameMap() { return nameMap; },
+    };
 })();

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>編輯我的桌遊 - MBTI × 桌遊配對</title>
+    <title>🥳 編輯桌遊喜好 - MBTI × 桌遊配對</title>
     <!-- vConsole：手機除錯用，URL 加 ?debug=1 才啟動 -->
     <script>
     (function(){
@@ -79,7 +79,9 @@
             display: inline-flex !important;
             flex-direction: column !important;
             align-items: center !important;
+            justify-content: center !important;
             gap: 0 !important;
+            min-height: 2.2rem !important;
             transition: all 0.2s ease;
             position: relative !important;
             line-height: 1.2 !important;
@@ -87,7 +89,6 @@
             word-break: keep-all !important;
             text-align: center !important;
             height: auto !important;
-            min-height: 0 !important;
             max-height: none !important;
             min-width: 0 !important;
             max-width: none !important;
@@ -236,15 +237,16 @@
         
         .add-game-section {
             background: var(--bg-color);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-top: 1rem;
+            border-radius: 8px;
+            padding: 5px 6px;
+            margin-top: 0.5rem;
+            margin-bottom: 0.6rem;
         }
         
         .add-game-input {
             display: flex;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
+            gap: 6px;
+            margin-top: 0;
             position: relative;
             flex-wrap: wrap;
         }
@@ -258,6 +260,20 @@
         .add-game-input input {
             width: 100%;
             box-sizing: border-box;
+            padding: 6px 9px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.83rem;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        .add-game-input input:focus { outline: none; border-color: var(--primary-color); }
+        .add-game-input .btn {
+            min-width: 62px;
+            padding: 5px 10px !important;
+            border-radius: 8px !important;
+            font-size: 0.83rem !important;
+            line-height: 1.2;
         }
 
         .add-game-dropdown {
@@ -303,18 +319,40 @@
 
         .list-toolbar {
             display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            margin-bottom: 0.75rem;
-            padding: 0.5rem 0;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 4px;
+            margin-bottom: 0.5rem;
+            padding: 5px 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
         }
-        .list-toolbar input { margin: 0; }
+        .list-toolbar input {
+            margin: 0;
+            max-width: none !important;
+            flex: 1 1 auto;
+            background: #fff;
+            padding: 6px 9px !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 8px !important;
+            font-size: 0.83rem !important;
+        }
         .list-pagination {
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            white-space: normal;
         }
-        .list-pagination .btn { padding: 0.25rem 0.6rem; font-size: 0.8rem; margin-left: 0.25rem; }
+        .list-pagination .btn {
+            padding: 0.18rem 0.5rem;
+            font-size: 0.76rem;
+            margin-left: 0.2rem;
+            border-radius: 8px;
+        }
         
         .drag-hint {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
@@ -427,7 +465,7 @@
     <!-- 主要內容 -->
     <div class="container">
         <div class="page-header">
-            <h1 class="page-title">✏️ 編輯我的桌遊</h1>
+            <h1 class="page-title">🥳 編輯桌遊喜好</h1>
             <p class="page-subtitle">拖放遊戲來重新分類，或新增遊戲；點標籤上的 × 可刪除該遊戲</p>
         </div>
 
@@ -444,7 +482,7 @@
         <div class="drag-container">
             <!-- 超喜歡的桌遊 -->
             <div class="drop-zone" id="super_liked-zone" data-type="super_liked" style="border-color:#f9a8d4;">
-                <div class="drop-zone-header" style="background:#fce7f3;">
+                <div class="drop-zone-header">
                     <span>🤩 超喜歡的桌遊</span>
                     <span class="drop-zone-count" id="super_liked-count">0 款</span>
                 </div>
@@ -453,25 +491,23 @@
                         style="padding: 0.35rem 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; width: 100%; max-width: 200px;">
                     <span id="super_liked-pagination" class="list-pagination"></span>
                 </div>
-                <div class="game-tags-container-drag" id="super_liked-games">
-                    <div class="empty-state-drag">尚無遊戲</div>
-                </div>
-                <div class="pin-count-label" id="pin-info-super_liked"></div>
                 <div class="add-game-section">
-                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
                     <div class="add-game-input">
                         <div class="ac-wrap">
                             <input type="text" id="add-super_liked-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
-                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
                                 oninput="onGameAcInput(this, 'drop-super_liked')"
                                 onfocus="onGameAcInput(this, 'drop-super_liked')"
                                 onblur="closeGameAc('drop-super_liked')"
                                 onkeydown="onGameAcKey(event, 'drop-super_liked', 'super_liked')">
                             <div class="add-game-dropdown" id="drop-super_liked"></div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="addGame('super_liked')" style="padding: 0.5rem 1rem;">新增</button>
+                        <button type="button" class="btn btn-secondary" onclick="addGame('super_liked')" style="font-size:0.85rem;">新增</button>
                     </div>
                 </div>
+                <div class="game-tags-container-drag" id="super_liked-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-super_liked"></div>
             </div>
 
             <!-- 喜歡的桌遊（範例：搜尋 + 分頁，數量多時只顯示一頁） -->
@@ -486,31 +522,29 @@
                         style="padding: 0.35rem 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; width: 100%; max-width: 200px;">
                     <span id="liked-pagination" class="list-pagination"></span>
                 </div>
-                <div class="game-tags-container-drag" id="liked-games">
-                    <div class="empty-state-drag">尚無遊戲</div>
-                </div>
-                <div class="pin-count-label" id="pin-info-liked"></div>
                 <div class="add-game-section">
-                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
                     <div class="add-game-input">
                         <div class="ac-wrap">
                             <input type="text" id="add-liked-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
-                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
                                 oninput="onGameAcInput(this, 'drop-liked')"
                                 onfocus="onGameAcInput(this, 'drop-liked')"
                                 onblur="closeGameAc('drop-liked')"
                                 onkeydown="onGameAcKey(event, 'drop-liked', 'liked')">
                             <div class="add-game-dropdown" id="drop-liked"></div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="addGame('liked')" style="padding: 0.5rem 1rem;">新增</button>
+                        <button type="button" class="btn btn-secondary" onclick="addGame('liked')" style="font-size:0.85rem;">新增</button>
                     </div>
                 </div>
+                <div class="game-tags-container-drag" id="liked-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-liked"></div>
             </div>
 
-            <!-- 普通的桌遊 -->
+            <!-- 普普的桌遊 -->
             <div class="drop-zone" id="neutral-zone" data-type="neutral">
                 <div class="drop-zone-header">
-                    <span>😐 普通的桌遊</span>
+                    <span>😐 普普的桌遊</span>
                     <span class="drop-zone-count" id="neutral-count">0 款</span>
                 </div>
                 <div class="list-toolbar" id="neutral-toolbar" style="display: none;">
@@ -518,30 +552,28 @@
                         style="padding: 0.35rem 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; width: 100%; max-width: 200px;">
                     <span id="neutral-pagination" class="list-pagination"></span>
                 </div>
-                <div class="game-tags-container-drag" id="neutral-games">
-                    <div class="empty-state-drag">尚無遊戲</div>
-                </div>
-                <div class="pin-count-label" id="pin-info-neutral"></div>
                 <div class="add-game-section">
-                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
                     <div class="add-game-input">
                         <div class="ac-wrap">
                             <input type="text" id="add-neutral-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
-                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
                                 oninput="onGameAcInput(this, 'drop-neutral')"
                                 onfocus="onGameAcInput(this, 'drop-neutral')"
                                 onblur="closeGameAc('drop-neutral')"
                                 onkeydown="onGameAcKey(event, 'drop-neutral', 'neutral')">
                             <div class="add-game-dropdown" id="drop-neutral"></div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="addGame('neutral')" style="padding: 0.5rem 1rem;">新增</button>
+                        <button type="button" class="btn btn-secondary" onclick="addGame('neutral')" style="font-size:0.85rem;">新增</button>
                     </div>
                 </div>
+                <div class="game-tags-container-drag" id="neutral-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-neutral"></div>
             </div>
 
             <!-- 不喜歡的桌遊 -->
             <div class="drop-zone" id="disliked-zone" data-type="disliked" style="border-color:#fca5a5;">
-                <div class="drop-zone-header" style="background:#fee2e2;">
+                <div class="drop-zone-header">
                     <span>😕 不喜歡的桌遊</span>
                     <span class="drop-zone-count" id="disliked-count">0 款</span>
                 </div>
@@ -550,30 +582,28 @@
                         style="padding: 0.35rem 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; width: 100%; max-width: 200px;">
                     <span id="disliked-pagination" class="list-pagination"></span>
                 </div>
-                <div class="game-tags-container-drag" id="disliked-games">
-                    <div class="empty-state-drag">尚無遊戲</div>
-                </div>
-                <div class="pin-count-label" id="pin-info-disliked"></div>
                 <div class="add-game-section">
-                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
                     <div class="add-game-input">
                         <div class="ac-wrap">
                             <input type="text" id="add-disliked-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
-                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
                                 oninput="onGameAcInput(this, 'drop-disliked')"
                                 onfocus="onGameAcInput(this, 'drop-disliked')"
                                 onblur="closeGameAc('drop-disliked')"
                                 onkeydown="onGameAcKey(event, 'drop-disliked', 'disliked')">
                             <div class="add-game-dropdown" id="drop-disliked"></div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="addGame('disliked')" style="padding: 0.5rem 1rem;">新增</button>
+                        <button type="button" class="btn btn-secondary" onclick="addGame('disliked')" style="font-size:0.85rem;">新增</button>
                     </div>
                 </div>
+                <div class="game-tags-container-drag" id="disliked-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-disliked"></div>
             </div>
 
             <!-- 想玩清單 -->
             <div class="drop-zone" id="wishlist-zone" data-type="wishlist" style="border-color:#c4b5fd;">
-                <div class="drop-zone-header" style="background:#ede9fe;">
+                <div class="drop-zone-header">
                     <span>⭐ 想玩的桌遊</span>
                     <span class="drop-zone-count" id="wishlist-count">0 款</span>
                 </div>
@@ -582,25 +612,23 @@
                         style="padding: 0.35rem 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; width: 100%; max-width: 200px;">
                     <span id="wishlist-pagination" class="list-pagination"></span>
                 </div>
-                <div class="game-tags-container-drag" id="wishlist-games">
-                    <div class="empty-state-drag">尚無遊戲</div>
-                </div>
-                <div class="pin-count-label" id="pin-info-wishlist"></div>
                 <div class="add-game-section">
-                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
                     <div class="add-game-input">
                         <div class="ac-wrap">
                             <input type="text" id="add-wishlist-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
-                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
                                 oninput="onGameAcInput(this, 'drop-wishlist')"
                                 onfocus="onGameAcInput(this, 'drop-wishlist')"
                                 onblur="closeGameAc('drop-wishlist')"
                                 onkeydown="onGameAcKey(event, 'drop-wishlist', 'wishlist')">
                             <div class="add-game-dropdown" id="drop-wishlist"></div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="addGame('wishlist')" style="padding: 0.5rem 1rem;">新增</button>
+                        <button type="button" class="btn btn-secondary" onclick="addGame('wishlist')" style="font-size:0.85rem;">新增</button>
                     </div>
                 </div>
+                <div class="game-tags-container-drag" id="wishlist-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-wishlist"></div>
             </div>
 
             <!-- 沒興趣清單 -->
@@ -614,25 +642,23 @@
                         style="padding: 0.35rem 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; width: 100%; max-width: 200px;">
                     <span id="no_interest-pagination" class="list-pagination"></span>
                 </div>
-                <div class="game-tags-container-drag" id="no_interest-games">
-                    <div class="empty-state-drag">尚無遊戲</div>
-                </div>
-                <div class="pin-count-label" id="pin-info-no_interest"></div>
                 <div class="add-game-section">
-                    <strong style="font-size: 0.9rem;">➕ 新增遊戲</strong>
                     <div class="add-game-input">
                         <div class="ac-wrap">
                             <input type="text" id="add-no_interest-input" placeholder="輸入遊戲名稱搜尋..." autocomplete="off"
-                                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
                                 oninput="onGameAcInput(this, 'drop-no_interest')"
                                 onfocus="onGameAcInput(this, 'drop-no_interest')"
                                 onblur="closeGameAc('drop-no_interest')"
                                 onkeydown="onGameAcKey(event, 'drop-no_interest', 'no_interest')">
                             <div class="add-game-dropdown" id="drop-no_interest"></div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="addGame('no_interest')" style="padding: 0.5rem 1rem;">新增</button>
+                        <button type="button" class="btn btn-secondary" onclick="addGame('no_interest')" style="font-size:0.85rem;">新增</button>
                     </div>
                 </div>
+                <div class="game-tags-container-drag" id="no_interest-games">
+                    <div class="empty-state-drag">尚無遊戲</div>
+                </div>
+                <div class="pin-count-label" id="pin-info-no_interest"></div>
             </div>
         </div>
 
@@ -650,8 +676,8 @@
         <div id="message-container" style="margin-top: 2rem;"></div>
     </div>
 
-    <script src="js/api-base.js?v=20260302-clear"></script>
-    <script src="js/app.js?v=20260311"></script>
+    <script src="js/api-base.js?v=20260320"></script>
+    <script src="js/app.js?v=20260320"></script>
     <script src="js/game-names.js"></script>
     <script>
         if (typeof safePatch === 'undefined') { window.safePatch = async function(url, d, h={}) { const sys=['gs_project_id','gs_table_name','gs_created_at','gs_updated_at','created_at','updated_at','deleted','deleted_at','_rid','_id','__rid','__id']; const g=await fetch(url,{headers:h}); const ex=g.ok?await g.json():{}; const cleaned=Object.fromEntries(Object.entries(ex).filter(([k])=>!sys.includes(k))); const merged={...cleaned,...d}; const s={}; for(const [k,v] of Object.entries(merged)){s[k]=(v!==null&&v!==undefined&&typeof v==='object')?JSON.stringify(v):v;} const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json',...h},body:JSON.stringify(s)}); if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('PUT '+r.status+': '+t.slice(0,100));} return r.json(); }; }
@@ -877,7 +903,7 @@
 
             // 手機版移動按鈕（列表行）
             const otherTypes = ['super_liked','liked','neutral','disliked','wishlist','no_interest'].filter(t => t !== type);
-            const labels = { super_liked:'🤩超喜歡', liked:'😍喜歡', neutral:'😐普通', disliked:'😕不喜歡', wishlist:'⭐想玩', no_interest:'🚫沒興趣' };
+            const labels = { super_liked:'🤩超喜歡', liked:'😍喜歡', neutral:'😐普普', disliked:'😕不喜歡', wishlist:'⭐想玩', no_interest:'🚫沒興趣' };
             const mobileMoveBtns = otherTypes.map(t =>
                 `<button class="move-btn" onclick="moveGame('${type}','${t}','${safeGame}');event.stopPropagation();">${labels[t]}</button>`
             ).join('');
@@ -1058,12 +1084,18 @@
                 if (_acDebounceTimer) { clearTimeout(_acDebounceTimer); _acDebounceTimer = null; }
                 return;
             }
+            if (raw.length < 2) {
+                drop.innerHTML = '<div class="add-game-ac-item" style="color:var(--text-light);">至少輸入 2 個字再搜尋</div>';
+                drop.classList.add('open');
+                if (_acDebounceTimer) { clearTimeout(_acDebounceTimer); _acDebounceTimer = null; }
+                return;
+            }
 
             if (_acDebounceTimer) clearTimeout(_acDebounceTimer);
             _acDebounceTimer = setTimeout(() => {
                 _acDebounceTimer = null;
                 const query = inputEl.value.trim();
-                if (!query) { drop.classList.remove('open'); return; }
+                if (!query || query.length < 2) { drop.classList.remove('open'); return; }
 
                 const url = `tables/game_database?search=${encodeURIComponent(query)}&limit=20&page=1`;
                 fetch(url)

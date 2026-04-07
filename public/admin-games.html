@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 快取 bust：修改此頁或依賴的 css/js 時，請把全頁 ?v= 數字一併改成新日期 -->
     <title>遊戲管理 - MBTI × 桌遊配對</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <link rel="stylesheet" href="css/styles.css?v=20260330">
+    <link rel="stylesheet" href="css/hourglass-simple.css?v=20260330">
     <style>
         .admin-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -249,12 +250,74 @@
             font-size: 1rem;
         }
         .required-star { color: #e74c3c; }
+
+        /* 六軸審稿：方案 D 兩欄 + C 式扁平（單行標題／數字 + 兩端語意滑桿） */
+        #game-modal .modal-content {
+            max-width: 52rem;
+        }
+        .six-axes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.45rem 0.65rem;
+        }
+        @media (max-width: 640px) {
+            .six-axes-grid { grid-template-columns: 1fr; }
+        }
+        .axis-admin-cell {
+            border: 1px solid var(--border-color);
+            border-radius: 0.4rem;
+            padding: 0.4rem 0.45rem 0.45rem;
+        }
+        .axis-admin-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.2rem;
+        }
+        .axis-admin-name {
+            font-weight: 600;
+            font-size: 0.78rem;
+            color: var(--text-color);
+        }
+        .axis-admin-meta {
+            font-size: 0.68rem;
+            color: var(--text-light);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.3;
+            text-align: right;
+        }
+        .axis-admin-meta strong { color: var(--text-color); }
+        .axis-delta-disp.is-pos { color: #059669; }
+        .axis-delta-disp.is-neg { color: #b45309; }
+        .axis-delta-disp.is-zero { color: var(--text-light); }
+        .axis-admin-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            width: 100%;
+            margin-top: 0.1rem;
+        }
+        .axis-admin-slider-row input[type="range"] {
+            flex: 1;
+            min-width: 0;
+        }
+        .axis-pole {
+            flex: 0 0 auto;
+            max-width: 4.75rem;
+            font-size: 0.65rem;
+            line-height: 1.2;
+            color: var(--text-light);
+        }
+        .axis-pole.axis-pole-l { text-align: left; }
+        .axis-pole.axis-pole-r { text-align: right; }
     </style>
     <!-- Google Sign-In SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <!-- 管理後台驗證 -->
-    <script src="js/admin-auth.js?v=20240222-fix"></script>
+    <script src="js/admin-auth.js?v=20260330"></script>
 </head>
 <body>
     <!-- 導覽列 -->
@@ -373,7 +436,7 @@
                         </button>
                     </div>
                     <div style="margin-top:0.5rem; font-size:0.78rem; color:var(--text-light);">
-                        📋 可自動填入：英文名稱、發行年份、玩家數、遊戲時間、複雜度、封面圖片、中文名稱（DuckDuckGo 搜尋）
+                        📋 <strong>thing XML</strong> 優先：英文名、年、人數、<strong>最短／最長局時</strong>、複雜度、封面、<strong>分類／機制／類型</strong>（link）。Jina 補圖與 credits／中文名等。
                     </div>
                     <div id="bgg-fetch-status" style="margin-top:0.4rem; font-size:0.85rem; color:var(--text-light); min-height:1.2em;"></div>
                     <div id="bgg-duplicate-warning" style="display:none; margin-top:0.5rem; padding:0.6rem 0.85rem; background:#fff3cd; border:1px solid #ffc107; border-radius:0.5rem; font-size:0.85rem; color:#856404;"></div>
@@ -429,26 +492,106 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>遊戲時間（分鐘）</label>
-                        <input type="number" id="game-playing-time" min="1">
+                        <label>最短局時（分鐘）</label>
+                        <input type="number" id="game-min-playtime" min="1" placeholder="BGG minplaytime">
+                    </div>
+                    <div class="form-group">
+                        <label>最長局時（分鐘）</label>
+                        <input type="number" id="game-max-playtime" min="1" placeholder="BGG maxplaytime">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>估計每位玩家時間（分鐘）</label>
+                        <input type="number" id="game-playing-time" min="1" placeholder="可由局時＋人數推算">
                     </div>
                     <div class="form-group">
                         <label>複雜度（1-5）</label>
                         <input type="number" id="game-complexity" min="1" max="5" step="0.01">
                     </div>
                 </div>
+
+                <div class="form-group" id="admin-bgg-meta-panel" style="background:var(--bg-color);border:1px solid var(--border-color);border-radius:0.65rem;padding:0.75rem 1rem;margin-top:0.5rem;">
+                    <label style="display:block;margin-bottom:0.45rem;font-weight:600;font-size:0.9rem;">📚 資料庫內 BGG 標籤（只讀）</label>
+                    <p style="font-size:0.76rem;color:var(--text-light);margin:0 0 0.5rem;line-height:1.45;">由 <code>admin-bgg-axis-sync</code> 等工具寫入的 <code>category</code>／<code>mechanics</code>／<code>bgg_type</code>。每次開啟編輯會<strong>重新向 API 取單筆</strong>，避免與列表快取不同步。</p>
+                    <div id="game-bgg-type-display" style="font-size:0.88rem;margin-bottom:0.35rem;"><strong>類型</strong>：<span>—</span></div>
+                    <div id="game-category-display" style="font-size:0.82rem;color:var(--text-light);line-height:1.45;margin-bottom:0.35rem;">—</div>
+                    <div id="game-mechanics-display" style="font-size:0.82rem;color:var(--text-light);line-height:1.45;">—</div>
+                </div>
                 
                 <div class="form-group" style="margin-top:1rem;">
-                    <label style="display:block; margin-bottom:0.5rem; font-weight:600;">🎯 8 軸狀態（桌遊偏好匹配用，可留空）</label>
-                    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:0.5rem 1rem;">
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">對抗</label><input type="number" id="game-axis-conflict" min="0" max="12" step="0.5" placeholder="0–12"></div>
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">策略</label><input type="number" id="game-axis-strategy" min="0" max="12" step="0.5" placeholder="0–12"></div>
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">社交</label><input type="number" id="game-axis-social_fun" min="0" max="12" step="0.5" placeholder="0–12"></div>
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">沉浸</label><input type="number" id="game-axis-immersion" min="0" max="12" step="0.5" placeholder="0–12"></div>
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">親和</label><input type="number" id="game-axis-accessibility" min="0" max="12" step="0.5" placeholder="0–12"></div>
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">心機</label><input type="number" id="game-axis-manipulation" min="0" max="12" step="0.5" placeholder="0–12"></div>
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">合作</label><input type="number" id="game-axis-coop" min="0" max="12" step="0.5" placeholder="0–12"></div>
-                        <div><label style="font-size:0.8rem; color:var(--text-light);">運氣</label><input type="number" id="game-axis-luck" min="0" max="12" step="0.5" placeholder="0–12"></div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600;">🎯 遊戲 6 維度（以已存為基準微調，0–12）</label>
+                    <p style="font-size:0.78rem;color:var(--text-light);line-height:1.5;margin:0 0 0.6rem;">
+                        <strong>基準</strong>：編輯時為<strong>開啟此視窗當下</strong>資料庫的 <code>axis_*</code>（已存）；新增遊戲時為<strong>目前</strong> category／mechanics／complexity 的標籤推論（會隨你改複雜度等即時變動）。<strong>微調</strong>滑桿在基準上加減（±6，step 0.5）；<strong>調整後</strong>＝ clamp(基準＋微調)。儲存會寫入 <code>axis_*</code>，並寫入 <code>axis_*_reviewer_delta</code>＝調整後減「當下標籤推論」，供其他邏輯維持「推論＋審稿Δ」一致。
+                    </p>
+                    <div id="six-axes-panel-error" style="display:none;font-size:0.8rem;color:#b45309;background:#fffbeb;padding:0.45rem 0.55rem;border-radius:0.4rem;margin-bottom:0.5rem;"></div>
+                    <div class="six-axes-grid" id="six-axes-panel">
+                        <div class="axis-admin-cell">
+                            <div class="axis-admin-head">
+                                <span class="axis-admin-name">門檻</span>
+                                <span class="axis-admin-meta">基準 <strong id="game-axis-entry-db">—</strong> · 微調 <strong id="game-axis-entry-delta-disp" class="axis-delta-disp is-zero">0</strong> · 調整後 <strong id="game-axis-entry-final">—</strong></span>
+                            </div>
+                            <div class="axis-admin-slider-row">
+                                <span class="axis-pole axis-pole-l">🌱 易學</span>
+                                <input type="range" id="game-axis-entry-delta" min="-6" max="6" step="0.5" value="0">
+                                <span class="axis-pole axis-pole-r">📚 複雜</span>
+                            </div>
+                        </div>
+                        <div class="axis-admin-cell">
+                            <div class="axis-admin-head">
+                                <span class="axis-admin-name">氛圍</span>
+                                <span class="axis-admin-meta">基準 <strong id="game-axis-mood-db">—</strong> · 微調 <strong id="game-axis-mood-delta-disp" class="axis-delta-disp is-zero">0</strong> · 調整後 <strong id="game-axis-mood-final">—</strong></span>
+                            </div>
+                            <div class="axis-admin-slider-row">
+                                <span class="axis-pole axis-pole-l">😂 歡樂</span>
+                                <input type="range" id="game-axis-mood-delta" min="-6" max="6" step="0.5" value="0">
+                                <span class="axis-pole axis-pole-r">🧠 燒腦</span>
+                            </div>
+                        </div>
+                        <div class="axis-admin-cell">
+                            <div class="axis-admin-head">
+                                <span class="axis-admin-name">勝負</span>
+                                <span class="axis-admin-meta">基準 <strong id="game-axis-control-db">—</strong> · 微調 <strong id="game-axis-control-delta-disp" class="axis-delta-disp is-zero">0</strong> · 調整後 <strong id="game-axis-control-final">—</strong></span>
+                            </div>
+                            <div class="axis-admin-slider-row">
+                                <span class="axis-pole axis-pole-l">🎲 運氣</span>
+                                <input type="range" id="game-axis-control-delta" min="-6" max="6" step="0.5" value="0">
+                                <span class="axis-pole axis-pole-r">♟️ 策略</span>
+                            </div>
+                        </div>
+                        <div class="axis-admin-cell">
+                            <div class="axis-admin-head">
+                                <span class="axis-admin-name">互動</span>
+                                <span class="axis-admin-meta">基準 <strong id="game-axis-sociality-db">—</strong> · 微調 <strong id="game-axis-sociality-delta-disp" class="axis-delta-disp is-zero">0</strong> · 調整後 <strong id="game-axis-sociality-final">—</strong></span>
+                            </div>
+                            <div class="axis-admin-slider-row">
+                                <span class="axis-pole axis-pole-l">🗣️ 社交</span>
+                                <input type="range" id="game-axis-sociality-delta" min="-6" max="6" step="0.5" value="0">
+                                <span class="axis-pole axis-pole-r">🧘 沉浸</span>
+                            </div>
+                        </div>
+                        <div class="axis-admin-cell">
+                            <div class="axis-admin-head">
+                                <span class="axis-admin-name">心態</span>
+                                <span class="axis-admin-meta">基準 <strong id="game-axis-openness-db">—</strong> · 微調 <strong id="game-axis-openness-delta-disp" class="axis-delta-disp is-zero">0</strong> · 調整後 <strong id="game-axis-openness-final">—</strong></span>
+                            </div>
+                            <div class="axis-admin-slider-row">
+                                <span class="axis-pole axis-pole-l">☀️ 磊落</span>
+                                <input type="range" id="game-axis-openness-delta" min="-6" max="6" step="0.5" value="0">
+                                <span class="axis-pole axis-pole-r">🎭 心機</span>
+                            </div>
+                        </div>
+                        <div class="axis-admin-cell">
+                            <div class="axis-admin-head">
+                                <span class="axis-admin-name">立場</span>
+                                <span class="axis-admin-meta">基準 <strong id="game-axis-competition-db">—</strong> · 微調 <strong id="game-axis-competition-delta-disp" class="axis-delta-disp is-zero">0</strong> · 調整後 <strong id="game-axis-competition-final">—</strong></span>
+                            </div>
+                            <div class="axis-admin-slider-row">
+                                <span class="axis-pole axis-pole-l">🤝 合作</span>
+                                <input type="range" id="game-axis-competition-delta" min="-6" max="6" step="0.5" value="0">
+                                <span class="axis-pole axis-pole-r">⚔️ 對抗</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -529,9 +672,12 @@
     <button class="add-game-btn" onclick="openModal()">完整新增</button>
 
     <!-- 🧹 後台導覽列清理（必須最先載入） -->
-    <script src="js/admin-navbar-cleanup.js"></script>
-    <script src="js/app.js?v=20260311"></script>
-    <script src="js/show-admin-link.js"></script>
+    <script src="js/admin-navbar-cleanup.js?v=20260330"></script>
+    <script src="js/app.js?v=20260403"></script>
+    <script src="js/bgg-axis-deltas-v1.js?v=20260330"></script>
+    <script src="js/bgg-axis-deltas-loader.js?v=20260330"></script>
+    <script src="js/bgg-six-axes-compute.js?v=20260330"></script>
+    <script src="js/show-admin-link.js?v=20260330"></script>
     <script>
         // ══ 分頁狀態 ══
         let allGames = [];        // 全量快取（來源篩選 + 重複偵測共用）
@@ -746,6 +892,34 @@
             }, 300);
         }
 
+        function formatAdminListPlayers(g) {
+            const a = g.min_players, b = g.max_players;
+            if (a != null && a !== '' && b != null && b !== '') return `${a}-${b}`;
+            if (a != null && a !== '') return `${a}-?`;
+            if (b != null && b !== '') return `?-${b}`;
+            return '-';
+        }
+
+        function formatAdminListTime(g) {
+            if (g.playing_time != null && g.playing_time !== '') return `${g.playing_time}分`;
+            const mn = g.min_playtime, mx = g.max_playtime;
+            if (mn != null && mn !== '' && mx != null && mx !== '') {
+                return Number(mn) === Number(mx) ? `${mn}分` : `${mn}-${mx}分`;
+            }
+            if (mn != null && mn !== '') return `${mn}分起`;
+            if (mx != null && mx !== '') return `≤${mx}分`;
+            return '-';
+        }
+
+        function formatAdminListComplexity(g) {
+            const c = g.complexity;
+            if (c == null || c === '') return '-';
+            const n = Number(c);
+            if (Number.isNaN(n)) return '-';
+            const stars = Math.min(5, Math.max(0, Math.round(n)));
+            return (stars > 0 ? '★'.repeat(stars) + ' ' : '') + n.toFixed(2);
+        }
+
         // 渲染遊戲列表
         function renderGames(games) {
             const tbody = document.getElementById('game-list');
@@ -766,10 +940,10 @@
                         <div class="game-name">${game.name_zh || game.name_en || '未命名'}${isPending(game) ? ' <span class="badge-pending">⚠️待補充</span>' : ''}</div>
                         <div class="game-name-en">${game.name_en || '-'}</div>
                     </td>
-                    <td class="col-year">${game.year || '-'}</td>
-                    <td class="col-players">${game.min_players && game.max_players ? `${game.min_players}-${game.max_players}` : '-'}</td>
-                    <td class="col-time">${game.playing_time ? `${game.playing_time}分` : '-'}</td>
-                    <td class="col-complexity complexity-stars">${game.complexity ? '★'.repeat(game.complexity) : '-'}</td>
+                    <td class="col-year">${game.year != null && game.year !== '' && Number(game.year) !== 0 ? game.year : '-'}</td>
+                    <td class="col-players">${formatAdminListPlayers(game)}</td>
+                    <td class="col-time">${formatAdminListTime(game)}</td>
+                    <td class="col-complexity complexity-stars">${formatAdminListComplexity(game)}</td>
                     <td>
                         <div class="btn-actions">
                             <button class="btn-small btn-edit" onclick="editGame('${game.id}')">編輯</button>
@@ -787,20 +961,159 @@
 
         // filterGames 已在上方定義（伺服器端分頁 + 前端來源篩選）
 
-        // 開啟彈窗
-        function openModal(gameId = null) {
-            document.getElementById('modal-title').textContent = gameId ? '編輯遊戲' : '新增遊戲';
-            
-            if (gameId) {
-                loadGameData(gameId);
-            } else {
-                document.getElementById('game-form').reset();
-                document.getElementById('game-id').value = '';
-                document.getElementById('image-preview').innerHTML = '🎲';
-                setFetchStatus('', '');
+        const ADMIN_SIX_AXIS_KEYS = ['entry', 'mood', 'control', 'openness', 'sociality', 'competition'];
+        window.__adminGameEditMeta = window.__adminGameEditMeta || { category: null, mechanics: null, bgg_type: null };
+        window.__adminLastLoadedGame = window.__adminLastLoadedGame || null;
+        /** 編輯：開啟視窗當下的 axis_* 快照（凍結）；新增：null，基準用即時推論 */
+        window.__adminAxisBaselineAtLoad = window.__adminAxisBaselineAtLoad || null;
+
+        function formatReviewerDeltaDisp(d) {
+            const n = Number(d);
+            if (isNaN(n) || n === 0) return '0';
+            return (n > 0 ? '+' : '') + n;
+        }
+
+        /** 基準（編輯＝開啟時已存；新增＝即時推論）＋微調滑桿 → 調整後（clamp 0–12） */
+        function refreshAdminSixAxesPanel() {
+            const err = document.getElementById('six-axes-panel-error');
+            if (err) err.style.display = 'none';
+            if (!window.BggSixAxesCompute) {
+                if (err) {
+                    err.textContent = '無法載入 bgg-six-axes-compute.js（請確認與 bgg-axis-deltas-v1.js 已載入）。';
+                    err.style.display = 'block';
+                }
+                return;
             }
-            
-            document.getElementById('game-modal').classList.add('active');
+            const meta = window.__adminGameEditMeta || { category: null, mechanics: null, bgg_type: null };
+            const cxEl = document.getElementById('game-complexity');
+            const cx = cxEl ? parseFloat(cxEl.value) : NaN;
+            const row = {
+                category: meta.category,
+                mechanics: meta.mechanics,
+                complexity: !isNaN(cx) ? cx : null
+            };
+            let bgg;
+            try {
+                bgg = window.BggSixAxesCompute.computeSixAxesFromRow(row);
+            } catch (e) {
+                if (err) {
+                    err.textContent = '六軸推論計算失敗：' + (e && e.message ? e.message : e);
+                    err.style.display = 'block';
+                }
+                return;
+            }
+            const baselineObj = window.__adminAxisBaselineAtLoad;
+            const isEditFrozen = baselineObj != null && typeof baselineObj === 'object';
+            ADMIN_SIX_AXIS_KEYS.forEach(k => {
+                const ax = 'axis_' + k;
+                const B = Number(bgg[ax]);
+                const bNum = isNaN(B) ? 6 : B;
+                let base;
+                if (isEditFrozen && baselineObj[ax] != null && !isNaN(Number(baselineObj[ax]))) {
+                    base = Number(baselineObj[ax]);
+                } else {
+                    base = bNum;
+                }
+                const deltaEl = document.getElementById('game-axis-' + k + '-delta');
+                const micro = deltaEl ? parseFloat(deltaEl.value) : 0;
+                const microNum = isNaN(micro) ? 0 : micro;
+                const adjusted = window.BggSixAxesCompute.clampAxis(base + microNum);
+                const dbEl = document.getElementById('game-axis-' + k + '-db');
+                const fEl = document.getElementById('game-axis-' + k + '-final');
+                if (dbEl) dbEl.textContent = String(base);
+                if (fEl) fEl.textContent = String(adjusted);
+                const disp = document.getElementById('game-axis-' + k + '-delta-disp');
+                if (disp) {
+                    disp.textContent = formatReviewerDeltaDisp(microNum);
+                    disp.className = 'axis-delta-disp ' + (microNum > 0 ? 'is-pos' : microNum < 0 ? 'is-neg' : 'is-zero');
+                }
+            });
+        }
+
+        function clearAdminBggMetaDisplay() {
+            const t = document.querySelector('#game-bgg-type-display span');
+            if (t) t.textContent = '—';
+            const c = document.getElementById('game-category-display');
+            const m = document.getElementById('game-mechanics-display');
+            if (c) c.textContent = '—';
+            if (m) m.textContent = '—';
+        }
+
+        function formatAdminJsonListForDisplay(v) {
+            if (v == null || v === '') return '—';
+            if (Array.isArray(v)) return v.length ? v.join('、') : '—';
+            if (typeof v === 'string') {
+                try {
+                    const j = JSON.parse(v);
+                    return Array.isArray(j) && j.length ? j.join('、') : (typeof j === 'string' ? j : '—');
+                } catch (e) {
+                    return v;
+                }
+            }
+            return String(v);
+        }
+
+        function setAdminBggMetaFromGame(game) {
+            const t = document.querySelector('#game-bgg-type-display span');
+            if (t) t.textContent = game && game.bgg_type ? String(game.bgg_type) : '—';
+            const c = document.getElementById('game-category-display');
+            const m = document.getElementById('game-mechanics-display');
+            if (c) c.textContent = '分類：' + formatAdminJsonListForDisplay(game && game.category);
+            if (m) m.textContent = '機制：' + formatAdminJsonListForDisplay(game && game.mechanics);
+        }
+
+        function resetAdminSixAxesForNewGame() {
+            window.__adminGameEditMeta = { category: null, mechanics: null, bgg_type: null };
+            window.__adminLastLoadedGame = null;
+            window.__adminAxisBaselineAtLoad = null;
+            clearAdminBggMetaDisplay();
+            ADMIN_SIX_AXIS_KEYS.forEach(k => {
+                const d = document.getElementById('game-axis-' + k + '-delta');
+                if (d) d.value = 0;
+            });
+            refreshAdminSixAxesPanel();
+        }
+
+        function initAdminSixAxesListeners() {
+            const cx = document.getElementById('game-complexity');
+            if (cx) cx.addEventListener('input', refreshAdminSixAxesPanel);
+            ADMIN_SIX_AXIS_KEYS.forEach(k => {
+                const d = document.getElementById('game-axis-' + k + '-delta');
+                if (d) d.addEventListener('input', refreshAdminSixAxesPanel);
+            });
+        }
+
+        /** GET tables/* 用：帶 JWT，且不要送 Content-Type（避免部分閘道對 GET 異常） */
+        function getTableReadHeaders() {
+            const h = typeof getAuthHeaders === 'function' ? { ...getAuthHeaders() } : {};
+            delete h['Content-Type'];
+            return h;
+        }
+
+        function clearEditGameFormShell() {
+            document.getElementById('game-form').reset();
+            document.getElementById('game-id').value = '';
+            document.getElementById('image-preview').innerHTML = '🎲';
+            setFetchStatus('', '');
+            resetAdminSixAxesForNewGame();
+        }
+
+        // 開啟彈窗（編輯時會 await 單筆 API，避免顯示上一筆或過期快取）
+        async function openModal(gameId = null) {
+            const modal = document.getElementById('game-modal');
+
+            if (gameId) {
+                modal.classList.add('active');
+                document.getElementById('modal-title').textContent = '載入遊戲資料…';
+                clearEditGameFormShell();
+                const ok = await loadGameData(gameId);
+                document.getElementById('modal-title').textContent = '編輯遊戲';
+                if (!ok) modal.classList.remove('active');
+            } else {
+                document.getElementById('modal-title').textContent = '新增遊戲';
+                clearEditGameFormShell();
+                modal.classList.add('active');
+            }
         }
 
         // 關閉彈窗
@@ -808,17 +1121,35 @@
             document.getElementById('game-modal').classList.remove('active');
         }
 
-        // 載入遊戲資料（由 API 拿）
+        // 載入遊戲資料：只信任單筆 GET 結果；失敗時不再退回 allGames（正式站曾因此永遠顯示過期快取）
         async function loadGameData(gameId) {
             let game = null;
-            if (allGamesLoaded) game = allGames.find(g => g.id === gameId);
-            if (!game) {
-                try {
-                    const r = await fetch(`tables/game_database/${gameId}`);
-                    if (r.ok) game = await r.json();
-                } catch(e) {}
+            try {
+                const r = await fetch(`tables/game_database/${encodeURIComponent(gameId)}`, {
+                    headers: getTableReadHeaders(),
+                    cache: 'no-store'
+                });
+                if (!r.ok) {
+                    let detail = '';
+                    try {
+                        const errBody = await r.json();
+                        if (errBody && errBody.error) detail = '\n' + String(errBody.error);
+                    } catch (e2) {}
+                    alert(
+                        `載入遊戲失敗：HTTP ${r.status}${detail}\n\n` +
+                        '請開 F12 → Network 找 game_database 那一筆。403 多為未帶登入狀態或網域不符；年份／人數若資料庫本來就空，axis-sync 只會補分類／機制／六軸，需按「從 BGG 抓取」另補。'
+                    );
+                    return false;
+                }
+                game = await r.json();
+            } catch (e) {
+                alert('載入遊戲失敗：' + (e && e.message ? e.message : e));
+                return false;
             }
-            if (!game) return;
+            if (!game || !game.id) {
+                alert('伺服器回傳資料異常（缺少 id）。');
+                return false;
+            }
             
             document.getElementById('game-id').value = game.id;
             document.getElementById('game-name-zh').value = game.name_zh || '';
@@ -828,20 +1159,50 @@
             document.getElementById('game-year').value = game.year || '';
             document.getElementById('game-min-players').value = game.min_players || '';
             document.getElementById('game-max-players').value = game.max_players || '';
+            const mnPt = document.getElementById('game-min-playtime');
+            const mxPt = document.getElementById('game-max-playtime');
+            if (mnPt) mnPt.value = game.min_playtime != null && game.min_playtime !== '' ? game.min_playtime : '';
+            if (mxPt) mxPt.value = game.max_playtime != null && game.max_playtime !== '' ? game.max_playtime : '';
             document.getElementById('game-playing-time').value = game.playing_time || '';
             document.getElementById('game-complexity').value = game.complexity || '';
-            const axisKeys = ['conflict','strategy','social_fun','immersion','accessibility','manipulation','coop','luck'];
-            axisKeys.forEach(k => {
-                const el = document.getElementById('game-axis-' + k);
-                if (el) el.value = (game['axis_' + k] != null && game['axis_' + k] !== '') ? game['axis_' + k] : '';
+            window.__adminGameEditMeta = {
+                category: game.category,
+                mechanics: game.mechanics,
+                bgg_type: game.bgg_type != null && game.bgg_type !== '' ? game.bgg_type : null
+            };
+            window.__adminLastLoadedGame = game;
+            if (!window.BggSixAxesCompute) {
+                window.__adminAxisBaselineAtLoad = null;
+            } else {
+                const cxRaw = parseFloat(document.getElementById('game-complexity').value);
+                const bgg0 = window.BggSixAxesCompute.computeSixAxesFromRow({
+                    category: game.category,
+                    mechanics: game.mechanics,
+                    complexity: !isNaN(cxRaw) ? cxRaw : null
+                });
+                window.__adminAxisBaselineAtLoad = {};
+                ADMIN_SIX_AXIS_KEYS.forEach(k => {
+                    const ax = 'axis_' + k;
+                    const raw = game[ax];
+                    const n = Number(raw);
+                    const has = raw != null && raw !== '' && !isNaN(n);
+                    window.__adminAxisBaselineAtLoad[ax] = has ? n : Number(bgg0[ax]);
+                });
+            }
+            ADMIN_SIX_AXIS_KEYS.forEach(k => {
+                const deltaEl = document.getElementById('game-axis-' + k + '-delta');
+                if (deltaEl) deltaEl.value = 0;
             });
             document.getElementById('game-bgg-id').value = game.bgg_id || '';
+            setAdminBggMetaFromGame(game);
             updateImagePreview();
+            refreshAdminSixAxesPanel();
+            return true;
         }
 
         // 編輯遊戲
-        function editGame(gameId) {
-            openModal(gameId);
+        async function editGame(gameId) {
+            await openModal(gameId);
         }
 
         // ── 即時檢查 BGG ID 重複 ──
@@ -867,6 +1228,8 @@
             
             const gameId = document.getElementById('game-id').value;
             const imageUrlVal = document.getElementById('game-image-url').value.trim();
+            const mnPtEl = document.getElementById('game-min-playtime');
+            const mxPtEl = document.getElementById('game-max-playtime');
             const gameData = {
                 name_zh:      document.getElementById('game-name-zh').value.trim(),
                 name_ja:      document.getElementById('game-name-ja').value.trim(),
@@ -875,16 +1238,64 @@
                 year:         parseInt(document.getElementById('game-year').value) || null,
                 min_players:  parseInt(document.getElementById('game-min-players').value) || null,
                 max_players:  parseInt(document.getElementById('game-max-players').value) || null,
+                min_playtime: mnPtEl && mnPtEl.value !== '' ? parseInt(mnPtEl.value, 10) || null : null,
+                max_playtime: mxPtEl && mxPtEl.value !== '' ? parseInt(mxPtEl.value, 10) || null : null,
                 playing_time: parseInt(document.getElementById('game-playing-time').value) || null,
-                complexity:   parseFloat(document.getElementById('game-complexity').value) || null,
+                // 複雜度：統一四捨五入為兩位小數後再儲存
+                complexity:   (function () {
+                    const raw = parseFloat(document.getElementById('game-complexity').value);
+                    if (isNaN(raw)) return null;
+                    return Math.round(raw * 100) / 100;
+                })(),
                 bgg_id:       document.getElementById('game-bgg-id').value.trim()
             };
-            const axisKeys = ['conflict','strategy','social_fun','immersion','accessibility','manipulation','coop','luck'];
-            axisKeys.forEach(k => {
-                const el = document.getElementById('game-axis-' + k);
-                const v = el && el.value !== '' ? parseFloat(el.value) : null;
-                gameData['axis_' + k] = (v != null && !isNaN(v)) ? v : null;
-            });
+            const metaSave = window.__adminGameEditMeta || {};
+            if (Array.isArray(metaSave.category) && metaSave.category.length) {
+                gameData.category = JSON.stringify(metaSave.category);
+            } else if (typeof metaSave.category === 'string' && metaSave.category.trim()) {
+                gameData.category = metaSave.category.trim();
+            }
+            if (Array.isArray(metaSave.mechanics) && metaSave.mechanics.length) {
+                gameData.mechanics = JSON.stringify(metaSave.mechanics);
+            } else if (typeof metaSave.mechanics === 'string' && metaSave.mechanics.trim()) {
+                gameData.mechanics = metaSave.mechanics.trim();
+            }
+            if (metaSave.bgg_type != null && String(metaSave.bgg_type).trim()) {
+                gameData.bgg_type = String(metaSave.bgg_type).trim();
+            }
+            if (window.BggSixAxesCompute) {
+                const meta = window.__adminGameEditMeta || { category: null, mechanics: null, bgg_type: null };
+                const cxRaw = parseFloat(document.getElementById('game-complexity').value);
+                const bgg = window.BggSixAxesCompute.computeSixAxesFromRow({
+                    category: meta.category,
+                    mechanics: meta.mechanics,
+                    complexity: !isNaN(cxRaw) ? cxRaw : null
+                });
+                const baselineObj = window.__adminAxisBaselineAtLoad;
+                const isEditFrozen = baselineObj != null && typeof baselineObj === 'object';
+                ADMIN_SIX_AXIS_KEYS.forEach(k => {
+                    const ax = 'axis_' + k;
+                    const B = Number(bgg[ax]);
+                    const bNum = isNaN(B) ? 6 : B;
+                    let base;
+                    if (isEditFrozen && baselineObj[ax] != null && !isNaN(Number(baselineObj[ax]))) {
+                        base = Number(baselineObj[ax]);
+                    } else {
+                        base = bNum;
+                    }
+                    const deltaEl = document.getElementById('game-axis-' + k + '-delta');
+                    const micro = deltaEl ? parseFloat(deltaEl.value) : 0;
+                    const microNum = isNaN(micro) ? 0 : micro;
+                    const T = window.BggSixAxesCompute.clampAxis(base + microNum);
+                    gameData[ax] = T;
+                    gameData[ax + '_reviewer_delta'] = Math.round((T - bNum) * 100) / 100;
+                });
+            } else {
+                ADMIN_SIX_AXIS_KEYS.forEach(k => {
+                    gameData['axis_' + k] = 6;
+                    gameData['axis_' + k + '_reviewer_delta'] = 0;
+                });
+            }
             
             // ── 新增前做重複把關 ──
             if (!gameId) {
@@ -954,6 +1365,286 @@
         // 綁定即時預覽
         document.getElementById('game-image-url')?.addEventListener('input', updateImagePreview);
 
+        /** Jina 主頁標題常為「Name | Board Game | BoardGameGeek」—只取遊戲名一段 */
+        function normalizeBggJinaTitle(raw) {
+            if (!raw || typeof raw !== 'string') return '';
+            const trimmed = raw.trim();
+            let s = trimmed.replace(/\s*\((19|20)\d{2}\)\s*$/, '').trim();
+            const pipeSeg = s.split(/\s*\|\s*/)[0];
+            return pipeSeg.trim();
+        }
+
+        function englishNameLooksLikeJinaGarbage(v) {
+            if (!v || typeof v !== 'string') return true;
+            return /\|\s*Board Game\b/i.test(v) || /\bBoardGameGeek\b/i.test(v) || (/\|/.test(v) && v.length > 42);
+        }
+
+        /** credits／DDG 備援偶會把 Markdown 表格或 N/A(網址) 當成中文名，需擋掉 */
+        function isPlausibleZhAlternateName(l) {
+            if (!l || typeof l !== 'string') return false;
+            const s = l.trim();
+            if (s.length < 2 || s.length > 56) return false;
+            if (/https?:\/\//i.test(s) || /\bwww\./i.test(s) || /\([^)]*https?:/i.test(s)) return false;
+            if (/^\s*N\/?A\b/i.test(s) || /\bN\/A\s*\(/i.test(s)) return false;
+            if (!/[\u4e00-\u9fff]/.test(s)) return false;
+            if (/[\u3040-\u309f\u30a0-\u30ff]/.test(s)) return false;
+            const cjk = (s.match(/[\u4e00-\u9fff]/g) || []).length;
+            if (cjk < 2 && s.length > 18) return false;
+            return true;
+        }
+
+        function isPlausibleJaAlternateName(l) {
+            if (!l || typeof l !== 'string') return false;
+            const s = l.trim();
+            if (s.length < 2 || s.length > 56) return false;
+            if (/https?:\/\//i.test(s) || /\([^)]*https?:/i.test(s)) return false;
+            if (/^\s*N\/?A\b/i.test(s) || /\bN\/A\s*\(/i.test(s)) return false;
+            return /[\u3040-\u309f\u30a0-\u30ff]/.test(s);
+        }
+
+        /** 優先「Playing Time: a–b min」，再任意 a–b min，最後單一 N min；區間時回傳 min/max 與平均作 playing_time */
+        function extractBggPlayingTimeFromMarkdown(text) {
+            const labeled = text.match(/Playing\s+Time[:\s]*(\d+)\s*[–\-~]\s*(\d+)\s*[Mm]in/i);
+            if (labeled) {
+                const a = parseInt(labeled[1], 10), b = parseInt(labeled[2], 10);
+                if (!isNaN(a) && !isNaN(b)) {
+                    const lo = Math.min(a, b), hi = Math.max(a, b);
+                    return { min: lo, max: hi, playing: Math.round((lo + hi) / 2), filledLabel: '遊戲時間（BGG 區間→平均）' };
+                }
+            }
+            const anyRange = text.match(/(\d+)\s*[–\-~]\s*(\d+)\s*[Mm]in\b/);
+            if (anyRange) {
+                const a = parseInt(anyRange[1], 10), b = parseInt(anyRange[2], 10);
+                if (!isNaN(a) && !isNaN(b)) {
+                    const lo = Math.min(a, b), hi = Math.max(a, b);
+                    return { min: lo, max: hi, playing: Math.round((lo + hi) / 2), filledLabel: '遊戲時間（區間→平均）' };
+                }
+            }
+            const single = text.match(/\b(\d+)\s*[Mm]in(?:ute)?s?\b/i);
+            if (single) {
+                const n = parseInt(single[1], 10);
+                if (!isNaN(n)) return { min: n, max: n, playing: n, filledLabel: '遊戲時間' };
+            }
+            return null;
+        }
+
+        function fillGameYearFromMainPageIfEmpty(mainMarkdown, rawTitleLine) {
+            const yEl = document.getElementById('game-year');
+            if (!yEl || yEl.value) return null;
+            if (rawTitleLine) {
+                const inTitle = rawTitleLine.match(/\((\d{4})\)/);
+                if (inTitle) {
+                    const y = parseInt(inTitle[1], 10);
+                    if (y >= 1900 && y <= 2099) {
+                        yEl.value = String(y);
+                        return `年份（標題 ${y}）`;
+                    }
+                }
+            }
+            const yPub = mainMarkdown.match(/Year\s+Published[:\s\n]+(\d{4})/im);
+            if (yPub) {
+                const y = parseInt(yPub[1], 10);
+                if (y >= 1900 && y <= 2099) {
+                    yEl.value = String(y);
+                    return `年份（主頁 Year Published ${y}）`;
+                }
+            }
+            const yRel = mainMarkdown.match(/Year\s+Released[:\s\n]+(\d{4})/im);
+            if (yRel) {
+                const y = parseInt(yRel[1], 10);
+                if (y >= 1900 && y <= 2099) {
+                    yEl.value = String(y);
+                    return `年份（主頁 Year Released ${y}）`;
+                }
+            }
+            const loose = mainMarkdown.match(/\b(19|20)\d{2}\b/);
+            if (loose) {
+                yEl.value = loose[0];
+                return '年份（備援）';
+            }
+            return null;
+        }
+
+        /** 與 axis-sync：由 min/max 局時與人數推估每位玩家平均分鐘 */
+        function derivePlayingTimePerPlayerFromBounds(minPlayers, maxPlayers, minPlaytime, maxPlaytime) {
+            const mn = minPlaytime != null && minPlaytime !== '' ? Number(minPlaytime) : NaN;
+            const mx = maxPlaytime != null && maxPlaytime !== '' ? Number(maxPlaytime) : NaN;
+            const minPlay = !isNaN(mn) && mn > 0 ? mn : null;
+            const maxPlay = !isNaN(mx) && mx > 0 ? mx : null;
+            if (minPlay == null && maxPlay == null) return null;
+            const minP = minPlayers != null && minPlayers !== '' ? Number(minPlayers) : NaN;
+            const maxP = maxPlayers != null && maxPlayers !== '' ? Number(maxPlayers) : NaN;
+            const minPer = (minPlay != null && !isNaN(maxP) && maxP > 0) ? minPlay / maxP : null;
+            const maxPer = (maxPlay != null && !isNaN(minP) && minP > 0) ? maxPlay / Math.max(minP, 1) : null;
+            const vals = [minPer, maxPer].filter(v => v != null && !isNaN(v));
+            if (!vals.length) return null;
+            return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        }
+
+        /** thing XML &lt;link&gt; → 與 axis-sync 相同 */
+        function extractThingTaxonomyFromXmlItem(xmlItem) {
+            if (!xmlItem) return { category: [], mechanics: [], bgg_type: 'Uncategorized' };
+            const category = [];
+            const mechanics = [];
+            xmlItem.querySelectorAll('link[type="boardgamecategory"]').forEach((el) => {
+                const v = el.getAttribute('value');
+                if (v && String(v).trim()) category.push(String(v).trim());
+            });
+            xmlItem.querySelectorAll('link[type="boardgamemechanic"]').forEach((el) => {
+                const v = el.getAttribute('value');
+                if (v && String(v).trim()) mechanics.push(String(v).trim());
+            });
+            let bgg_type = 'Uncategorized';
+            const sub = xmlItem.querySelector('link[type="boardgamesubdomain"]');
+            if (sub) {
+                const sv = sub.getAttribute('value');
+                if (sv && String(sv).trim()) bgg_type = String(sv).trim();
+            }
+            return { category, mechanics, bgg_type };
+        }
+
+        /** Worker 回傳的純 XML → 第一個 &lt;item&gt; */
+        function parseThingXmlItemFromText(xmlText) {
+            const doc = new DOMParser().parseFromString((xmlText || '').trim(), 'text/xml');
+            return doc.querySelector('items > item') || doc.querySelector('item');
+        }
+
+        async function fetchAdminBggThingXmlText(bggId) {
+            const path = `api/admin/bgg/thing?id=${encodeURIComponent(bggId)}&stats=1`;
+            const res = await fetch(path, {
+                method: 'GET',
+                headers: typeof getAuthHeaders === 'function'
+                    ? getAuthHeaders({ Accept: 'application/xml, text/xml, */*' })
+                    : { Accept: 'application/xml, text/xml, */*' },
+                signal: AbortSignal.timeout(35000)
+            });
+            if (!res.ok) {
+                let detail = '';
+                try {
+                    const j = await res.clone().json();
+                    if (j && j.error) detail = ': ' + j.error;
+                } catch (e) { /* ignore */ }
+                throw new Error('Worker thing HTTP ' + res.status + detail);
+            }
+            return await res.text();
+        }
+
+        /** 將 xmlapi2/thing（stats=1）的 item 寫入表單僅補空欄（英文名若為 Jina 垃圾字串則覆寫） */
+        function applyBggThingXmlItemToForm(xmlItem, filled) {
+            if (!xmlItem) return;
+            const nameEn = xmlItem.querySelector('name[type="primary"]')?.getAttribute('value') || '';
+            if (nameEn.trim()) {
+                const enEl = document.getElementById('game-name-en');
+                const cur = (enEl.value || '').trim();
+                if (!cur || englishNameLooksLikeJinaGarbage(cur)) {
+                    enEl.value = nameEn.trim();
+                    filled.push('英文名稱（BGG XML）');
+                }
+            }
+            const yEl = document.getElementById('game-year');
+            if (!yEl.value) {
+                const yearVal = xmlItem.querySelector('yearpublished')?.getAttribute('value');
+                if (yearVal && yearVal !== '0') {
+                    const y = parseInt(yearVal, 10);
+                    if (y >= 1900 && y <= 2099) {
+                        yEl.value = String(y);
+                        filled.push(`年份（BGG XML ${y}）`);
+                    }
+                }
+            }
+            if (!document.getElementById('game-min-players').value) {
+                const minP = xmlItem.querySelector('minplayers')?.getAttribute('value');
+                if (minP) {
+                    document.getElementById('game-min-players').value = minP;
+                    filled.push('最少玩家（BGG XML）');
+                }
+            }
+            if (!document.getElementById('game-max-players').value) {
+                const maxP = xmlItem.querySelector('maxplayers')?.getAttribute('value');
+                if (maxP) {
+                    document.getElementById('game-max-players').value = maxP;
+                    filled.push('最多玩家（BGG XML）');
+                }
+            }
+            const mnH = document.getElementById('game-min-playtime');
+            const mxH = document.getElementById('game-max-playtime');
+            const minPtRaw = xmlItem.querySelector('minplaytime')?.getAttribute('value');
+            const maxPtRaw = xmlItem.querySelector('maxplaytime')?.getAttribute('value');
+            const minPtNum = minPtRaw && minPtRaw !== '0' ? parseInt(minPtRaw, 10) : NaN;
+            const maxPtNum = maxPtRaw && maxPtRaw !== '0' ? parseInt(maxPtRaw, 10) : NaN;
+            if (mnH && !mnH.value && !isNaN(minPtNum)) {
+                mnH.value = String(minPtNum);
+                filled.push('最短局時（BGG XML）');
+            }
+            if (mxH && !mxH.value && !isNaN(maxPtNum)) {
+                mxH.value = String(maxPtNum);
+                filled.push('最長局時（BGG XML）');
+            }
+            const ptEl = document.getElementById('game-playing-time');
+            if (!ptEl.value) {
+                const minPVal = document.getElementById('game-min-players').value;
+                const maxPVal = document.getElementById('game-max-players').value;
+                const derived = derivePlayingTimePerPlayerFromBounds(
+                    minPVal, maxPVal,
+                    !isNaN(minPtNum) ? minPtNum : null,
+                    !isNaN(maxPtNum) ? maxPtNum : null
+                );
+                if (derived != null) {
+                    ptEl.value = String(derived);
+                    filled.push('估計每位玩家時間（BGG XML 局時＋人數）');
+                } else {
+                    const single = xmlItem.querySelector('playingtime')?.getAttribute('value')
+                        || maxPtRaw;
+                    if (single && single !== '0') {
+                        const n = parseInt(single, 10);
+                        if (!isNaN(n)) {
+                            ptEl.value = String(n);
+                            filled.push('估計每位玩家時間（BGG XML 單一欄）');
+                        }
+                    }
+                }
+            }
+            const tax = extractThingTaxonomyFromXmlItem(xmlItem);
+            window.__adminGameEditMeta = window.__adminGameEditMeta || { category: null, mechanics: null, bgg_type: null };
+            if (tax.category.length) {
+                window.__adminGameEditMeta.category = tax.category;
+                filled.push('分類（thing XML）');
+            }
+            if (tax.mechanics.length) {
+                window.__adminGameEditMeta.mechanics = tax.mechanics;
+                filled.push('機制（thing XML）');
+            }
+            if (tax.bgg_type && tax.bgg_type !== 'Uncategorized') {
+                window.__adminGameEditMeta.bgg_type = tax.bgg_type;
+                filled.push('類型（thing XML）');
+            }
+            if (tax.category.length || tax.mechanics.length || (tax.bgg_type && tax.bgg_type !== 'Uncategorized')) {
+                setAdminBggMetaFromGame({
+                    category: window.__adminGameEditMeta.category,
+                    mechanics: window.__adminGameEditMeta.mechanics,
+                    bgg_type: window.__adminGameEditMeta.bgg_type
+                });
+                if (typeof refreshAdminSixAxesPanel === 'function') refreshAdminSixAxesPanel();
+            }
+            if (!document.getElementById('game-complexity').value) {
+                const weightVal = xmlItem.querySelector('averageweight')?.getAttribute('value');
+                if (weightVal) {
+                    const w = parseFloat(weightVal);
+                    if (!isNaN(w)) {
+                        document.getElementById('game-complexity').value = w.toFixed(2);
+                        filled.push('複雜度（BGG XML）');
+                    }
+                }
+            }
+            const imgUrl = xmlItem.querySelector('image')?.textContent?.trim()
+                || xmlItem.querySelector('thumbnail')?.textContent?.trim();
+            if (imgUrl && !document.getElementById('game-image-url').value.trim()) {
+                document.getElementById('game-image-url').value = imgUrl;
+                updateImagePreview();
+                filled.push('封面圖片（BGG XML）');
+            }
+        }
+
         // ── 從 BGG 抓取資料 ──
         async function fetchFromBGG() {
             const bggId = document.getElementById('game-bgg-id').value.trim();
@@ -965,28 +1656,43 @@
             const btn = document.getElementById('bgg-fetch-btn');
             btn.disabled = true;
             btn.textContent = '⏳ 抓取中...';
-            setFetchStatus('正在透過 Jina proxy 讀取 BGG 頁面...', '#888');
 
             try {
+                const filled = [];
+
+                // ════════════════════════════════════════════════
+                // 步驟零：本站 Worker → BGG xmlapi2/thing（官方 Token）
+                // ════════════════════════════════════════════════
+                setFetchStatus('正在透過本站 API 讀取 BGG XML（thing）…', '#888');
+                try {
+                    const xmlText = await fetchAdminBggThingXmlText(bggId);
+                    const item = parseThingXmlItemFromText(xmlText);
+                    if (item) applyBggThingXmlItemToForm(item, filled);
+                } catch (thingErr) {
+                    console.warn('BGG thing 代理失敗，改以 Jina 頁面為主：', thingErr.message || thingErr);
+                }
+
                 // ════════════════════════════════════════════════
                 // 步驟一：抓主頁（英文名 + 玩家數 + 時間 + 複雜度 + 封面圖 + 描述）
-                // 注意：Jina 抓圖邏輯完全不動，已確認為唯一可靠方式
+                // 注意：Jina 抓圖邏輯仍保留；欄位已有值時不覆寫（除非下方邏輯特別處理）
                 // ════════════════════════════════════════════════
+                setFetchStatus('正在透過 Jina proxy 讀取 BGG 頁面...', '#888');
                 const pageUrl  = `https://boardgamegeek.com/boardgame/${bggId}`;
                 const proxyUrl = `https://r.jina.ai/${pageUrl}`;
                 const res = await fetch(proxyUrl, { headers: { 'X-No-Cache': 'true' } });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const text = await res.text();
 
-                let filled = [];
-
                 // ── 抓英文名稱（暫存，供組 credits URL 用）──
                 let enNameFromMain = '';
                 const titleMatch = text.match(/^#\s+(.+)/m);
-                if (titleMatch) {
-                    enNameFromMain = titleMatch[1].replace(/\s*\(\d{4}\)\s*$/, '').trim();
-                    if (enNameFromMain && !document.getElementById('game-name-en').value) {
-                        document.getElementById('game-name-en').value = enNameFromMain;
+                const rawTitleLine = titleMatch ? titleMatch[1].trim() : '';
+                if (rawTitleLine) {
+                    enNameFromMain = normalizeBggJinaTitle(rawTitleLine);
+                    const enEl = document.getElementById('game-name-en');
+                    const curEn = (enEl.value || '').trim();
+                    if (enNameFromMain && (!curEn || englishNameLooksLikeJinaGarbage(curEn))) {
+                        enEl.value = enNameFromMain;
                         filled.push('英文名稱');
                     }
                 }
@@ -1004,12 +1710,17 @@
                     }
                 }
 
-                // ── 抓遊戲時間 ──
-                const timeMatch = text.match(/(\d+)\s*[–\-~]\s*(\d+)\s*[Mm]in|(\d+)\s*[Mm]inutes?/);
-                if (timeMatch && !document.getElementById('game-playing-time').value) {
-                    const t = timeMatch[2] || timeMatch[3];
-                    document.getElementById('game-playing-time').value = t;
-                    filled.push('遊戲時間');
+                // ── 抓遊戲時間（區間→平均 + min/max playtime 隱藏欄）──
+                if (!document.getElementById('game-playing-time').value) {
+                    const pt = extractBggPlayingTimeFromMarkdown(text);
+                    if (pt) {
+                        document.getElementById('game-playing-time').value = String(pt.playing);
+                        const mnH = document.getElementById('game-min-playtime');
+                        const mxH = document.getElementById('game-max-playtime');
+                        if (mnH) mnH.value = String(pt.min);
+                        if (mxH) mxH.value = String(pt.max);
+                        filled.push(pt.filledLabel);
+                    }
                 }
 
                 // ── 抓複雜度（格式：「4.44 / 5」）──
@@ -1044,8 +1755,10 @@
                 // ════════════════════════════════════════════════
                 setFetchStatus('🔍 正在讀取 credits 頁面（中日文名 + 年份）...', '#888');
 
-                // 組出 slug（英文名轉小寫 + 空格換連字號，去除特殊字元）
-                const enNameForSlug = (document.getElementById('game-name-en').value || enNameFromMain || bggId).trim();
+                // 組出 slug（先正規化 Jina 標題再 slugify）
+                const enNameForSlug = normalizeBggJinaTitle(
+                    (document.getElementById('game-name-en').value || enNameFromMain || bggId).trim()
+                ) || String(bggId);
                 const slug = enNameForSlug
                     .toLowerCase()
                     .replace(/[^a-z0-9\s-]/g, '')   // 去除非英數
@@ -1053,36 +1766,29 @@
                     .replace(/-+/g, '-')              // 合併多個 -
                     .replace(/^-|-$/g, '');           // 去頭尾 -
 
+                let creditsPageOk = false;
                 try {
                     const creditsUrl  = `https://boardgamegeek.com/boardgame/${bggId}/${slug}/credits`;
                     const creditsProxy = `https://r.jina.ai/${creditsUrl}`;
                     const cRes = await fetch(creditsProxy, { headers: { 'X-No-Cache': 'true' } });
 
                     if (cRes.ok) {
+                        creditsPageOk = true;
                         const cText = await cRes.text();
 
-                        // ── 解析 Primary Name ──
-                        // 格式通常是：
-                        //   Primary Name
-                        //   Gloomhaven
-                        // 或行內：Primary Name: Gloomhaven
                         const primaryMatch = cText.match(/Primary\s+Name[:\s\n]+([^\n]+)/i);
                         if (primaryMatch) {
-                            const pName = primaryMatch[1].trim().replace(/\*+/g, '').replace(/\[.*?\]/g, '').trim();
-                            if (pName && pName.length > 0 && !document.getElementById('game-name-en').value) {
-                                document.getElementById('game-name-en').value = pName;
+                            const pName = normalizeBggJinaTitle(
+                                primaryMatch[1].trim().replace(/\*+/g, '').replace(/\[.*?\]/g, '').trim()
+                            );
+                            const enEl = document.getElementById('game-name-en');
+                            const curEn = (enEl.value || '').trim();
+                            if (pName && pName.length > 0 && (!curEn || englishNameLooksLikeJinaGarbage(curEn))) {
+                                enEl.value = pName;
                                 filled.push('英文名稱（credits）');
                             }
                         }
 
-                        // ── 解析 Alternate Names：找中文 & 日文 ──
-                        // BGG credits 頁的格式：
-                        //   Alternate Names
-                        //   瘟疫危機
-                        //   パンデミック
-                        //   Pandémie
-                        //   ...
-                        // 用「Alternate Names」到下一個標題之間的內容
                         const altSection = cText.match(/Alternate\s+Names?[\s\S]*?\n([\s\S]+?)(?=\n#{1,3}\s|\n\*\*[A-Z]|\nYear|\nPublisher|\nDesigner|$)/i);
                         if (altSection) {
                             const altLines = altSection[1]
@@ -1090,18 +1796,16 @@
                                 .map(l => l.replace(/\*+/g, '').replace(/\[.*?\]/g, '').replace(/^[-•\s]+/, '').trim())
                                 .filter(l => l.length >= 2);
 
-                            // 找中文名（繁體 or 簡體）
                             if (!document.getElementById('game-name-zh').value) {
-                                const zhLine = altLines.find(l => /[\u4e00-\u9fff]/.test(l) && !/[\u3040-\u309f\u30a0-\u30ff]/.test(l));
+                                const zhLine = altLines.find(l => isPlausibleZhAlternateName(l));
                                 if (zhLine) {
                                     document.getElementById('game-name-zh').value = zhLine;
                                     filled.push('中文名稱');
                                 }
                             }
 
-                            // 找日文名（有平假名或片假名的才算日文）
                             if (!document.getElementById('game-name-ja').value) {
-                                const jaLine = altLines.find(l => /[\u3040-\u309f\u30a0-\u30ff]/.test(l));
+                                const jaLine = altLines.find(l => isPlausibleJaAlternateName(l));
                                 if (jaLine) {
                                     document.getElementById('game-name-ja').value = jaLine;
                                     filled.push('日文名稱');
@@ -1109,50 +1813,45 @@
                             }
                         }
 
-                        // ── 解析 Year Released ──
                         if (!document.getElementById('game-year').value) {
-                            // 格式：Year Released\n2017  或  Year Released: 2017
                             const yearRelMatch = cText.match(/Year\s+(?:Released|Published)[:\s\n]+(\d{4})/i);
                             if (yearRelMatch) {
-                                document.getElementById('game-year').value = yearRelMatch[1];
-                                filled.push(`年份 ${yearRelMatch[1]}`);
+                                const y = parseInt(yearRelMatch[1], 10);
+                                if (y >= 1900 && y <= 2099) {
+                                    document.getElementById('game-year').value = String(y);
+                                    filled.push(`年份（credits ${y}）`);
+                                }
                             }
                         }
 
                         filled.push('credits 頁完成');
                     }
-                } catch(creditsErr) {
+                } catch (creditsErr) {
                     console.warn('credits 頁讀取失敗（不影響其他資料）:', creditsErr.message);
-                    // 降級：用原有 DuckDuckGo 方式補中文名
-                    if (!document.getElementById('game-name-zh').value) {
-                        try {
-                            setFetchStatus('🔍 搜尋中文名稱（DuckDuckGo 備援）...', '#888');
-                            const enName = document.getElementById('game-name-en').value.trim();
-                            const q = encodeURIComponent(`${enName || 'BGG ' + bggId} 中文名 桌遊`);
-                            const dRes = await fetch(
-                                `https://r.jina.ai/https://duckduckgo.com/?q=${q}&ia=web`,
-                                { headers: { 'X-No-Cache': 'true' } }
-                            );
-                            if (dRes.ok) {
-                                const dText = await dRes.text();
-                                const zhName = extractChineseGameNameFallback(dText, enName || bggId);
-                                if (zhName) {
-                                    document.getElementById('game-name-zh').value = zhName;
-                                    filled.push('中文名稱（DuckDuckGo）');
-                                }
-                            }
-                        } catch(e) { /* 靜默失敗 */ }
-                    }
-
-                    // 降級：年份用主頁的簡單 match
-                    if (!document.getElementById('game-year').value) {
-                        const yearMatch2 = text.match(/\b(19|20)\d{2}\b/);
-                        if (yearMatch2) {
-                            document.getElementById('game-year').value = yearMatch2[0];
-                            filled.push('年份（備援）');
-                        }
-                    }
                 }
+
+                if (!creditsPageOk && !document.getElementById('game-name-zh').value) {
+                    try {
+                        setFetchStatus('🔍 搜尋中文名稱（DuckDuckGo 備援）...', '#888');
+                        const enName = document.getElementById('game-name-en').value.trim();
+                        const q = encodeURIComponent(`${enName || 'BGG ' + bggId} 中文名 桌遊`);
+                        const dRes = await fetch(
+                            `https://r.jina.ai/https://duckduckgo.com/?q=${q}&ia=web`,
+                            { headers: { 'X-No-Cache': 'true' } }
+                        );
+                        if (dRes.ok) {
+                            const dText = await dRes.text();
+                            const zhName = extractChineseGameNameFallback(dText, enName || bggId);
+                            if (zhName && isPlausibleZhAlternateName(zhName)) {
+                                document.getElementById('game-name-zh').value = zhName;
+                                filled.push('中文名稱（DuckDuckGo）');
+                            }
+                        }
+                    } catch (e) { /* 靜默失敗 */ }
+                }
+
+                const yMain = fillGameYearFromMainPageIfEmpty(text, rawTitleLine);
+                if (yMain) filled.push(yMain);
 
                 if (filled.length > 0) {
                     const zhHint = document.getElementById('game-name-zh').value ? '' : '（中文名未找到，請手動填寫）';
@@ -1169,26 +1868,40 @@
                 btn.textContent = '🔍 從 BGG 抓取資料';
                 updateSearchHint();
                 checkBggDuplicate();
+                if (typeof refreshAdminSixAxesPanel === 'function') refreshAdminSixAxesPanel();
             }
         }
 
         // DuckDuckGo 備援：從搜尋結果文字中提取中文遊戲名
         function extractChineseGameNameFallback(dText, enGameName) {
+            const ok = (s) => (s && isPlausibleZhAlternateName(s) ? s.trim() : null);
             const enKeyword = (enGameName.split(/[\s:：]+/).find(w => w.length > 3 && !/^(the|a|an|of|in|at)$/i.test(w)) || enGameName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const p1 = new RegExp(`([\\u4e00-\\u9fff][\\u4e00-\\u9fff\\uff1a：:·\\-–\\s]{0,15}[\\u4e00-\\u9fff])\\s*(?:The\\s+|\\*\\*${enKeyword}|\\(\\*\\*${enKeyword}|繁體|簡體|Board)`, 'i');
             const m1 = dText.match(p1);
-            if (m1) return m1[1].trim();
+            if (m1) {
+                const t = ok(m1[1]);
+                if (t) return t;
+            }
 
             const headingMatches = [...dText.matchAll(/###\s+([^\n\[]{3,60})/g)];
             for (const hm of headingMatches) {
                 const content = hm[1].replace(/^\【[^\】]*\】\s*/, '').replace(/^\[[^\]]*\]\s*/, '');
                 const zhPart = content.match(/^([\u4e00-\u9fff][^\s]*[\u4e00-\u9fff\uff1a：:]{0,1}[\u4e00-\u9fff]*)/);
-                if (zhPart && zhPart[1].length >= 2) return zhPart[1].trim();
+                if (zhPart && zhPart[1].length >= 2) {
+                    const t = ok(zhPart[1]);
+                    if (t) return t;
+                }
             }
             const m3 = dText.match(/([\u4e00-\u9fff]{2,8}[\uff1a：:][^\n\[,，。．\s]{1,8}[\u4e00-\u9fff]{1,8})/);
-            if (m3) return m3[1].trim();
+            if (m3) {
+                const t = ok(m3[1]);
+                if (t) return t;
+            }
             const m4 = dText.match(/[《]([\u4e00-\u9fff：:·\-–—\s]{2,15})[》]/);
-            if (m4) return m4[1].trim();
+            if (m4) {
+                const t = ok(m4[1]);
+                if (t) return t;
+            }
             return null;
         }
 
@@ -1372,8 +2085,18 @@
             }
         });
 
-        // 初始化
-        loadGames(1);
+        // 初始化（先嘗試線上 delta，失敗則用靜態 bgg-axis-deltas-v1.js）
+        (async function adminGamesInit() {
+            if (typeof window.loadBggAxisV1FromApi === 'function') {
+                try {
+                    await window.loadBggAxisV1FromApi({});
+                } catch (e) {
+                    console.warn('BGG axis deltas API 載入失敗，使用靜態檔', e);
+                }
+            }
+            initAdminSixAxesListeners();
+            loadGames(1);
+        })();
 
         // ════════════════════════════════════════════
         // ── 重複遊戲偵測與處理 ──

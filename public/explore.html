@@ -187,8 +187,8 @@
         <p>© 2025 MBTI × 桌遊配對</p>
     </footer>
 
-    <script src="js/api-base.js?v=20260302-clear"></script>
-    <script src="js/app.js?v=20260311"></script>
+    <script src="js/api-base.js?v=20260320"></script>
+    <script src="js/app.js?v=20260320"></script>
     <script src="js/game-names.js"></script>
 
     <script>
@@ -585,7 +585,7 @@
             if (superLikedGames.length > 0) {
                 const gamesToShow = superLikedGames.slice(0, 10);
                 likedGamesElement.innerHTML = gamesToShow.map(game => 
-                    `<div class="player-game-tag">${game}</div>`
+                    `<div class="player-game-tag">${(typeof GameNames !== 'undefined' && GameNames.formatTag) ? GameNames.formatTag(game) : game}</div>`
                 ).join('');
                 
                 if (superLikedGames.length > 10) {

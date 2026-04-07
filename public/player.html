@@ -98,7 +98,9 @@
             display: inline-flex !important;
             flex-direction: column !important;
             align-items: center !important;
+            justify-content: center !important;
             gap: 0 !important;
+            min-height: 2.2rem !important;
             text-align: center !important;
         }
         .game-tag .gn-tag-zh {
@@ -246,7 +248,7 @@
         .ro-btn-no-interest:hover { background:linear-gradient(135deg,#4b5563 0%,#1f2937 100%); }
         .ro-done-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:8001; align-items:center; justify-content:center; padding:1rem; }
         .ro-done-overlay.open { display:flex; }
-        /* 主題清單卡片（與 my-collections.html 一致）*/
+        /* 排行榜卡片（與 rankings.html 一致）*/
         .pc-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -411,7 +413,7 @@
                         <div class="pref-tab-row" id="player-pref-tab-row">
                             <button class="pref-tab love active" onclick="switchPlayerPrefTab('love', this)">🤩 超喜歡 <span class="pref-tab-count" id="pl-count-super_liked">0</span></button>
                             <button class="pref-tab like"         onclick="switchPlayerPrefTab('like', this)">😍 喜歡 <span class="pref-tab-count" id="pl-count-liked">0</span></button>
-                            <button class="pref-tab neutral"      onclick="switchPlayerPrefTab('neutral', this)">😐 普通 <span class="pref-tab-count" id="pl-count-neutral">0</span></button>
+                            <button class="pref-tab neutral"      onclick="switchPlayerPrefTab('neutral', this)">😐 普普 <span class="pref-tab-count" id="pl-count-neutral">0</span></button>
                             <button class="pref-tab dislike"      onclick="switchPlayerPrefTab('dislike', this)">😕 不喜歡 <span class="pref-tab-count" id="pl-count-disliked">0</span></button>
                         </div>
                     </div>
@@ -506,8 +508,8 @@
         </div>
     </div>
 
-    <script src="js/api-base.js?v=20260302-clear"></script>
-    <script src="js/app.js?v=20260311"></script>
+    <script src="js/api-base.js?v=20260320"></script>
+    <script src="js/app.js?v=20260320"></script>
     <script src="js/game-names.js"></script>
     <script>
         if (typeof safePatch === 'undefined') {
@@ -570,7 +572,7 @@
         return params.get('id');
     }
 
-    // 取得當前登入使用者（與 profile.html / my-collections.html 相同邏輯）
+    // 取得當前登入使用者（與 profile.html / rankings.html 相同邏輯）
     async function loadCurrentUser() {
         const toArr = v => {
             if (Array.isArray(v)) return v;

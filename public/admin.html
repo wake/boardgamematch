@@ -33,6 +33,10 @@
         <div class="page-header">
             <h1 class="page-title">🔧 管理後台</h1>
             <p class="page-subtitle">資料管理與系統維護中心</p>
+            <p style="margin: 0.75rem 0 0; font-size: 0.95rem;">
+                <a href="admin-bgg-axis-delta-editor.html" style="color: var(--primary-color); font-weight: 600;">✏️ BGG 六軸 Delta 編輯器</a>
+                <span style="color: var(--text-light); font-weight: 400;">（主題／機制 → 六軸，可儲存到線上 D1）</span>
+            </p>
         </div>
 
         <!-- 快速統計 -->
@@ -92,6 +96,59 @@
                     <p class="admin-card-desc">管理常駐主題和限時活動清單，設定每次評價題數和遊戲列表</p>
                     <div class="admin-card-footer">
                         <span class="admin-card-badge" id="collections-badge">載入中...</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- BGG 匯入工具（內部使用） -->
+            <a href="admin-bgg-import.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">📥</div>
+                    <h3 class="admin-card-title">BGG 匯入工具</h3>
+                    <p class="admin-card-desc">上傳 BGG collection CSV，轉成接近 game_database 的格式並加入 8 軸預設值（僅本機預覽與下載，不會寫入資料庫）</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge">實驗工具</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <div style="grid-column: 1 / -1; margin: 0.25rem 0 0;">
+                <h3 id="bgg-six-axes-tools" style="margin: 0; font-size: 1.05rem; color: var(--text-light); font-weight: 600;">📐 BGG · 六軸（掃描／編輯／對照）</h3>
+            </div>
+
+            <a href="admin-bgg-axis-sync.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">🔁</div>
+                    <h3 class="admin-card-title">BGG ID 掃描 · 六軸補齊</h3>
+                    <p class="admin-card-desc">依 BGG ID 區間掃描：thing XML 優先補 category／mechanic／局時；Jina 備援；依對照表寫六軸；未收錄則新建（需管理員）</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge">後台寫入</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="admin-bgg-axis-delta-editor.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">✏️</div>
+                    <h3 class="admin-card-title">BGG 六軸 Delta 編輯器</h3>
+                    <p class="admin-card-desc">表格編輯 category／mechanic 各軸加減分；<strong>儲存到線上 D1</strong> 或下載覆蓋靜態 JS，支援草稿／匯入匯出 JSON</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge">線上 D1</span>
+                        <span class="admin-card-arrow">→</span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="admin-bgg-axis-reference.html" class="admin-card-link" style="text-decoration: none; color: inherit;">
+                <div class="admin-card">
+                    <div class="admin-card-icon">📊</div>
+                    <h3 class="admin-card-title">BGG 主題／機制 → 六軸對照表</h3>
+                    <p class="admin-card-desc">列出 BGG 官方 browse 頁全部主題／機制（data/bgg-taxonomy.json），並併顯六軸 delta（優先 GET /api/bgg-axis-deltas）</p>
+                    <div class="admin-card-footer">
+                        <span class="admin-card-badge">唯讀參考</span>
                         <span class="admin-card-arrow">→</span>
                     </div>
                 </div>

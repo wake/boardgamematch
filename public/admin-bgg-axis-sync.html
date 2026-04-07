@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGG ID 掃描 · 六軸與標籤補齊 - MBTI × 桌遊配對</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/hourglass-simple.css">
+    <style>
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        .hero {
+            background: linear-gradient(135deg, #0d9488 0%, #4f46e5 100%);
+            color: #fff; padding: 1.5rem 1.25rem; border-radius: 1rem; margin-bottom: 1.25rem;
+        }
+        .hero h1 { margin: 0 0 0.4rem; font-size: 1.35rem; }
+        .hero p { margin: 0.25rem 0; font-size: 0.88rem; opacity: 0.95; line-height: 1.5; }
+        /* .hint 預設為 --text-light，會蓋掉 hero 的白字 */
+        .hero .hint {
+            color: #fff;
+            opacity: 0.95;
+        }
+        .hero .hint code {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 0.08em 0.35em;
+            border-radius: 0.25rem;
+            font-size: 0.9em;
+        }
+        .hero .hint strong { color: #fff; }
+        .card {
+            background: var(--card-bg); border-radius: 0.85rem; padding: 1.15rem 1.25rem;
+            margin-bottom: 1rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);
+        }
+        .card h2 { margin: 0 0 0.65rem; font-size: 1.05rem; }
+        .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem; }
+        .row label { font-size: 0.86rem; color: var(--text-light); min-width: 7rem; }
+        .row input[type="number"] { width: 6rem; padding: 0.35rem 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); }
+        .row input[type="url"], .row input[type="password"], .row input[type="text"].input-flex {
+            flex: 1; min-width: 12rem; max-width: 100%; padding: 0.35rem 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color);
+        }
+        .btn {
+            padding: 0.5rem 1.2rem; border-radius: 0.55rem; border: none; font-weight: 600; cursor: pointer;
+            font-size: 0.88rem;
+        }
+        .btn-primary { background: linear-gradient(135deg, #0d9488, #4f46e5); color: #fff; }
+        .btn-danger { background: #dc2626; color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .log {
+            font-family: ui-monospace, monospace; font-size: 0.78rem;
+            background: #0f172a; color: #e2e8f0; padding: 0.65rem; border-radius: 0.5rem;
+            max-height: 280px; overflow-y: auto; white-space: pre-wrap;
+        }
+        .log .ok { color: #4ade80; }
+        .log .warn { color: #fbbf24; }
+        .log .err { color: #f87171; }
+        .hint { font-size: 0.82rem; color: var(--text-light); line-height: 1.55; }
+        .stat { font-size: 0.85rem; color: var(--text-color); margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo"><span class="navbar-logo-text">MBTI × 桌遊配對</span></a>
+            <div class="navbar-links">
+                <a href="admin.html">管理後台</a>
+                <a href="admin-bgg-axis-reference.html">六軸對照表</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="wrap">
+        <div class="hero">
+            <h1>BGG ID 掃描 · Category／Mechanic → 六軸補齊</h1>
+            <p>依 <strong>BGG ID 由小到大</strong> 逐筆檢查：是否已收錄於 <code>game_database</code>。<strong>xmlapi2/thing</strong>（Worker → Jina 備援）可取得：<strong>category／mechanic 官方名稱</strong>（<code>&lt;link type="boardgamecategory|boardgamemechanic"&gt;</code>）、<strong>min／max playtime</strong>、年份、人數、複雜度、圖片、subdomain 類型等。<strong>Jina 讀 HTML</strong>僅作備援（封面、thing 失敗時的標籤／數值補洞）。六軸仍依標籤＋複雜度對照表計算。</p>
+            <p>未收錄則以 thing 為主建立新遊戲並帶入六軸。<strong>請分段設定 ID 範圍</strong>，避免一次掃過大區間。</p>
+            <p class="hint" style="margin-top:0.65rem;line-height:1.55;">
+                <strong>玩家簡易建檔：</strong>使用者在「編輯桌遊收藏」用 BGG 選遊戲並儲存時，會在 <code>game_database</code> 寫入<strong>最小列</strong>（<code>bgg_id</code>＋名稱），欄位 <code>ingest_source = user_collection</code>。
+                掃描該 ID 時 log 會出現 <strong>📌</strong> 提示；請照常跑掃描以補齊 thing／category／六軸（與一般建檔相同流程，不會在儲存收藏時卡住）。
+            </p>
+        </div>
+
+        <section class="card">
+            <h2>API 連線（本機開發）</h2>
+            <p class="hint">
+                若用 <strong>Live Server</strong>（例如 <code>http://127.0.0.1:5500</code>）開此頁，預設會請求 <code>/tables/...</code> 而得到 <strong>404</strong>。
+                請填<strong>正式站網域</strong>作為基底（勿結尾斜線），並在連正式站 API 時填入與後端相同的 <strong>X-Api-Key</strong>（Worker 的 <code>API_SECRET</code>）。
+                同源在正式站操作時可<strong>留空</strong>。跨域需 Worker 的 <code>ALLOWED_ORIGINS</code> 含本機 origin 並<strong>重新部署</strong>。
+            </p>
+            <div class="row">
+                <label for="api-base">API 基底網址</label>
+                <input type="url" id="api-base" class="input-flex" placeholder="https://boardgamematch.com.tw" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="row">
+                <label for="api-key">X-Api-Key</label>
+                <input type="password" id="api-key" class="input-flex" placeholder="連正式站 API 時通常必填" autocomplete="off" spellcheck="false">
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>1️⃣ 建立 bgg_id 索引（自資料庫）</h2>
+            <p class="hint">會分批抓取 <code>game_database</code>，完成後才能判斷「是否已收錄」。</p>
+            <button type="button" class="btn btn-primary" id="btn-load-index">載入索引</button>
+            <div class="stat" id="index-stat">尚未載入</div>
+        </section>
+
+        <section class="card">
+            <h2>2️⃣ 掃描選項</h2>
+            <div class="row"><label>起始 BGG ID</label><input type="number" id="id-start" value="1" min="1"></div>
+            <div class="row"><label>結束 BGG ID</label><input type="number" id="id-end" value="50" min="1"></div>
+            <div class="row"><label>併發數</label><input type="number" id="concurrency" value="1" min="1" max="3"></div>
+            <div class="row"><label>批次延遲 ms</label><input type="number" id="delay-ms" value="600" min="0" step="100"></div>
+            <div class="row" style="flex-direction:column;align-items:flex-start;gap:0.35rem;">
+                <label><input type="checkbox" id="dry-run"> 乾跑（只記錄，不 POST／PATCH）</label>
+                <label><input type="checkbox" id="force-meta"> 強制重跑補洞（含 Jina 封面／Markdown 補欄；category／mechanic 仍以 thing XML 為優先）</label>
+                <label><input type="checkbox" id="force-axes"> 強制重算六軸（即使已有數值）</label>
+            </div>
+            <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" id="btn-run" disabled>開始掃描</button>
+                <button type="button" class="btn btn-danger" id="btn-stop" disabled>停止</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>3️⃣ 六軸與標籤對照（v1 初版）</h2>
+            <p class="hint">
+                六軸語意與站內一致：<strong>entry</strong> 進入門檻（高＝複雜）、<strong>mood</strong> 歡樂↔燒腦、<strong>control</strong> 運氣↔策略、
+                <strong>openness</strong> 磊落↔心機、<strong>sociality</strong> 社交↔沉浸、<strong>competition</strong> 合作↔對抗。
+                先以 <strong>complexity（weight）</strong> 估 entry，再將各 Category／Mechanic 的<strong>加總修正</strong>到 0–12。
+                <strong><a href="admin-bgg-axis-reference.html">完整表：BGG 官方全部主題／機制</a></strong>（<code>data/bgg-taxonomy.json</code>）併列 delta（優先 <code>GET /api/bgg-axis-deltas</code>，失敗則 <code>js/bgg-axis-deltas-v1.js</code>）。未設定的標籤不套用 delta。
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>4️⃣ 執行紀錄</h2>
+            <div id="log" class="log"></div>
+            <div class="stat" id="run-stat"></div>
+        </section>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="js/admin-auth.js?v=20260319-localdev"></script>
+    <script src="js/app.js?v=20260403"></script>
+    <script src="js/bgg-axis-deltas-v1.js?v=1"></script>
+    <script src="js/bgg-axis-deltas-loader.js?v=1"></script>
+    <script src="js/bgg-six-axes-compute.js?v=1"></script>
+    <script>
+    (function () {
+        const LS_API_BASE = 'admin_bgg_axis_sync_api_base';
+        const LS_API_KEY = 'admin_bgg_axis_sync_api_key';
+
+        const elApiBase = document.getElementById('api-base');
+        const elApiKey = document.getElementById('api-key');
+        try {
+            const b = localStorage.getItem(LS_API_BASE);
+            if (b != null && elApiBase) elApiBase.value = b;
+            const k = localStorage.getItem(LS_API_KEY);
+            if (k != null && elApiKey) elApiKey.value = k;
+        } catch (e) { /* ignore */ }
+        function persistApiSettings() {
+            try {
+                if (elApiBase) localStorage.setItem(LS_API_BASE, elApiBase.value.trim());
+                if (elApiKey) localStorage.setItem(LS_API_KEY, elApiKey.value.trim());
+            } catch (e) { /* ignore */ }
+        }
+        if (elApiBase) {
+            elApiBase.addEventListener('change', persistApiSettings);
+            elApiBase.addEventListener('blur', persistApiSettings);
+        }
+        if (elApiKey) {
+            elApiKey.addEventListener('change', persistApiSettings);
+            elApiKey.addEventListener('blur', persistApiSettings);
+        }
+
+        function readApiBase() {
+            const raw = (elApiBase && elApiBase.value ? elApiBase.value : '').trim();
+            return raw.replace(/\/+$/, '');
+        }
+
+        /** path 例如 tables/game_database?limit=1 */
+        function apiUrl(path) {
+            const base = readApiBase();
+            if (!base) return path;
+            const p = path.startsWith('/') ? path.slice(1) : path;
+            return `${base}/${p}`;
+        }
+
+        function apiHeaders(extra) {
+            const h = typeof getAuthHeaders === 'function' ? getAuthHeaders(extra) : { 'Content-Type': 'application/json', ...extra };
+            const base = readApiBase();
+            const key = (elApiKey && elApiKey.value ? elApiKey.value : '').trim();
+            if (base && key && !h['X-Api-Key']) h['X-Api-Key'] = key;
+            return h;
+        }
+
+        async function main() {
+            if (typeof window.loadBggAxisV1FromApi === 'function') {
+                try {
+                    await window.loadBggAxisV1FromApi({
+                        apiBase: readApiBase() || undefined,
+                        apiKey: (elApiKey && elApiKey.value ? elApiKey.value : '').trim() || undefined
+                    });
+                } catch (e) {
+                    console.warn('loadBggAxisV1FromApi', e);
+                }
+            }
+
+        const V = window.BGG_AXIS_V1;
+        if (!V) {
+            document.getElementById('log').innerHTML = '<div class="err">載入 js/bgg-axis-deltas-v1.js 失敗</div>';
+            throw new Error('BGG_AXIS_V1 missing');
+        }
+        const AXIS_KEYS = V.AXIS_KEYS;
+
+        const C = window.BggSixAxesCompute;
+        if (!C) {
+            document.getElementById('log').innerHTML = '<div class="err">載入 bgg-six-axes-compute.js 失敗</div>';
+            throw new Error('BggSixAxesCompute missing');
+        }
+
+        function parseJsonArrayField(val) {
+            return C.parseJsonArrayField(val);
+        }
+
+        /** 由 category + mechanics + complexity 計算六軸（0–12，一位小數） */
+        function computeSixAxes(categoryArr, mechanicsArr, complexity) {
+            return C.computeSixAxesFromParsed(categoryArr, mechanicsArr, complexity);
+        }
+
+        function axesMissing(row) {
+            return AXIS_KEYS.some(k => {
+                const v = row['axis_' + k];
+                return v == null || v === '' || Number.isNaN(Number(v));
+            });
+        }
+
+        function metaMissing(row) {
+            const c = parseJsonArrayField(row.category);
+            const m = parseJsonArrayField(row.mechanics);
+            return c.length === 0 || m.length === 0;
+        }
+
+        /** BGG XML 的數值欄在資料列是否缺漏（空字串／0 年視同缺） */
+        function numericMetaMissing(row) {
+            const n = (v) => v == null || v === '' || (typeof v === 'number' && Number.isNaN(v));
+            const yearBad = n(row.year) || Number(row.year) === 0;
+            const playBoundsMissing = n(row.min_playtime) && n(row.max_playtime);
+            return yearBad || n(row.min_players) || n(row.max_players) || n(row.playing_time) || n(row.complexity)
+                || playBoundsMissing;
+        }
+
+        /** 與 admin-bgg-import：由 min/max 局時與人數推估每位玩家平均分鐘 */
+        function derivePlayingTimePerPlayerFromBounds(minPlayers, maxPlayers, minPlaytime, maxPlaytime) {
+            const mn = minPlaytime != null && minPlaytime !== '' ? Number(minPlaytime) : NaN;
+            const mx = maxPlaytime != null && maxPlaytime !== '' ? Number(maxPlaytime) : NaN;
+            const minPlay = !isNaN(mn) && mn > 0 ? mn : null;
+            const maxPlay = !isNaN(mx) && mx > 0 ? mx : null;
+            if (minPlay == null && maxPlay == null) return null;
+            const minP = minPlayers != null && minPlayers !== '' ? Number(minPlayers) : NaN;
+            const maxP = maxPlayers != null && maxPlayers !== '' ? Number(maxPlayers) : NaN;
+            const minPer = (minPlay != null && !isNaN(maxP) && maxP > 0) ? minPlay / maxP : null;
+            const maxPer = (maxPlay != null && !isNaN(minP) && minP > 0) ? maxPlay / Math.max(minP, 1) : null;
+            const vals = [minPer, maxPer].filter(v => v != null && !isNaN(v));
+            if (!vals.length) return null;
+            return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        }
+
+        /**
+         * 已存在列：把 xmlapi2/thing 的數值寫入 patch。
+         * @param {boolean} forceMeta 對應「強制重抓 Jina」時一併覆寫 BGG 官方數值
+         */
+        function englishNameLooksLikeJinaGarbage(v) {
+            if (!v || typeof v !== 'string') return true;
+            return /\|\s*Board Game\b/i.test(v) || /\bBoardGameGeek\b/i.test(v) || (/\|/.test(v) && v.length > 42);
+        }
+
+        function assignXmlBasicsToPatch(patch, row, xmlBasics, forceMeta) {
+            if (!xmlBasics) return;
+            let ne = xmlBasics.name_en ? normalizeBggJinaTitle(String(xmlBasics.name_en).trim()) : '';
+            if (ne) xmlBasics.name_en = ne;
+            const fill = forceMeta || numericMetaMissing(row);
+            if (!fill) return;
+            const fields = ['year', 'min_players', 'max_players', 'min_playtime', 'max_playtime', 'playing_time', 'complexity'];
+            for (const f of fields) {
+                const v = xmlBasics[f];
+                if (v == null || v === '') continue;
+                if (forceMeta || row[f] == null || row[f] === '') {
+                    patch[f] = v;
+                }
+            }
+            if (ne) {
+                const rowEn = (row.name_en || '').trim();
+                if (forceMeta) {
+                    if (!rowEn || englishNameLooksLikeJinaGarbage(rowEn)) patch.name_en = ne;
+                } else if (!rowEn) {
+                    patch.name_en = ne;
+                }
+            }
+            if (xmlBasics.image_url && (forceMeta || !row.image_url)) {
+                patch.image_url = xmlBasics.image_url;
+            }
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        // ── 以下 Jina／解析：對齊 admin-bgg-import（不重複修改該檔）──
+        async function fetchGameMetaViaJina(bggId, maxRetry) {
+            const pageUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
+            const proxyUrl = `https://r.jina.ai/${pageUrl}`;
+            for (let attempt = 0; attempt <= maxRetry; attempt++) {
+                try {
+                    const res = await fetch(proxyUrl, { headers: { 'X-No-Cache': 'true' }, signal: AbortSignal.timeout(25000) });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const text = await res.text();
+                    return {
+                        text,
+                        coverUrl: extractCoverFromText(text),
+                        category: extractCategoryFromText(text),
+                        mechanics: extractMechanicsFromText(text),
+                        bggType: extractTypeFromText(text)
+                    };
+                } catch (e) {
+                    if (attempt < maxRetry) { await sleep(1500 * (attempt + 1)); continue; }
+                    throw e;
+                }
+            }
+        }
+
+        function extractCoverFromText(text) {
+            const imgRegex = /https:\/\/cf\.geekdo-images\.com\/[^\s\"']+\.(?:jpg|png|jpeg)/gi;
+            const candidates = [];
+            let m;
+            while ((m = imgRegex.exec(text)) !== null) candidates.push(m[0]);
+            if (!candidates.length) return null;
+            return candidates.find(u => u.includes('_original'))
+                || candidates.find(u => !u.match(/user|avatar|micro|square|thumb/))
+                || candidates[0];
+        }
+
+        function splitToTags(payload) {
+            let cleaned = String(payload).replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+            return cleaned.split(/[,;•|]/).map(s => s.replace(/^\*\s*/, '').trim()).filter(s => s && s !== 'N/A');
+        }
+
+        function extractCategoryFromText(text) {
+            const themes = new Set();
+            const catBlockMatch = text.match(/Category\s*\n([\s\S]*?)(\n\n|Mechanism\s*\n|Family\s*\n|Type\s*\n)/i);
+            if (catBlockMatch && catBlockMatch[1]) {
+                catBlockMatch[1].split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+                    splitToTags(line).forEach(t => themes.add(t));
+                });
+            }
+            for (const line of text.split(/\r?\n/)) {
+                const lower = line.toLowerCase();
+                if (lower.startsWith('category:') || lower.startsWith('categories:') || lower.includes('board game category')) {
+                    const parts = line.split(/[:：]/);
+                    if (parts.length >= 2) splitToTags(parts.slice(1).join(':')).forEach(t => themes.add(t));
+                }
+            }
+            return Array.from(themes);
+        }
+
+        function extractMechanicsFromText(text) {
+            const mechs = new Set();
+            const mechBlockMatch = text.match(/Mechanism\s*\n([\s\S]*?)(\n\n|Family\s*\n|Category\s*\n|Type\s*\n)/i);
+            if (mechBlockMatch && mechBlockMatch[1]) {
+                mechBlockMatch[1].split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+                    if (/^\+\s*\d+\s+more/i.test(line)) return;
+                    splitToTags(line).forEach(t => mechs.add(t));
+                });
+            }
+            for (const line of text.split(/\r?\n/)) {
+                const lower = line.toLowerCase();
+                if (lower.startsWith('mechanic:') || lower.startsWith('mechanics:') || lower.includes('board game mechanic')) {
+                    const parts = line.split(/[:：]/);
+                    if (parts.length >= 2) splitToTags(parts.slice(1).join(':')).forEach(t => mechs.add(t));
+                }
+            }
+            return Array.from(mechs);
+        }
+
+        function extractTypeFromText(text) {
+            const typeBlockMatch = text.match(/Type\s*\n([\s\S]*?)(\n\n|Category\s*\n|Mechanism\s*\n|Family\s*\n)/i);
+            if (typeBlockMatch && typeBlockMatch[1]) {
+                const lines = typeBlockMatch[1].split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                if (lines.length) {
+                    let first = lines[0];
+                    const linkMatch = first.match(/\[([^\]]+)\]\([^)]+\)/);
+                    if (linkMatch) return linkMatch[1];
+                    first = first.replace(/View poll and results.*/i, '').trim();
+                    if (first && first !== 'Uncategorized') return first;
+                }
+            }
+            return 'Uncategorized';
+        }
+
+        function jinaLooksLikeNoGame(text) {
+            const l = (text || '').toLowerCase();
+            return l.includes('could not be found') || l.includes('page not found')
+                || l.includes('the item you requested is not in the database');
+        }
+
+        /** 與 admin-games 相同：Jina 標題「Name | Board Game | BoardGameGeek」只取第一段 */
+        function normalizeBggJinaTitle(raw) {
+            if (!raw || typeof raw !== 'string') return '';
+            const trimmed = raw.trim();
+            let s = trimmed.replace(/\s*\((19|20)\d{2}\)\s*$/, '').trim();
+            const pipeSeg = s.split(/\s*\|\s*/)[0];
+            return pipeSeg.trim();
+        }
+
+        /** 與 admin-games 相同：優先 Playing Time 區間，再一般 a–b min，最後單一 N min；區間取平均 */
+        function extractPlayingTimeMinutesFromBggMarkdown(text) {
+            const labeled = text.match(/Playing\s+Time[:\s]*(\d+)\s*[–\-~]\s*(\d+)\s*[Mm]in/i);
+            if (labeled) {
+                const a = parseInt(labeled[1], 10), b = parseInt(labeled[2], 10);
+                if (!isNaN(a) && !isNaN(b)) return Math.round((Math.min(a, b) + Math.max(a, b)) / 2);
+            }
+            const anyRange = text.match(/(\d+)\s*[–\-~]\s*(\d+)\s*[Mm]in\b/);
+            if (anyRange) {
+                const a = parseInt(anyRange[1], 10), b = parseInt(anyRange[2], 10);
+                if (!isNaN(a) && !isNaN(b)) return Math.round((Math.min(a, b) + Math.max(a, b)) / 2);
+            }
+            const single = text.match(/\b(\d+)\s*[Mm]in(?:ute)?s?\b/i);
+            if (single) {
+                const n = parseInt(single[1], 10);
+                if (!isNaN(n)) return n;
+            }
+            return null;
+        }
+
+        /**
+         * thing XML 失敗時，從 Jina 回傳的 BGG 頁面 Markdown 擷取數值（與 admin-games「從 BGG 抓取」邏輯對齊）。
+         */
+        function jinaMarkdownToNumericBasics(text, bggId) {
+            if (!text || typeof text !== 'string') return null;
+            const out = {
+                name_en: '',
+                name_zh: '',
+                name_ja: '',
+                year: null,
+                min_players: null,
+                max_players: null,
+                playing_time: null,
+                min_playtime: null,
+                max_playtime: null,
+                complexity: null,
+                image_url: '',
+                bgg_id: String(bggId)
+            };
+            const titleMatch = text.match(/^#\s+(.+)/m);
+            if (titleMatch) {
+                const fullTitle = titleMatch[1].trim();
+                const yInParens = fullTitle.match(/\((\d{4})\)\s*$/);
+                if (yInParens) {
+                    const y = parseInt(yInParens[1], 10);
+                    if (y >= 1900 && y <= 2099) out.year = y;
+                }
+                out.name_en = normalizeBggJinaTitle(fullTitle);
+            }
+            const playersMatch = text.match(/(\d+)\s*[–\-~]\s*(\d+)\s*[Pp]layers?/);
+            if (playersMatch) {
+                out.min_players = parseInt(playersMatch[1], 10);
+                out.max_players = parseInt(playersMatch[2], 10);
+            }
+            const pt = extractPlayingTimeMinutesFromBggMarkdown(text);
+            if (pt != null) out.playing_time = pt;
+            const weightMatch = text.match(/(\d+\.\d+)\s*\/\s*5/);
+            if (weightMatch) {
+                out.complexity = Math.round(parseFloat(weightMatch[1]) * 100) / 100;
+            }
+            const anyNum = out.year != null || out.min_players != null || out.max_players != null
+                || out.playing_time != null || out.complexity != null;
+            const hasName = !!(out.name_en && out.name_en.length);
+            return (anyNum || hasName) ? out : null;
+        }
+
+        /** XML 優先；XML 缺漏欄位由 Jina 文字補上 */
+        function mergeThingXmlWithJinaMarkdown(xml, jinaFb) {
+            if (!jinaFb) return xml;
+            if (!xml) return jinaFb;
+            const keys = ['name_en', 'name_zh', 'name_ja', 'year', 'min_players', 'max_players', 'min_playtime', 'max_playtime', 'playing_time', 'complexity', 'image_url'];
+            const out = { ...xml };
+            for (const k of keys) {
+                const v = xml[k];
+                const yearBad = k === 'year' && (v == null || v === '' || Number(v) === 0);
+                const missing = v == null || v === '' || (typeof v === 'number' && Number.isNaN(v));
+                if ((missing || yearBad) && jinaFb[k] != null && jinaFb[k] !== '') {
+                    out[k] = jinaFb[k];
+                }
+            }
+            return out;
+        }
+
+        // ── BGG xmlapi2/thing：優先本站 Worker，失敗再 Jina ──
+        async function fetchBGGXmlItem(bggId) {
+            // 勿命名為 apiUrl：會遮蔽外層 apiUrl()，導致 viaWorkerProxy 內 fetch(apiUrl(path)) 報錯
+            const bggThingDirectUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+
+            function unwrapJinaMarkdownMaybe(text) {
+                if (!text || typeof text !== 'string') return text;
+                let t = text;
+                const fence = t.match(/```(?:xml)?\s*([\s\S]*?)```/i);
+                if (fence) t = fence[1];
+                return t.trim();
+            }
+
+            async function parseThingXmlText(text) {
+                const raw = unwrapJinaMarkdownMaybe(text);
+                try {
+                    const xml = new DOMParser().parseFromString(raw, 'text/xml');
+                    const item = xml.querySelector('item');
+                    if (item) return item;
+                } catch (e) { /* continue */ }
+                const xmlMatch = raw.match(/<\?xml[\s\S]*?<\/items>/i) || raw.match(/<items[\s\S]*?<\/items>/i);
+                if (xmlMatch) {
+                    const xml = new DOMParser().parseFromString(xmlMatch[0], 'text/xml');
+                    const item = xml.querySelector('item');
+                    if (item) return item;
+                }
+                const itemOnly = raw.match(/<item\b[^>]*>[\s\S]*?<\/item>/i);
+                if (itemOnly) {
+                    const wrapped = `<items>${itemOnly[0]}</items>`;
+                    const xml = new DOMParser().parseFromString(wrapped, 'text/xml');
+                    const item = xml.querySelector('item');
+                    if (item) return item;
+                }
+                throw new Error('無法解析 thing XML');
+            }
+
+            async function viaJina() {
+                const proxyUrl = `https://r.jina.ai/${bggThingDirectUrl}`;
+                const resp = await fetch(proxyUrl, {
+                    headers: { 'X-No-Cache': 'true' },
+                    signal: AbortSignal.timeout(45000)
+                });
+                if (!resp.ok) throw new Error(`Jina HTTP ${resp.status}`);
+                const text = await resp.text();
+                return parseThingXmlText(text);
+            }
+
+            async function viaWorkerProxy() {
+                const path = `api/admin/bgg/thing?id=${encodeURIComponent(bggId)}&stats=1`;
+                const res = await fetch(apiUrl(path), {
+                    method: 'GET',
+                    headers: apiHeaders({ Accept: 'application/xml, text/xml, */*' }),
+                    signal: AbortSignal.timeout(35000)
+                });
+                if (!res.ok) {
+                    let detail = '';
+                    try {
+                        const j = await res.clone().json();
+                        if (j && j.error) detail = ': ' + j.error;
+                    } catch (e2) { /* ignore */ }
+                    throw new Error(`Worker thing HTTP ${res.status}${detail}`);
+                }
+                const text = await res.text();
+                return parseThingXmlText(text);
+            }
+
+            let wErr = '';
+            try {
+                return await viaWorkerProxy();
+            } catch (e) {
+                wErr = e && e.message ? e.message : String(e);
+            }
+            let jErr = '';
+            try {
+                return await viaJina();
+            } catch (e) {
+                jErr = e && e.message ? e.message : String(e);
+            }
+            try {
+                await new Promise(r => setTimeout(r, 400));
+                return await viaJina();
+            } catch (e2) {
+                const j2 = e2 && e2.message ? e2.message : String(e2);
+                throw new Error(`Worker：${wErr}；Jina（兩次）：${jErr}；${j2}`);
+            }
+        }
+
+        function xmlToBasics(xmlItem, bggId) {
+            const nameEn = xmlItem.querySelector('name[type="primary"]')?.getAttribute('value') || '';
+            const yearVal = xmlItem.querySelector('yearpublished')?.getAttribute('value');
+            const minP = xmlItem.querySelector('minplayers')?.getAttribute('value');
+            const maxP = xmlItem.querySelector('maxplayers')?.getAttribute('value');
+            const minPlayEl = xmlItem.querySelector('minplaytime')?.getAttribute('value');
+            const maxPlayEl = xmlItem.querySelector('maxplaytime')?.getAttribute('value');
+            const playingTimeEl = xmlItem.querySelector('playingtime')?.getAttribute('value');
+            const weightVal = xmlItem.querySelector('averageweight')?.getAttribute('value');
+            const image = xmlItem.querySelector('image')?.textContent?.trim();
+            const thumb = xmlItem.querySelector('thumbnail')?.textContent?.trim();
+            const imageUrl = image || thumb || '';
+            const minPi = minP ? parseInt(minP, 10) : null;
+            const maxPi = maxP ? parseInt(maxP, 10) : null;
+            const minT = minPlayEl && minPlayEl !== '0' ? parseInt(minPlayEl, 10) : null;
+            const maxT = maxPlayEl && maxPlayEl !== '0' ? parseInt(maxPlayEl, 10) : null;
+            const playingSingle = playingTimeEl && playingTimeEl !== '0' ? parseInt(playingTimeEl, 10) : null;
+            let playing_time = derivePlayingTimePerPlayerFromBounds(minPi, maxPi, minT, maxT);
+            if (playing_time == null) {
+                if (maxT != null) playing_time = maxT;
+                else if (minT != null) playing_time = minT;
+                else if (playingSingle != null) playing_time = playingSingle;
+            }
+            const category = [];
+            const mechanics = [];
+            xmlItem.querySelectorAll('link[type="boardgamecategory"]').forEach((el) => {
+                const v = el.getAttribute('value');
+                if (v && String(v).trim()) category.push(String(v).trim());
+            });
+            xmlItem.querySelectorAll('link[type="boardgamemechanic"]').forEach((el) => {
+                const v = el.getAttribute('value');
+                if (v && String(v).trim()) mechanics.push(String(v).trim());
+            });
+            let bgg_type = 'Uncategorized';
+            const sub = xmlItem.querySelector('link[type="boardgamesubdomain"]');
+            if (sub) {
+                const sv = sub.getAttribute('value');
+                if (sv && String(sv).trim()) bgg_type = String(sv).trim();
+            }
+            return {
+                name_en: nameEn,
+                name_zh: '',
+                name_ja: '',
+                year: yearVal && yearVal !== '0' ? parseInt(yearVal, 10) : null,
+                min_players: minPi,
+                max_players: maxPi,
+                min_playtime: minT,
+                max_playtime: maxT,
+                playing_time: playing_time != null && !isNaN(playing_time) ? playing_time : null,
+                complexity: weightVal ? Math.round(parseFloat(weightVal) * 100) / 100 : null,
+                image_url: imageUrl,
+                bgg_id: String(bggId),
+                category,
+                mechanics,
+                bgg_type
+            };
+        }
+
+        let bggIdToRow = new Map();
+        let stopFlag = false;
+
+        function log(line, cls) {
+            const el = document.getElementById('log');
+            const div = document.createElement('div');
+            div.className = cls || '';
+            div.textContent = line;
+            el.appendChild(div);
+            el.scrollTop = el.scrollHeight;
+        }
+
+        /** 執行紀錄：已存在列 PATCH 時顯示改前→改後（含六軸），方便對照是否真的寫入 */
+        function strForLogField(k, v) {
+            if (v === null || v === undefined || v === '') return '—';
+            if (typeof v === 'number' && Number.isNaN(v)) return '—';
+            if (typeof k === 'string' && k.indexOf('axis_') === 0) {
+                const n = Number(v);
+                if (!Number.isNaN(n)) return n.toFixed(2);
+            }
+            const long = k === 'category' || k === 'mechanics' || k === 'image_url';
+            const max = long ? 220 : 96;
+            let s = typeof v === 'string' ? v : String(v);
+            if (s.length > max) s = s.slice(0, max) + '…';
+            return s.replace(/\s+/g, ' ').trim();
+        }
+
+        function logPatchBeforeAfter(bggIdStr, dbRowId, beforeRow, patch) {
+            const keys = Object.keys(patch);
+            if (!keys.length) return;
+            log(`[${bggIdStr}] game_database id=${dbRowId}　改前 → 改後`, 'ok');
+            for (const k of keys) {
+                const a = strForLogField(k, beforeRow[k]);
+                const b = strForLogField(k, patch[k]);
+                const same = a === b;
+                log(`  · ${k}\n    前：${a}\n    後：${b}${same ? ' （相同）' : ''}`, same ? 'warn' : 'ok');
+            }
+        }
+
+        async function loadIndex() {
+            const btn = document.getElementById('btn-load-index');
+            btn.disabled = true;
+            bggIdToRow = new Map();
+            let page = 1;
+            const limit = 200;
+            let totalLoaded = 0;
+            try {
+                while (true) {
+                    const r = await fetch(apiUrl(`tables/game_database?limit=${limit}&page=${page}`), { headers: apiHeaders() });
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    const d = await r.json();
+                    const rows = d.data || [];
+                    for (const row of rows) {
+                        if (row.bgg_id != null && String(row.bgg_id).trim() !== '') {
+                            bggIdToRow.set(String(row.bgg_id).trim(), row);
+                        }
+                    }
+                    totalLoaded += rows.length;
+                    document.getElementById('index-stat').textContent =
+                        `已載入 ${totalLoaded} 筆資料列，含有效 bgg_id：${bggIdToRow.size} 個`;
+                    if (rows.length < limit) break;
+                    page++;
+                }
+                document.getElementById('btn-run').disabled = false;
+                log(`[ok] 索引完成：${bggIdToRow.size} 個 bgg_id`, 'ok');
+            } catch (e) {
+                let detail = e && e.message ? e.message : String(e);
+                if (/404/.test(detail)) {
+                    detail += ' — 本機請填「API 基底網址」（如 https://boardgamematch.com.tw）、必要時填 X-Api-Key，並確認 Worker 已允許本機 origin（ALLOWED_ORIGINS）且已部署。';
+                }
+                if (readApiBase() && (!elApiKey || !elApiKey.value.trim())) {
+                    detail += ' — 若仍 403，請補填 X-Api-Key。';
+                }
+                log('[err] 索引失敗：' + detail, 'err');
+            }
+            btn.disabled = false;
+        }
+
+        function stripEmpty(obj) {
+            const o = {};
+            Object.keys(obj).forEach(k => {
+                const v = obj[k];
+                if (v !== '' && v !== null && v !== undefined) o[k] = v;
+            });
+            return o;
+        }
+
+        function warnIfReturnedRowMissingPatchedAxes(patch, updated) {
+            if (!updated || typeof updated !== 'object') return;
+            const axisKeys = Object.keys(patch).filter(k =>
+                k.indexOf('axis_') === 0 && k.indexOf('reviewer_delta') === -1
+            );
+            for (const k of axisKeys) {
+                if (!(k in updated)) {
+                    log(
+                        `[err] PATCH 回傳列缺欄位 ${k}（已送寫入但 D1 表無此欄，Worker 會靜默略過）。請對 D1 執行 migration：cloudflare/migrations/20260331_game_database_axis_mood_through_competition.sql`,
+                        'err'
+                    );
+                }
+            }
+        }
+
+        async function patchGame(id, patch) {
+            if (document.getElementById('dry-run').checked) {
+                log(`[dry] PATCH ${id} ` + JSON.stringify(patch).slice(0, 200), 'warn');
+                return true;
+            }
+            const r = await fetch(apiUrl(`tables/game_database/${encodeURIComponent(id)}`), {
+                method: 'PATCH',
+                headers: apiHeaders(),
+                body: JSON.stringify(patch)
+            });
+            if (!r.ok) {
+                const t = await r.text();
+                throw new Error(r.status + ' ' + t.slice(0, 120));
+            }
+            try {
+                const updated = await r.json();
+                warnIfReturnedRowMissingPatchedAxes(patch, updated);
+            } catch (e) { /* 非 JSON 時略過 */ }
+            return true;
+        }
+
+        async function postGame(body) {
+            if (document.getElementById('dry-run').checked) {
+                log(`[dry] POST game_database ` + JSON.stringify(body).slice(0, 240), 'warn');
+                return null;
+            }
+            const sent = stripEmpty(body);
+            const r = await fetch(apiUrl('tables/game_database'), {
+                method: 'POST',
+                headers: apiHeaders(),
+                body: JSON.stringify(sent)
+            });
+            if (!r.ok && r.status !== 201) {
+                const t = await r.text();
+                throw new Error(r.status + ' ' + t.slice(0, 120));
+            }
+            const created = await r.json();
+            warnIfReturnedRowMissingPatchedAxes(sent, created);
+            return created;
+        }
+
+        async function processOneBggId(n) {
+            const idStr = String(n);
+            const forceMeta = document.getElementById('force-meta').checked;
+            const forceAxes = document.getElementById('force-axes').checked;
+            let row = bggIdToRow.get(idStr);
+
+            if (row && String(row.ingest_source || '') === 'user_collection') {
+                log(`[${idStr}] 📌 此筆為玩家從「編輯收藏」建立的簡易建檔（ingest_source=user_collection），將以 thing／六軸補齊`, 'warn');
+            }
+
+            let jina;
+            try {
+                jina = await fetchGameMetaViaJina(idStr, 2);
+            } catch (e) {
+                log(`[${idStr}] Jina 失敗：${e.message}`, 'err');
+                return;
+            }
+
+            if (jinaLooksLikeNoGame(jina.text)) {
+                log(`[${idStr}] BGG 無此遊戲或頁面無效，略過`, 'warn');
+                return;
+            }
+
+            let xmlBasics = null;
+            try {
+                const item = await fetchBGGXmlItem(idStr);
+                xmlBasics = xmlToBasics(item, idStr);
+            } catch (e) {
+                log(`[${idStr}] XML 失敗（仍可用 Jina 補）：${e.message}`, 'warn');
+            }
+            const jinaNum = jinaMarkdownToNumericBasics(jina.text, idStr);
+            const mergedBasics = mergeThingXmlWithJinaMarkdown(xmlBasics, jinaNum);
+            if (jinaNum) {
+                if (!xmlBasics) {
+                    log(`[${idStr}] 數值欄改由 Jina 頁面文字解析（thing XML 不可用）`, 'warn');
+                } else {
+                    const usedJina = ['year', 'min_players', 'max_players', 'min_playtime', 'max_playtime', 'playing_time', 'complexity'].some((k) => {
+                        const v = xmlBasics[k];
+                        const miss = v == null || v === '' || (k === 'year' && Number(v) === 0);
+                        return miss && jinaNum[k] != null && jinaNum[k] !== '';
+                    });
+                    if (usedJina) log(`[${idStr}] 部分數值欄由 Jina 頁面補齊（thing XML 缺漏）`, 'warn');
+                }
+            }
+            xmlBasics = mergedBasics;
+
+            if (row) {
+                const patch = {};
+                if (forceMeta || metaMissing(row)) {
+                    if (jina.coverUrl && (!row.image_url || forceMeta)) patch.image_url = jina.coverUrl;
+                    const catArr = (xmlBasics && Array.isArray(xmlBasics.category) && xmlBasics.category.length)
+                        ? xmlBasics.category : jina.category;
+                    const mechArr = (xmlBasics && Array.isArray(xmlBasics.mechanics) && xmlBasics.mechanics.length)
+                        ? xmlBasics.mechanics : jina.mechanics;
+                    if (catArr.length) patch.category = JSON.stringify(catArr);
+                    if (mechArr.length) patch.mechanics = JSON.stringify(mechArr);
+                    const typePick = (xmlBasics && xmlBasics.bgg_type && xmlBasics.bgg_type !== 'Uncategorized')
+                        ? xmlBasics.bgg_type : jina.bggType;
+                    if (typePick && typePick !== 'Uncategorized') patch.bgg_type = typePick;
+                }
+                assignXmlBasicsToPatch(patch, row, xmlBasics, forceMeta);
+
+                const effCat = parseJsonArrayField(patch.category !== undefined ? patch.category : row.category);
+                const effMech = parseJsonArrayField(patch.mechanics !== undefined ? patch.mechanics : row.mechanics);
+                const cxFromPatch = patch.complexity !== undefined && patch.complexity !== ''
+                    ? Number(patch.complexity) : null;
+                const cx = (cxFromPatch != null && !Number.isNaN(cxFromPatch))
+                    ? cxFromPatch
+                    : (row.complexity != null && row.complexity !== '' ? Number(row.complexity)
+                        : (xmlBasics && xmlBasics.complexity != null ? xmlBasics.complexity : null));
+                const axes = computeSixAxes(effCat, effMech, cx);
+                const tagOrComplexityChanged = patch.category !== undefined || patch.mechanics !== undefined
+                    || patch.complexity !== undefined;
+                if (forceAxes || axesMissing(row)) {
+                    Object.assign(patch, axes);
+                } else if (forceMeta && (effCat.length || effMech.length)) {
+                    Object.assign(patch, axes);
+                } else if (tagOrComplexityChanged) {
+                    Object.assign(patch, axes);
+                }
+
+                if (Object.keys(patch).length === 0) {
+                    log(`[${idStr}] 已完整，無需更新`, 'ok');
+                    return;
+                }
+                const beforeVals = {};
+                for (const k of Object.keys(patch)) beforeVals[k] = row[k];
+                await patchGame(row.id, patch);
+                log(`[${idStr}] 已更新（資料庫內）欄位：${Object.keys(patch).join(', ')}`, 'ok');
+                logPatchBeforeAfter(idStr, row.id, beforeVals, patch);
+                Object.assign(row, patch);
+                return;
+            }
+
+            // 不在資料庫 → 新建
+            const base = xmlBasics ? { ...xmlBasics } : {
+                name_en: '',
+                bgg_id: idStr,
+                image_url: jina.coverUrl || '',
+                year: null,
+                min_players: null,
+                max_players: null,
+                min_playtime: null,
+                max_playtime: null,
+                playing_time: null,
+                complexity: null,
+                bgg_type: 'Uncategorized'
+            };
+            delete base.category;
+            delete base.mechanics;
+            if (!base.image_url && jina.coverUrl) base.image_url = jina.coverUrl;
+            if (!base.name_en && jina.text) {
+                const tm = jina.text.match(/^Title:\s*(.+)/m);
+                if (tm) base.name_en = tm[1].replace(/\s*\|\s*BoardGameGeek.*$/i, '').trim();
+            }
+            const category = (xmlBasics && Array.isArray(xmlBasics.category) && xmlBasics.category.length)
+                ? xmlBasics.category : (jina.category || []);
+            const mechanics = (xmlBasics && Array.isArray(xmlBasics.mechanics) && xmlBasics.mechanics.length)
+                ? xmlBasics.mechanics : (jina.mechanics || []);
+            const axes = computeSixAxes(category, mechanics, base.complexity);
+            const typeNew = (xmlBasics && xmlBasics.bgg_type && xmlBasics.bgg_type !== 'Uncategorized')
+                ? xmlBasics.bgg_type : (jina.bggType || 'Uncategorized');
+            const payload = stripEmpty({
+                ...base,
+                category: category.length ? JSON.stringify(category) : '',
+                mechanics: mechanics.length ? JSON.stringify(mechanics) : '',
+                bgg_type: typeNew,
+                ...axes
+            });
+            if (!payload.name_en) {
+                log(`[${idStr}] 無法取得遊戲名稱，略過新增`, 'err');
+                return;
+            }
+            const created = await postGame(payload);
+            if (created && created.id) {
+                bggIdToRow.set(idStr, { ...created });
+                log(`[${idStr}] 新建 game_database id=${created.id} ${payload.name_en}`, 'ok');
+            }
+        }
+
+        async function runScan() {
+            const start = Math.max(1, parseInt(document.getElementById('id-start').value, 10) || 1);
+            const end = Math.max(start, parseInt(document.getElementById('id-end').value, 10) || start);
+            const conc = Math.min(3, Math.max(1, parseInt(document.getElementById('concurrency').value, 10) || 1));
+            const delayMs = Math.max(0, parseInt(document.getElementById('delay-ms').value, 10) || 0);
+            stopFlag = false;
+            document.getElementById('btn-run').disabled = true;
+            document.getElementById('btn-stop').disabled = false;
+            document.getElementById('log').innerHTML = '';
+            let done = 0;
+            const total = end - start + 1;
+            const queue = [];
+            for (let n = start; n <= end; n++) queue.push(n);
+
+            async function worker() {
+                while (queue.length && !stopFlag) {
+                    const n = queue.shift();
+                    try {
+                        await processOneBggId(n);
+                    } catch (e) {
+                        log(`[${n}] 錯誤：${e.message}`, 'err');
+                    }
+                    done++;
+                    document.getElementById('run-stat').textContent = `進度 ${done} / ${total}`;
+                    if (delayMs > 0) await sleep(delayMs);
+                }
+            }
+
+            const workers = Array.from({ length: conc }, () => worker());
+            await Promise.all(workers);
+            document.getElementById('btn-run').disabled = false;
+            document.getElementById('btn-stop').disabled = true;
+            log('[ok] 掃描結束', 'ok');
+        }
+
+        document.getElementById('btn-load-index').addEventListener('click', loadIndex);
+        document.getElementById('btn-run').addEventListener('click', runScan);
+        document.getElementById('btn-stop').addEventListener('click', () => { stopFlag = true; log('[warn] 已請求停止（佇列清空後結束）', 'warn'); });
+
+        document.addEventListener('adminAuthenticated', () => {
+            log('[ok] 管理員已驗證', 'ok');
+        });
+        }
+
+        main().catch(function (e) {
+            const logEl = document.getElementById('log');
+            if (logEl) logEl.innerHTML = '<div class="err">初始化失敗：' + (e && e.message ? e.message : e) + '</div>';
+        });
+    })();
+    </script>
+</body>
+</html>
